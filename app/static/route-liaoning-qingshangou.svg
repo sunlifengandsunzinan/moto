@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title desc">
+  <title id="title">青山沟图卡</title>
+  <desc id="desc">用于辽宁摩旅路线页面的青山沟打卡节点视觉图卡。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#245145" />
+      <stop offset="100%" stop-color="#8fd0c0" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)" />
+  <path d="M0 320 C126 252 254 236 382 294 C474 336 588 356 800 304 L800 600 L0 600 Z" fill="#28594b" opacity="0.8" />
+  <path d="M0 430 C188 402 330 398 432 422 C560 450 670 474 800 460 L800 600 L0 600 Z" fill="#a7ddd2" opacity="0.9" />
+  <path d="M40 450 C156 430 270 432 390 450 C516 468 640 492 760 484" fill="none" stroke="#f3faf9" stroke-width="12" stroke-linecap="round" opacity="0.92" />
+  <g fill="#f5f9f5">
+    <text x="56" y="90" font-family="Helvetica Neue, Arial, sans-serif" font-size="28" letter-spacing="6">SCENIC STOP</text>
+    <text x="56" y="158" font-family="Helvetica Neue, Arial, sans-serif" font-size="60" font-weight="700">青山沟</text>
+    <text x="56" y="208" font-family="Helvetica Neue, Arial, sans-serif" font-size="26">山水景区感更强 · 适合慢下来拍</text>
+  </g>
+</svg>

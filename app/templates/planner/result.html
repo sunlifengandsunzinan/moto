@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}摩旅规划结果{% endblock %}
+
+{% block content %}
+  <main class="planner-shell">
+    <section class="panel">
+      <p class="eyebrow">规划结果</p>
+      <h1>{{ plan_overview.title }}</h1>
+      <p class="subtitle">{{ plan_overview.summary }}</p>
+      <div class="planner-grid planner-grid--four">
+        {% for stat in plan_overview.stats %}
+          <article class="metric-card">
+            <span class="metric-label">{{ stat.label }}</span>
+            <strong class="metric-value">{{ stat.value }}</strong>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="planner-grid planner-grid--two">
+      <section class="panel">
+        <p class="eyebrow">每日安排</p>
+        <div class="planner-stack">
+          {% for day in daily_plan %}
+            <article class="planner-day-card">
+              <span class="section-label">Day {{ day.day }}</span>
+              <h2>{{ day.title }}</h2>
+              <p>{{ day.ride_time }} · {{ day.distance }}</p>
+              <ul class="planner-chip-list">
+                {% for item in day.highlights %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+              <p>{{ day.note }}</p>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">关键点位</p>
+        <div class="planner-stack">
+          {% for group in poi_groups %}
+            <article class="planner-poi-card">
+              <h2>{{ group.label }}</h2>
+              <ul class="planner-note-list">
+                {% for item in group["items"] %}
+                  <li><strong>{{ item.name }}</strong> · {{ item.meta }}</li>
+                {% endfor %}
+              </ul>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    </section>
+
+    {% if matched_spots %}
+      <section class="panel">
+        <p class="eyebrow">命中打卡点</p>
+        <div class="planner-grid planner-grid--two">
+          {% for spot in matched_spots %}
+            <a class="planner-spot-card-link" href="{{ spot.href }}">
+              <article class="planner-poi-card planner-poi-card--interactive">
+                <h2>{{ spot.name }}</h2>
+                <p>{{ spot.city }} · 建议停留 {{ spot.recommended_stay }}</p>
+                <p>{{ spot.summary }}</p>
+                <ul class="planner-chip-list">
+                  {% for focus in spot.photo_focus %}
+                    <li>{{ focus }}</li>
+                  {% endfor %}
+                </ul>
+              </article>
+            </a>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    <section class="planner-grid planner-grid--two">
+      <section class="panel">
+        <p class="eyebrow">风险提醒</p>
+        <ul class="planner-note-list">
+          {% for warning in warnings %}
+            <li>{{ warning }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">行前清单</p>
+        <div class="planner-stack">
+          {% for group in checklist_groups %}
+            <article>
+              <h2>{{ group.title }}</h2>
+              <ul class="planner-note-list">
+                {% for item in group["items"] %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    </section>
+
+    <section class="panel planner-cta-strip">
+      <div>
+        <p class="eyebrow">下一步</p>
+        <h2>继续深化这条路线</h2>
+        <p>第一版先把结果页跑通，后续可以再接真实点位和路线模板。</p>
+      </div>
+      <div class="planner-actions planner-actions--stack">
+        {% for action in result_actions %}
+          <a class="button-primary" href="{{ action.href }}">{{ action.label }}</a>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+{% endblock %}

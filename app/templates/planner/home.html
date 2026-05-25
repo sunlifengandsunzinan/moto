@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}摩旅计划{% endblock %}
+
+{% block content %}
+  <main class="planner-shell">
+    <section class="planner-hero panel">
+      <nav class="planner-nav">
+        <a class="planner-brand" href="{{ url_for('moto.moto_home') }}">{{ nav.brand }}</a>
+        <div class="planner-nav__links">
+          {% for link in nav.links %}
+            <a href="{{ link.href }}">{{ link.label }}</a>
+          {% endfor %}
+        </div>
+      </nav>
+      <p class="eyebrow">{{ hero.eyebrow }}</p>
+      <h1>{{ hero.title }}</h1>
+      <p class="subtitle">{{ hero.subtitle }}</p>
+      <div class="planner-actions">
+        <a class="button-primary" href="{{ hero.primary_action.href }}">{{ hero.primary_action.label }}</a>
+        <a class="button-secondary" href="{{ hero.secondary_action.href }}">{{ hero.secondary_action.label }}</a>
+      </div>
+      <ul class="planner-highlight-list">
+        {% for item in hero.highlights %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="planner-grid planner-grid--three">
+      {% for benefit in benefits %}
+        <article class="panel planner-card">
+          <h2>{{ benefit.title }}</h2>
+          <p>{{ benefit.description }}</p>
+        </article>
+      {% endfor %}
+    </section>
+
+    <section class="panel">
+      <div class="planner-section-heading">
+        <p class="eyebrow">热门路线</p>
+        <h2>{{ cta.title }}</h2>
+      </div>
+      <div class="planner-grid planner-grid--three">
+        {% for route in featured_routes %}
+          <article class="planner-route-card">
+            <h3><a href="{{ route.href }}">{{ route.title }}</a></h3>
+            <p>{{ route.summary }}</p>
+            <ul class="planner-chip-list">
+              {% for tag in route.tags %}
+                <li>{{ tag }}</li>
+              {% endfor %}
+            </ul>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel planner-cta-strip">
+      <div>
+        <p class="eyebrow">定制规划</p>
+        <h2>{{ cta.title }}</h2>
+        <p>{{ cta.description }}</p>
+      </div>
+      <a class="button-primary" href="{{ cta.action.href }}">{{ cta.action.label }}</a>
+    </section>
+  </main>
+{% endblock %}

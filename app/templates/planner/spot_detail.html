@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}{{ spot.name }}{% endblock %}
+
+{% block content %}
+  <main class="planner-shell planner-shell--narrow">
+    <section class="panel">
+      <p class="eyebrow">辽宁打卡点</p>
+      <h1>{{ spot.name }}</h1>
+      <p class="subtitle">{{ spot.summary }}</p>
+      <ul class="planner-chip-list">
+        <li>{{ spot.city }}</li>
+        <li>{{ spot.route_type }}</li>
+        <li>建议停留 {{ spot.recommended_stay }}</li>
+      </ul>
+    </section>
+
+    <section class="planner-grid planner-grid--two">
+      <section class="panel">
+        <p class="eyebrow">适合什么时候去</p>
+        <h2>推荐季节</h2>
+        <ul class="planner-chip-list">
+          {% for season in spot.best_seasons %}
+            <li>{{ season }}</li>
+          {% endfor %}
+        </ul>
+        <h2>适合拍什么</h2>
+        <ul class="planner-chip-list">
+          {% for focus in spot.photo_focus %}
+            <li>{{ focus }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">路书提示</p>
+        <h2>这个点位的定位</h2>
+        <p>{{ spot.city }} · {{ spot.region }}</p>
+        <p>骑行强度：{{ spot.ride_level }}</p>
+        <ul class="planner-note-list">
+          {% for item in spot.support_role %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+    </section>
+
+    <section class="panel planner-cta-strip">
+      <div>
+        <p class="eyebrow">下一步</p>
+        <h2>把这个点位放进你的路线里</h2>
+        <p>你可以回到路线规划页继续组合更多模板和打卡点。</p>
+      </div>
+      <div class="planner-actions planner-actions--stack">
+        {% for action in actions %}
+          <a class="button-primary" href="{{ action.href }}">{{ action.label }}</a>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+{% endblock %}

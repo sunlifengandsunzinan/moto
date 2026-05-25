@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Runtime Status{% endblock %}
+
+{% block content %}
+  <main class="dashboard">
+    <section class="panel panel-hero">
+      <p class="eyebrow">Developer Panel</p>
+      <div class="panel-hero__header">
+        <div>
+          <h1>{{ runtime_info.app_name }}</h1>
+          <p class="subtitle">Operational overview for the current Flask runtime.</p>
+        </div>
+        <span class="status-pill">{{ runtime_info.status }}</span>
+      </div>
+      <div class="metrics-grid">
+        <article class="metric-card">
+          <span class="metric-label">Environment</span>
+          <strong class="metric-value">{{ runtime_info.environment }}</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Port</span>
+          <strong class="metric-value">{{ runtime_info.port }}</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Host</span>
+          <strong class="metric-value">{{ runtime_info.host }}</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Debug</span>
+          <strong class="metric-value">{{ runtime_info.debug }}</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel panel-split">
+      <article>
+        <p class="section-label">Access</p>
+        <h2>Useful URLs</h2>
+        <ul class="link-list">
+          <li><span>Local</span><a href="{{ runtime_info.local_url }}">{{ runtime_info.local_url }}</a></li>
+          <li><span>Bound</span><a href="{{ runtime_info.network_url }}">{{ runtime_info.network_url }}</a></li>
+          <li><span>JSON</span><a href="/api/status">/api/status</a></li>
+        </ul>
+      </article>
+      <article>
+        <p class="section-label">Route Index</p>
+        <h2>Available Endpoints</h2>
+        <div class="endpoint-list">
+          {% for endpoint in runtime_info.endpoints %}
+            <a class="endpoint-card" href="{{ endpoint.path }}">
+              <span class="endpoint-kind">{{ endpoint.kind }}</span>
+              <strong>{{ endpoint.label }}</strong>
+              <span class="endpoint-path">{{ endpoint.path }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </article>
+    </section>
+  </main>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}热门摩旅路线{% endblock %}
+
+{% block content %}
+  <main class="planner-shell planner-shell--narrow">
+    <section class="panel">
+      <p class="eyebrow">路线库</p>
+      <h1>{{ page.title }}</h1>
+      <p class="subtitle">{{ page.description }}</p>
+      <form action="{{ filters.action }}" method="get" class="planner-inline-form">
+        {% for item in filters.fields %}
+          <label>
+            <span>{{ item.label }}</span>
+            <select name="{{ item.name }}">
+              {% for option in item.options %}
+                <option value="{{ option.value }}" {% if option.value == item.value %}selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        {% endfor %}
+        <button class="button-secondary" type="submit">筛选</button>
+      </form>
+    </section>
+
+    <section class="planner-grid planner-grid--three">
+      {% for route in routes %}
+        <article class="panel planner-route-card">
+          <h2><a href="{{ route.href }}">{{ route.title }}</a></h2>
+          <p>{{ route.summary }}</p>
+          <ul class="planner-chip-list">
+            {% for tag in route.tags %}
+              <li>{{ tag }}</li>
+            {% endfor %}
+          </ul>
+          <div class="planner-actions">
+            <a class="button-secondary" href="{{ route.href }}">查看详情</a>
+            <a class="button-primary" href="{{ route.replan_href }}">按此重生成</a>
+          </div>
+        </article>
+      {% else %}
+        <article class="panel">
+          <h2>{{ empty_state.title }}</h2>
+          <p>{{ empty_state.description }}</p>
+          <a class="button-primary" href="{{ empty_state.action.href }}">{{ empty_state.action.label }}</a>
+        </article>
+      {% endfor %}
+    </section>
+  </main>
+{% endblock %}

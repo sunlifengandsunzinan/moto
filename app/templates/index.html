@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Flask App{% endblock %}
+
+{% block content %}
+  <main class="hero">
+    <p class="eyebrow">Flask Project</p>
+    <h1>Flask app is running</h1>
+    <p class="subtitle">Independent virtual environment, standard app package, and local server on port {{ runtime_info.port }}.</p>
+    <p class="subtitle">Open the status page at <a href="/status">/status</a> or fetch JSON from <a href="/api/status">/api/status</a>.</p>
+  </main>
+{% endblock %}

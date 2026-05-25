@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title desc">
+  <title id="title">绿江村图卡</title>
+  <desc id="desc">用于辽宁摩旅路线页面的绿江村打卡节点视觉图卡。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f0c16a" />
+      <stop offset="100%" stop-color="#4f8f74" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)" />
+  <circle cx="628" cy="120" r="70" fill="#fff1bc" opacity="0.92" />
+  <path d="M0 350 C180 330 286 302 402 330 C552 366 652 414 800 390 L800 600 L0 600 Z" fill="#7dad82" opacity="0.84" />
+  <path d="M0 450 C160 482 296 488 416 470 C536 452 654 446 800 468 L800 600 L0 600 Z" fill="#d8f2e8" opacity="0.95" />
+  <rect x="164" y="364" width="74" height="74" fill="#f6f0e2" opacity="0.88" />
+  <polygon points="201,320 146,370 256,370" fill="#b56b49" />
+  <g fill="#fbf7ef">
+    <text x="56" y="90" font-family="Helvetica Neue, Arial, sans-serif" font-size="28" letter-spacing="6">RIVER VIEW</text>
+    <text x="56" y="158" font-family="Helvetica Neue, Arial, sans-serif" font-size="60" font-weight="700">绿江村</text>
+    <text x="56" y="208" font-family="Helvetica Neue, Arial, sans-serif" font-size="26">江景与村落氛围 · 早晚最出片</text>
+  </g>
+</svg>

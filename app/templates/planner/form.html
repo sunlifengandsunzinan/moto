@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}规划摩旅路线{% endblock %}
+
+{% block content %}
+  <main class="planner-shell planner-shell--narrow">
+    <section class="panel">
+      <p class="eyebrow">路线规划</p>
+      <h1>{{ page_intro.title }}</h1>
+      <p class="subtitle">{{ page_intro.description }}</p>
+      {% if selected_route %}
+        <div class="planner-selected-route">
+          <strong>当前模板：</strong>
+          <a href="{{ selected_route.href }}">{{ selected_route.title }}</a>
+          <span>{{ selected_route.summary }}</span>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="panel planner-form-panel">
+      <form action="{{ planner_form.action }}" method="{{ planner_form.method }}" class="planner-form">
+        {% for field in planner_form.fields %}
+          <div class="planner-field">
+            <label for="{{ field.name }}">{{ field.label }}</label>
+            {% if field.type == 'text' %}
+              <input id="{{ field.name }}" name="{{ field.name }}" type="text" value="{{ field.value }}" placeholder="{{ field.placeholder }}">
+            {% elif field.type == 'select' %}
+              <select id="{{ field.name }}" name="{{ field.name }}">
+                {% for option in field.options %}
+                  <option value="{{ option.value }}" {% if option.value == field.value %}selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+              </select>
+            {% elif field.type == 'radio' %}
+              <div class="planner-choice-group">
+                {% for option in field.options %}
+                  <label class="planner-choice">
+                    <input type="radio" name="{{ field.name }}" value="{{ option.value }}" {% if option.value == field.value %}checked{% endif %}>
+                    <span>{{ option.label }}</span>
+                  </label>
+                {% endfor %}
+              </div>
+            {% elif field.type == 'checkbox_group' %}
+              <div class="planner-choice-group planner-choice-group--wrap">
+                {% for option in field.options %}
+                  <label class="planner-choice">
+                    <input type="checkbox" name="{{ field.name }}" value="{{ option.value }}" {% if option.value in field.value %}checked{% endif %}>
+                    <span>{{ option.label }}</span>
+                  </label>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+
+        <div class="planner-field">
+          <span>POI 点设置</span>
+          <div class="planner-choice-group planner-choice-group--wrap">
+            {% for setting in planner_form.poi_settings %}
+              <label class="planner-choice">
+                <input type="checkbox" name="{{ setting.name }}" value="{{ setting.value }}" {% if setting.checked %}checked{% endif %}>
+                <span>{{ setting.label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <p class="planner-footnote">{{ planner_form.poi_settings_help }}</p>
+        </div>
+
+        <button class="button-primary" type="submit">{{ planner_form.submit_label }}</button>
+        <p class="planner-footnote">{{ planner_form.footnote }}</p>
+      </form>
+    </section>
+
+    <section class="planner-grid planner-grid--two">
+      <article class="panel">
+        <p class="eyebrow">默认案例</p>
+        <h2>{{ sample_trip.title }}</h2>
+        <p>{{ sample_trip.summary }}</p>
+        <ul class="planner-chip-list">
+          {% for chip in sample_trip.chips %}
+            <li>{{ chip }}</li>
+          {% endfor %}
+        </ul>
+      </article>
+      <article class="panel">
+        <p class="eyebrow">使用建议</p>
+        <h2>先把结果页跑通</h2>
+        <ul class="planner-note-list">
+          {% for tip in planner_tips %}
+            <li>{{ tip }}</li>
+          {% endfor %}
+        </ul>
+      </article>
+    </section>
+  </main>
+{% endblock %}

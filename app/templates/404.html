@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}页面不存在{% endblock %}
+
+{% block content %}
+  <main class="planner-shell planner-shell--narrow">
+    <section class="panel">
+      <p class="eyebrow">404</p>
+      <h1>页面不存在</h1>
+      <p class="subtitle">你访问的摩旅路线不存在，先回到路线库继续看。</p>
+      <a class="button-primary" href="{{ url_for('moto.moto_routes') }}">返回路线库</a>
+    </section>
+  </main>
+{% endblock %}

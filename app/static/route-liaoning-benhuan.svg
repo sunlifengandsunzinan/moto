@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title desc">
+  <title id="title">本桓公路图卡</title>
+  <desc id="desc">用于辽宁摩旅路线页面的本桓公路打卡节点视觉图卡。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a3d2f" />
+      <stop offset="100%" stop-color="#7ba05b" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)" />
+  <path d="M0 450 C140 390 260 320 400 330 C520 340 640 410 800 360 L800 600 L0 600 Z" fill="#294d3a" opacity="0.9" />
+  <path d="M0 510 C160 450 260 430 390 450 C500 468 640 520 800 490 L800 600 L0 600 Z" fill="#0f221c" opacity="0.8" />
+  <path d="M335 600 C330 540 352 465 402 390 C438 336 470 276 458 220 C514 278 536 356 510 435 C489 501 452 553 420 600 Z" fill="#f4efe4" opacity="0.95" />
+  <g fill="#f7f3ea">
+    <text x="56" y="90" font-family="Helvetica Neue, Arial, sans-serif" font-size="28" letter-spacing="6">LIAONING RIDE</text>
+    <text x="56" y="158" font-family="Helvetica Neue, Arial, sans-serif" font-size="60" font-weight="700">本桓公路</text>
+    <text x="56" y="208" font-family="Helvetica Neue, Arial, sans-serif" font-size="26">辽宁经典跑山段 · 弯道与林景</text>
+  </g>
+</svg>

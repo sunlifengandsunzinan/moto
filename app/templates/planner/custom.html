@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}定制摩旅规划{% endblock %}
+
+{% block content %}
+  <main class="planner-shell planner-shell--narrow">
+    <section class="panel">
+      <p class="eyebrow">定制规划</p>
+      <h1>{{ page_intro.title }}</h1>
+      <p class="subtitle">{{ page_intro.description }}</p>
+      <ul class="planner-note-list">
+        {% for item in service_points %}
+          <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="panel planner-form-panel">
+      <form action="{{ custom_form.action }}" method="{{ custom_form.method }}" class="planner-form">
+        {% for field in custom_form.fields %}
+          <div class="planner-field">
+            <label for="{{ field.name }}">{{ field.label }}</label>
+            {% if field.type == 'text' %}
+              <input id="{{ field.name }}" name="{{ field.name }}" type="text" value="{{ field.value }}">
+            {% elif field.type == 'textarea' %}
+              <textarea id="{{ field.name }}" name="{{ field.name }}">{{ field.value }}</textarea>
+            {% elif field.type == 'select' %}
+              <select id="{{ field.name }}" name="{{ field.name }}">
+                {% for option in field.options %}
+                  <option value="{{ option.value }}" {% if option.value == field.value %}selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+              </select>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <button class="button-primary" type="submit">{{ custom_form.submit_label }}</button>
+        <p class="planner-footnote">{{ custom_form.footnote }}</p>
+      </form>
+    </section>
+  </main>
+{% endblock %}

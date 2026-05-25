@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}需求已提交{% endblock %}
+
+{% block content %}
+  <main class="planner-shell planner-shell--narrow">
+    <section class="panel">
+      <p class="eyebrow">提交成功</p>
+      <h1>{{ page.title }}</h1>
+      <p class="subtitle">{{ page.description }}</p>
+      <ul class="planner-note-list">
+        <li>称呼：{{ submission.name }}</li>
+        <li>联系方式：{{ submission.contact }}</li>
+        <li>出发地：{{ submission.origin }}</li>
+        <li>计划天数：{{ submission.trip_days }}</li>
+        <li>车型：{{ submission.bike_type }}</li>
+      </ul>
+      <div class="planner-actions">
+        <a class="button-primary" href="{{ url_for('moto.moto_home') }}">返回首页</a>
+        <a class="button-secondary" href="{{ url_for('moto.moto_planner') }}">继续规划</a>
+      </div>
+    </section>
+  </main>
+{% endblock %}
