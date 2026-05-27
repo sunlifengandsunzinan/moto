@@ -2,6 +2,26 @@
 
 Minimal Flask project with a standard Flask application package layout.
 
+## Project Features
+
+This project has evolved from a minimal Flask scaffold into a Liaoning motorcycle travel planning and spot-collection system.
+
+Current capabilities include:
+
+- route planning for Liaoning motorcycle trips, with route templates, trip preferences, must-visit spots, and custom planning entrypoints
+- a Liaoning spot library covering scenic checkpoints, motorcycle stations, supply stops, and support nodes
+- structured spot detail pages with generated image galleries, route-fit recommendations, and source metadata display
+- a schema-driven spot collection page for manual entry, candidate review, and approval into the formal library
+- a pending-review workflow that separates raw collection results from approved public data
+- automation support for raw candidate ingestion, normalization, reviewed approval output, and third-party collector adaptation
+- OpenClaw-oriented collection support for Liaoning-only discovery from Douyin and Xiaohongshu, feeding the existing pending-review queue
+
+The app is organized around three linked flows:
+
+1. user-facing planning: home page, planner, route detail, and spot detail pages
+2. data building: structured collection form, candidate review, approval, and spot library publishing
+3. automation: raw collector output, normalization scripts, OpenClaw adapter flow, and review-queue ingestion
+
 ## Structure
 
 - `app.py`: local development entrypoint
@@ -40,6 +60,50 @@ Useful endpoints during development:
 - `GET /`: landing page
 - `GET /status`: runtime status page
 - `GET /api/status`: runtime status JSON
+
+## Page Entry Overview
+
+The main page and feature entrypoints are:
+
+- `GET /`: basic Flask landing page used for runtime verification
+- `GET /moto`: motorcycle travel home page, with route, planner, spot-library, and collection entry links
+- `GET /moto/planner`: interactive route planner with route template, must-visit spot, trip-day, distance, and riding-preference inputs
+- `POST /moto/planner/result`: planner result page for the submitted trip conditions
+- `GET /moto/routes`: route template index for browsing preset Liaoning ride plans
+- `GET /moto/routes/<slug>`: route detail page for one preset route template
+- `GET /moto/spots`: Liaoning spot library, with filtering by region and support role
+- `GET /moto/spots/liaoning/<slug>`: structured spot detail page with metadata, image gallery, source cards, and recommended route templates
+- `GET /moto/spots/collect`: schema-driven spot collection and candidate review page
+- `POST /moto/spots/review/<slug>/<decision>`: approval or rejection entrypoint for normalized candidate spots
+- `GET /moto/custom`: custom motorcycle-trip requirement form
+
+If you are exploring the product manually, the usual order is `/moto` -> `/moto/planner` or `/moto/spots` -> `/moto/spots/collect`.
+
+## Data Directory Overview
+
+The `data/` directory is split by collection stage so raw automation output does not directly overwrite approved public spot data.
+
+- `data/raw/`: raw collection and adapter-stage files
+- `data/normalized/`: normalized pending-review queue used by the collection/review page
+- `data/reviewed/`: reviewed outputs separated into approved and rejected records
+
+Current important files are:
+
+- `data/raw/map_candidates.json`: raw candidate spots collected from map-oriented sources
+- `data/raw/map_seed_queries.json`: seed queries for map-based collection
+- `data/raw/openclaw_export.example.json`: reference wrapped export shape for OpenClaw input
+- `data/raw/openclaw_export.json`: actual third-party export drop location before adaptation
+- `data/raw/openclaw_candidates.json`: adapted OpenClaw output in the repo's raw-candidate shape
+- `data/normalized/candidate_spots.json`: pending-review queue consumed by `/moto/spots/collect`
+- `data/reviewed/approved_spots.json`: approved candidates that can be merged into the formal spot library
+- `data/reviewed/rejected_spots.json`: rejected review records kept for traceability
+
+The normal data flow is:
+
+1. collector output lands in `data/raw/`
+2. adapter and normalization scripts produce `data/normalized/candidate_spots.json`
+3. manual review in `/moto/spots/collect` moves records into `data/reviewed/approved_spots.json` or `data/reviewed/rejected_spots.json`
+4. approved spots are reused by the spot library, planner weighting, and spot detail pages
 
 ## Moto Spot Collection Schema
 
