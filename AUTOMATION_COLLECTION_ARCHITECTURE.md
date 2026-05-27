@@ -97,6 +97,7 @@ Target normalized candidate format:
   "risk_notes": [],
   "summary": "适合出发前集合、补给和过夜。",
   "photo_focus": ["机车合影", "出发集结"],
+  "image_urls": ["https://cdn.example.com/shenyang-rider-station-cover.jpg"],
   "image_key": "candidate-shenyang-rider-station",
   "route_tags": ["辽中", "fuel-friendly", "overnight-friendly"],
   "nearby_spot_slugs": [],

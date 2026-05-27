@@ -117,9 +117,11 @@ Use these exported helpers as the canonical source of truth:
 The schema is grouped into:
 
 - `identity`: point identity and classification
+- `identity`: point identity, main type, and fixed markers such as `checkin-point`, `fuel-station`, `moto-station`, `coffee-stop`
 - `location`: coordinates, access, parking
 - `travel`: season, riding level, stay duration, road/risk info
 - `content`: summary, photo focus, image key
+- `content`: summary, photo focus, collected image URLs, image key
 - `planning`: route tags and nearby spot relations
 - `support`: fuel, repair, lodging, food, station features
 - `quality`: confidence score, sources, last verification time
@@ -156,6 +158,12 @@ Recommended flow:
 2. Make sure the task writes `data/raw/openclaw_export.json` in the wrapped shape shown in [data/raw/openclaw_export.example.json](/Users/Lifeng.Sun/workspace/Personal/data/raw/openclaw_export.example.json).
 3. Run `python scripts/run_candidate_pipeline.py`.
 4. Open `/moto/spots/collect` to review the normalized candidates.
+
+The task now applies hard filters before export:
+
+- source URL must belong to Douyin or Xiaohongshu
+- candidate must include real image URLs from the source payload
+- AI-generated markers and `data:image/...` payloads are dropped
 
 The task is scoped to Liaoning and seeded with city/route terms for:
 

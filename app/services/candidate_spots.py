@@ -23,6 +23,13 @@ def get_candidate_spots() -> list[CandidateDict]:
     return [_decorate_candidate(candidate) for candidate in candidates]
 
 
+def get_reviewed_spots() -> dict[str, list[CandidateDict]]:
+    return {
+        "approved": _decorate_reviewed_items(_read_json_list(APPROVED_SPOTS_PATH), "approved"),
+        "rejected": _decorate_reviewed_items(_read_json_list(REJECTED_SPOTS_PATH), "rejected"),
+    }
+
+
 def get_candidate_spot_by_slug(slug: str) -> CandidateDict | None:
     candidate = next((item for item in get_candidate_spots() if item.get("slug") == slug), None)
     return candidate.copy() if candidate is not None else None
@@ -56,6 +63,58 @@ def review_candidate_spot(slug: str, decision: str) -> dict[str, str] | None:
     }
 
 
+def delete_reviewed_spots(selected_keys: list[str]) -> dict[str, int]:
+    approved_items = _read_json_list(APPROVED_SPOTS_PATH)
+    rejected_items = _read_json_list(REJECTED_SPOTS_PATH)
+
+    approved_key_set = {
+        _reviewed_item_key("approved", index, item)
+        for index, item in enumerate(approved_items)
+        if _reviewed_item_key("approved", index, item) in selected_keys
+    }
+    rejected_key_set = {
+        _reviewed_item_key("rejected", index, item)
+        for index, item in enumerate(rejected_items)
+        if _reviewed_item_key("rejected", index, item) in selected_keys
+    }
+
+    remaining_approved = [
+        item
+        for index, item in enumerate(approved_items)
+        if _reviewed_item_key("approved", index, item) not in approved_key_set
+    ]
+    remaining_rejected = [
+        item
+        for index, item in enumerate(rejected_items)
+        if _reviewed_item_key("rejected", index, item) not in rejected_key_set
+    ]
+
+    _write_json_list(APPROVED_SPOTS_PATH, remaining_approved)
+    _write_json_list(REJECTED_SPOTS_PATH, remaining_rejected)
+    return {
+        "deleted": len(approved_key_set) + len(rejected_key_set),
+        "approved_deleted": len(approved_key_set),
+        "rejected_deleted": len(rejected_key_set),
+    }
+
+
+def clear_spot_review_data() -> dict[str, int]:
+    candidate_count = len(_read_json_list(CANDIDATE_SPOTS_PATH))
+    approved_count = len(_read_json_list(APPROVED_SPOTS_PATH))
+    rejected_count = len(_read_json_list(REJECTED_SPOTS_PATH))
+
+    _write_json_list(CANDIDATE_SPOTS_PATH, [])
+    _write_json_list(APPROVED_SPOTS_PATH, [])
+    _write_json_list(REJECTED_SPOTS_PATH, [])
+
+    return {
+        "candidates": candidate_count,
+        "approved": approved_count,
+        "rejected": rejected_count,
+        "total": candidate_count + approved_count + rejected_count,
+    }
+
+
 def candidate_to_collection_record(candidate: CandidateDict) -> CandidateDict:
     template = get_empty_moto_spot_record()
     record = {
@@ -76,6 +135,25 @@ def _decorate_candidate(candidate: CandidateDict) -> CandidateDict:
     decorated["review_href"] = f"/moto/spots/collect?candidate={decorated['slug']}"
     decorated["source_count"] = len(decorated.get("sources", []))
     return decorated
+
+
+def _decorate_reviewed_items(items: list[CandidateDict], status: str) -> list[CandidateDict]:
+    decorated: list[CandidateDict] = []
+    for index, item in enumerate(items):
+        reviewed = {
+            key: value.copy() if isinstance(value, dict | list) else value
+            for key, value in item.items()
+        }
+        reviewed["status"] = status
+        reviewed["status_label"] = "已批准" if status == "approved" else "已拒绝"
+        reviewed["item_key"] = _reviewed_item_key(status, index, item)
+        reviewed["source_count"] = len(reviewed.get("sources", []))
+        decorated.append(reviewed)
+    return decorated
+
+
+def _reviewed_item_key(status: str, index: int, item: CandidateDict) -> str:
+    return f"{status}:{index}:{item.get('slug', '')}"
 
 
 def _read_json_list(path: Path) -> list[CandidateDict]:

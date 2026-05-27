@@ -104,6 +104,8 @@ def adapt_openclaw_candidate(item: dict[str, Any]) -> dict[str, Any]:
     source_name = str(first_value(item, ["platform", "platformName", "provider", "source_name", "sourceName"]) or "openclaw")
     road_features = infer_road_features(route_type, text_blob)
     moto_station_features = infer_moto_station_features(text_blob, category)
+    image_urls = infer_image_urls(item)
+    spot_markers = infer_spot_markers(item, category, tags, text_blob)
 
     return {
         "source_type": "content",
@@ -118,10 +120,13 @@ def adapt_openclaw_candidate(item: dict[str, Any]) -> dict[str, Any]:
         "lat": lat,
         "lng": lng,
         "category": category,
+        "spot_markers": spot_markers,
         "parking_friendly": infer_parking_friendly(item, category),
         "support_tags": support_tags,
         "summary_hint": summary,
         "photo_tags": photo_tags,
+        "image_urls": image_urls,
+        "comment_location_hints": normalize_string_list(first_value(item, ["commentLocationHints", "comment_location_hints"]) or item.get("commentLocationHints") or item.get("comment_location_hints")),
         "route_tags": route_tags,
         "road_features": road_features,
         "moto_station_features": moto_station_features,
@@ -138,6 +143,9 @@ def collect_text_blob(item: dict[str, Any]) -> str:
     ]
     for key in ["tags", "labels", "keywords", "topics", "photoTags", "contentTags"]:
         values.extend(normalize_string_list(item.get(key)))
+    values.extend(normalize_string_list(item.get("comment_location_hints")))
+    values.extend(normalize_string_list(item.get("commentLocationHints")))
+    values.extend(normalize_string_list(item.get("comments")))
     for container_key in ["location", "address", "metadata", "content", "author", "user", "profile"]:
         container = item.get(container_key)
         if not isinstance(container, dict):
@@ -245,6 +253,42 @@ def extract_coordinates(item: dict[str, Any]) -> tuple[Any, Any]:
         if lat not in (None, "") and lng not in (None, ""):
             return lat, lng
     return item.get("lat") or item.get("latitude"), item.get("lng") or item.get("lon") or item.get("longitude")
+
+
+def infer_image_urls(item: dict[str, Any]) -> list[str]:
+    values: list[str] = []
+    seen: set[str] = set()
+    for key in ["image_urls", "imageUrls", "images", "photos", "media", "gallery", "album", "covers", "thumbnails", "image", "imageUrl", "cover", "coverUrl", "thumbnail", "thumb"]:
+        _collect_image_values(item.get(key), values, seen)
+    for container_key in ["content", "metadata", "post", "note"]:
+        container = item.get(container_key)
+        if isinstance(container, dict):
+            for key in ["image_urls", "imageUrls", "images", "photos", "media", "gallery", "album", "covers", "thumbnails", "image", "imageUrl", "cover", "coverUrl", "thumbnail", "thumb"]:
+                _collect_image_values(container.get(key), values, seen)
+    return values
+
+
+def _collect_image_values(value: Any, values: list[str], seen: set[str]) -> None:
+    if value in (None, ""):
+        return
+    if isinstance(value, list):
+        for item in value:
+            _collect_image_values(item, values, seen)
+        return
+    if isinstance(value, str):
+        candidate = value.strip()
+        if not candidate or candidate in seen:
+            return
+        if candidate.startswith("data:image/") or re.match(r"^(https?:)?//", candidate):
+            seen.add(candidate)
+            values.append(candidate)
+        return
+    if not isinstance(value, dict):
+        return
+    for key in ["url", "src", "href", "origin", "original", "originalUrl", "downloadUrl", "imageUrl", "imageURL", "coverUrl", "thumbnail", "thumb"]:
+        _collect_image_values(value.get(key), values, seen)
+    for key in ["urls", "list", "images", "items", "sources", "media"]:
+        _collect_image_values(value.get(key), values, seen)
 
 
 def first_non_empty(item: dict[str, Any], keys: list[str]) -> Any:
@@ -397,6 +441,27 @@ def infer_moto_station_features(text_blob: str, category: str) -> list[str]:
         if any(keyword.lower() in joined for keyword in keywords):
             features.append(feature)
     return features
+
+
+def infer_spot_markers(item: dict[str, Any], category: str, tags: list[str], text_blob: str) -> list[str]:
+    values = normalize_string_list(first_value(item, ["spotMarkers", "spot_markers"]))
+    joined = f"{' '.join(tags)} {text_blob}".lower()
+    if category == "moto-station" or any(keyword in joined for keyword in ["驿站", "骑士站", "moto station", "rider station"]):
+        values.append("moto-station")
+    if any(keyword in joined for keyword in ["加油", "油站", "fuel", "gas station", "petrol"]):
+        values.append("fuel-station")
+    if any(keyword in joined for keyword in ["咖啡", "coffee", "cafe"]):
+        values.append("coffee-stop")
+    if category == "support-stop":
+        values.append("support-stop")
+    if category == "scenic-spot" or any(keyword in joined for keyword in ["打卡", "观景", "拍照", "出片", "checkpoint", "check in", "check-in", "viewpoint"]):
+        values.append("checkin-point")
+    deduped: list[str] = []
+    for value in values:
+        marker = str(value).strip()
+        if marker and marker not in deduped:
+            deduped.append(marker)
+    return deduped
 
 
 def load_input_items() -> list[dict[str, Any]]:

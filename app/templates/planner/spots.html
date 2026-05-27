@@ -3,8 +3,8 @@
 {% block title %}辽宁摩旅点位库{% endblock %}
 
 {% block content %}
-  <main class="planner-shell">
-    <section class="panel">
+  <main class="planner-shell planner-library-shell">
+    <section class="panel planner-library-hero">
       <nav class="planner-nav">
         <a class="planner-brand" href="{{ url_for('moto.moto_home') }}">摩旅计划</a>
         <div class="planner-nav__links">
@@ -14,15 +14,59 @@
           <a href="/moto/spots/collect">录入点位</a>
         </div>
       </nav>
-      <p class="eyebrow">点位库</p>
-      <h1>{{ page.title }}</h1>
-      <p class="subtitle">{{ page.description }}</p>
-      <div class="planner-chip-list">
-        <li>总点位 {{ stats.total }}</li>
-        <li>当前展示 {{ stats.visible }}</li>
-        <li>覆盖区域 {{ stats.regions }}</li>
+      <div class="planner-library-hero__content">
+        <div class="planner-library-hero__intro">
+          <p class="eyebrow">点位库</p>
+          <h1>{{ page.title }}</h1>
+          <p class="subtitle">{{ page.description }}</p>
+        </div>
+        <div class="planner-actions planner-library-hero__actions">
+          {% for action in entry_actions %}
+            <a class="{{ 'button-primary' if action.kind == 'primary' else 'button-secondary' }}" href="{{ action.href }}">{{ action.label }}</a>
+          {% endfor %}
+        </div>
       </div>
-      <form action="{{ filters.action }}" method="get" class="planner-inline-form">
+      <ul class="planner-library-stats">
+        <li>
+          <strong>{{ stats.total }}</strong>
+          <span>总点位</span>
+        </li>
+        <li>
+          <strong>{{ stats.visible }}</strong>
+          <span>当前展示</span>
+        </li>
+        <li>
+          <strong>{{ stats.regions }}</strong>
+          <span>覆盖区域</span>
+        </li>
+        <li>
+          <strong>{{ stats.filters }}</strong>
+          <span>生效筛选</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="panel planner-library-toolbar">
+      <div class="planner-library-toolbar__header">
+        <div class="planner-section-heading">
+          <p class="eyebrow">快速筛选</p>
+          <h2>先缩小范围，再点进详情</h2>
+        </div>
+        <div class="planner-status-strip planner-library-toolbar__status">
+          当前展示 {{ stats.visible }} / {{ stats.total }} 个点位
+        </div>
+      </div>
+      {% if filters.has_active_filters %}
+        <div class="planner-library-active-filters">
+          <ul class="planner-chip-list">
+            {% for item in filters.active_filters %}
+              <li>{{ item.label }} · {{ item.value }}</li>
+            {% endfor %}
+          </ul>
+          <a class="button-secondary" href="{{ filters.reset_href }}">清空筛选</a>
+        </div>
+      {% endif %}
+      <form action="{{ filters.action }}" method="get" class="planner-inline-form planner-library-form">
         {% for item in filters.fields %}
           <label>
             <span>{{ item.label }}</span>
@@ -33,39 +77,52 @@
             </select>
           </label>
         {% endfor %}
-        <button class="button-secondary" type="submit">筛选</button>
+        <div class="planner-actions planner-library-form__actions">
+          <button class="button-primary" type="submit">更新列表</button>
+          {% if filters.has_active_filters %}
+            <a class="button-secondary" href="{{ filters.reset_href }}">重置</a>
+          {% endif %}
+        </div>
       </form>
     </section>
 
-    <section class="planner-grid planner-grid--three">
+    <section class="planner-grid planner-grid--three planner-library-list">
       {% for spot in spots %}
-        <article class="panel planner-route-card">
-          <a class="planner-spot-card-link" href="{{ spot.href }}">
-            <img class="planner-checkpoint-card__image" src="{{ spot.image_url }}" alt="{{ spot.name }}">
+        <article class="panel planner-route-card planner-library-card">
+          <a class="planner-library-card__main" href="{{ spot.href }}">
+            <div class="planner-library-card__media">
+              <img class="planner-checkpoint-card__image planner-library-card__image" src="{{ spot.image_url }}" alt="{{ spot.name }}">
+              <div class="planner-library-card__location">{{ spot.region }} · {{ spot.city }}</div>
+            </div>
+            <div class="planner-library-card__body">
+              <div class="planner-library-card__header">
+                <h2>{{ spot.name }}</h2>
+                <p>{{ spot.summary }}</p>
+              </div>
+              {% if spot.spot_markers %}
+                <ul class="planner-chip-list planner-library-chip-list planner-library-chip-list--accent">
+                  {% for marker in spot.spot_markers %}
+                    <li>{{ marker }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+              <ul class="planner-chip-list planner-library-chip-list">
+                {% for item in spot.quick_meta %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+              {% if spot.support_labels %}
+                <ul class="planner-chip-list planner-library-chip-list planner-library-chip-list--soft">
+                  {% for support in spot.support_labels %}
+                    <li>{{ support }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            </div>
           </a>
-          <p class="eyebrow">{{ spot.region }} · {{ spot.city }}</p>
-          <h2><a href="{{ spot.href }}">{{ spot.name }}</a></h2>
-          <p>{{ spot.summary }}</p>
-          <ul class="planner-chip-list">
-            <li>{{ spot.route_type_label }}</li>
-            <li>{{ spot.ride_level_label }}</li>
-            {% for slot in spot.best_time_of_day %}
-              <li>{{ slot }}</li>
-            {% endfor %}
-          </ul>
-          <ul class="planner-chip-list">
-            {% for season in spot.season_labels %}
-              <li>{{ season }}</li>
-            {% endfor %}
-          </ul>
-          <ul class="planner-note-list">
-            {% for support in spot.support_labels %}
-              <li>{{ support }}</li>
-            {% endfor %}
-          </ul>
-          <div class="planner-actions">
-            <a class="button-secondary" href="{{ spot.href }}">查看详情</a>
-            <a class="button-primary" href="/moto/planner">加入规划</a>
+          <div class="planner-actions planner-library-card__footer">
+            <a class="button-primary" href="{{ spot.href }}">查看点位</a>
+            <a class="button-secondary" href="/moto/planner?origin={{ spot.city }}">去规划</a>
           </div>
         </article>
       {% else %}

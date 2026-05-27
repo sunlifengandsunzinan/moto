@@ -16,6 +16,7 @@ MOTO_SPOT_COLLECTION_SCHEMA: list[dict[str, Any]] = [
     {"name": "slug", "label": "唯一标识", "type": "string", "required": True, "group": "identity", "example": "dalian-binhai-road"},
     {"name": "name", "label": "点位名称", "type": "string", "required": True, "group": "identity", "example": "大连滨海路"},
     {"name": "spot_type", "label": "点位类型", "type": "string", "required": True, "group": "identity", "example": "scenic-spot"},
+    {"name": "spot_markers", "label": "固定类型标记", "type": "list[string]", "required": False, "group": "identity", "example": ["checkin-point", "fuel-station", "moto-station", "coffee-stop"]},
     {"name": "city", "label": "城市", "type": "string", "required": True, "group": "identity", "example": "大连"},
     {"name": "region", "label": "区域", "type": "string", "required": True, "group": "identity", "example": "辽南"},
     {"name": "route_type", "label": "路线类型", "type": "string", "required": True, "group": "identity", "example": "coast"},
@@ -30,6 +31,7 @@ MOTO_SPOT_COLLECTION_SCHEMA: list[dict[str, Any]] = [
     {"name": "risk_notes", "label": "风险提示", "type": "list[string]", "required": False, "group": "travel", "example": ["注意横风", "避免夜间压弯"]},
     {"name": "summary", "label": "摘要", "type": "string", "required": True, "group": "content", "example": "适合城市轻骑和海边路线内容。"},
     {"name": "photo_focus", "label": "拍摄重点", "type": "list[string]", "required": True, "group": "content", "example": ["海边弯道", "临海骑行"]},
+    {"name": "image_urls", "label": "采集图片地址", "type": "list[string]", "required": False, "group": "content", "example": ["https://example.com/spot-cover.jpg", "https://example.com/spot-detail.jpg"]},
     {"name": "image_key", "label": "图片资源键", "type": "string", "required": False, "group": "content", "example": "liaoning-binhai-cover"},
     {"name": "route_tags", "label": "路线标签", "type": "list[string]", "required": False, "group": "planning", "example": ["辽南", "coast", "photo-friendly"]},
     {"name": "nearby_spot_slugs", "label": "附近点位", "type": "list[string]", "required": False, "group": "planning", "example": ["bangchuidao-roads", "jinshitan"]},
@@ -49,6 +51,7 @@ MOTO_SPOT_COLLECTION_TEMPLATE: SpotDict = {
     "slug": "",
     "name": "",
     "spot_type": "scenic-spot",
+    "spot_markers": [],
     "city": "",
     "region": "",
     "route_type": "",
@@ -63,6 +66,7 @@ MOTO_SPOT_COLLECTION_TEMPLATE: SpotDict = {
     "risk_notes": [],
     "summary": "",
     "photo_focus": [],
+    "image_urls": [],
     "image_key": "",
     "route_tags": [],
     "nearby_spot_slugs": [],
@@ -563,10 +567,26 @@ def render_liaoning_spot_image_svg(spot: SpotDict, variant: str) -> str:
 
 
 def _spot_image_url(spot: SpotDict, variant: str, mode: str) -> str:
+        preferred_image = _spot_collected_image_url(spot, variant)
+        if preferred_image:
+                return preferred_image
         if mode == "inline":
                 svg = render_liaoning_spot_image_svg(spot, variant)
                 return f"data:image/svg+xml;charset=utf-8,{quote(svg)}"
         return f"/moto/spots/liaoning/{spot['slug']}/images/{variant}.svg"
+
+
+def _spot_collected_image_url(spot: SpotDict, variant: str) -> str:
+    image_urls = spot.get("image_urls", [])
+    if not isinstance(image_urls, list):
+        return ""
+    cleaned = [str(item).strip() for item in image_urls if str(item).strip()]
+    if not cleaned:
+        return ""
+    variant_index = {"cover": 0, "route": 1, "photo": 2}.get(variant, 0)
+    if variant_index < len(cleaned):
+        return cleaned[variant_index]
+    return cleaned[0]
 
 
 def _enrich_spot(spot: SpotDict) -> SpotDict:
@@ -583,11 +603,13 @@ def _enrich_spot(spot: SpotDict) -> SpotDict:
     best_seasons = enriched["best_seasons"] if isinstance(enriched["best_seasons"], list) else []
     support_role = enriched["support_role"] if isinstance(enriched["support_role"], list) else []
     photo_focus = enriched["photo_focus"] if isinstance(enriched["photo_focus"], list) else []
+    image_urls = enriched["image_urls"] if isinstance(enriched.get("image_urls"), list) else []
 
     if not enriched["name"]:
         enriched["name"] = "未命名点位"
     if not enriched["summary"]:
         enriched["summary"] = "这是一条等待补充摘要的摩旅点位记录。"
+    enriched["image_urls"] = [str(item).strip() for item in image_urls if str(item).strip()]
     if not enriched["image_key"]:
         enriched["image_key"] = f"preview-{enriched['slug'] or 'spot'}"
 

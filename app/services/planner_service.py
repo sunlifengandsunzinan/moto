@@ -13,6 +13,7 @@ from .liaoning_spots import (
     get_moto_spot_collection_schema,
 )
 from .candidate_spots import candidate_to_collection_record, get_candidate_spot_by_slug, get_candidate_spots
+from .candidate_spots import get_reviewed_spots
 
 
 RouteDict = dict[str, Any]
@@ -26,6 +27,14 @@ COLLECTION_GROUP_LABELS = {
     "planning": "规划关系",
     "support": "补给与驿站支持",
     "quality": "质量与核验",
+}
+
+SPOT_MARKER_LABELS = {
+    "checkin-point": "打卡点",
+    "fuel-station": "加油站",
+    "moto-station": "摩托驿站",
+    "coffee-stop": "咖啡站",
+    "support-stop": "补给点",
 }
 
 
@@ -48,6 +57,7 @@ def get_spot_collection_context(
     required_fields = [field for field in schema if field["required"]]
     missing_required = [field["label"] for field in required_fields if _is_missing(record, field["name"])]
     candidate_queue = [_candidate_card(item, candidate_slug) for item in get_candidate_spots()]
+    reviewed_spots = get_reviewed_spots()
 
     return {
         "page": {
@@ -64,6 +74,24 @@ def get_spot_collection_context(
             "selected": selected_candidate,
             "queue": candidate_queue,
             "feedback": review_feedback,
+            "management": {
+                "clear_all_action": "/moto/spots/reviewed/clear",
+                "delete_selected_action": "/moto/spots/reviewed/delete",
+            },
+            "reviewed_sections": [
+                {
+                    "key": "approved",
+                    "title": "已批准数据",
+                    "count": len(reviewed_spots["approved"]),
+                    "entries": reviewed_spots["approved"],
+                },
+                {
+                    "key": "rejected",
+                    "title": "已拒绝数据",
+                    "count": len(reviewed_spots["rejected"]),
+                    "entries": reviewed_spots["rejected"],
+                },
+            ],
         },
         "preview": {
             "record": record,
@@ -119,11 +147,13 @@ def build_spot_collection_record(form_data: Mapping[str, Any]) -> dict[str, Any]
         "last_verified_at",
     ]
     list_fields = [
+        "spot_markers",
         "best_seasons",
         "best_time_of_day",
         "road_features",
         "risk_notes",
         "photo_focus",
+        "image_urls",
         "route_tags",
         "nearby_spot_slugs",
         "support_role",
@@ -386,14 +416,20 @@ def get_spots_index_context(query: Mapping[str, Any]) -> dict[str, Any]:
     support = str(query.get("support", "")).strip()
 
     filtered_spots = [spot for spot in spots if _spot_matches_filters(spot, region, route_type, support)]
+    active_filters = _spot_active_filters(spots, region, route_type, support)
 
     return {
         "page": {
             "title": "辽宁摩旅点位库",
-            "description": "把打卡点、补给节点和适合串联的骑行地标放在同一张结构化清单里，方便先看点位再规划路线。",
+            "description": "把打卡点、补给节点和骑行地标压缩成一张适合手机快速浏览的清单，先选点位，再进路线规划。",
         },
+        "entry_actions": [
+            {"label": "开始规划", "href": "/moto/planner", "kind": "primary"},
+            {"label": "录入点位", "href": "/moto/spots/collect", "kind": "secondary"},
+        ],
         "filters": {
             "action": "/moto/spots",
+            "reset_href": "/moto/spots",
             "fields": [
                 {
                     "name": "region",
@@ -414,11 +450,14 @@ def get_spots_index_context(query: Mapping[str, Any]) -> dict[str, Any]:
                     "options": _spot_support_options(),
                 },
             ],
+            "active_filters": active_filters,
+            "has_active_filters": len(active_filters) > 0,
         },
         "stats": {
             "total": len(spots),
             "visible": len(filtered_spots),
             "regions": len({spot["region"] for spot in spots}),
+            "filters": len(active_filters),
         },
         "spots": [_spot_card(spot) for spot in filtered_spots],
         "empty_state": {
@@ -495,14 +534,44 @@ def _spot_card(spot: Mapping[str, Any]) -> dict[str, Any]:
         "city": spot["city"],
         "region": spot["region"],
         "summary": spot["summary"],
+        "spot_markers": _spot_marker_labels(spot.get("spot_markers", [])),
         "route_type_label": spot["route_type_label"],
         "ride_level_label": spot["ride_level_label"],
         "season_labels": spot["season_labels"],
         "support_labels": spot["support_labels"],
         "best_time_of_day": spot["best_time_of_day"],
+        "quick_meta": [
+            spot["route_type_label"],
+            spot["ride_level_label"],
+            *spot["best_time_of_day"][:2],
+        ],
         "href": f"/moto/spots/liaoning/{spot['slug']}",
         "image_url": spot["image_gallery"][0]["image_url"],
     }
+
+
+def _spot_marker_labels(markers: Any) -> list[str]:
+    values = markers if isinstance(markers, list) else []
+    return [SPOT_MARKER_LABELS.get(str(item), str(item)) for item in values if str(item).strip()]
+
+
+def _spot_active_filters(spots: list[Mapping[str, Any]], region: str, route_type: str, support: str) -> list[dict[str, str]]:
+    filters: list[dict[str, str]] = []
+    if region:
+        filters.append({"label": "区域", "value": region})
+    if route_type:
+        route_label = next(
+            (option["label"] for option in _spot_route_type_options(spots) if option["value"] == route_type),
+            route_type,
+        )
+        filters.append({"label": "线路", "value": route_label})
+    if support:
+        support_label = next(
+            (option["label"] for option in _spot_support_options() if option["value"] == support),
+            support,
+        )
+        filters.append({"label": "支撑", "value": support_label})
+    return filters
 
 
 def get_home_context() -> dict[str, Any]:

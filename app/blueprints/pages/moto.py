@@ -7,7 +7,9 @@ from ...services import (
     build_spot_collection_record,
     build_route_detail_context,
     build_routes_index_context,
+    clear_spot_review_data,
     create_custom_plan_payload,
+    delete_reviewed_spots,
     get_custom_plan_context,
     get_home_context,
     render_liaoning_spot_image_svg,
@@ -86,6 +88,8 @@ def moto_spot_collect() -> str:
     review_feedback = {
         "decision": request.args.get("review_decision", ""),
         "name": request.args.get("review_name", ""),
+        "action": request.args.get("review_action", ""),
+        "message": request.args.get("review_message", ""),
     }
     return render_template(
         "planner/spot_collect.html",
@@ -114,6 +118,32 @@ def moto_spot_review(slug: str, decision: str):
             "moto.moto_spot_collect",
             review_decision=result["decision"],
             review_name=result["name"],
+        )
+    )
+
+
+@moto_bp.post("/moto/spots/reviewed/delete")
+def moto_spot_reviewed_delete():
+    selected_keys = request.form.getlist("reviewed_item_keys")
+    result = delete_reviewed_spots(selected_keys)
+    message = "未选择任何已审批数据。" if result["deleted"] == 0 else f"已删除 {result['deleted']} 条已审批数据。"
+    return redirect(
+        url_for(
+            "moto.moto_spot_collect",
+            review_action="delete-reviewed",
+            review_message=message,
+        )
+    )
+
+
+@moto_bp.post("/moto/spots/reviewed/clear")
+def moto_spot_reviewed_clear():
+    result = clear_spot_review_data()
+    return redirect(
+        url_for(
+            "moto.moto_spot_collect",
+            review_action="clear-all",
+            review_message=f"已清空 {result['total']} 条数据（待审核 {result['candidates']} / 已批准 {result['approved']} / 已拒绝 {result['rejected']}）。",
         )
     )
 
