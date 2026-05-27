@@ -181,288 +181,7 @@ NEARBY_SPOT_SLUGS = {
 }
 
 
-LIAONING_MOTO_SPOTS: list[SpotDict] = [
-    {
-        "slug": "benhuan-highway",
-        "name": "本桓公路",
-        "city": "本溪",
-        "region": "辽东",
-        "route_type": "mountain",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "intermediate",
-        "recommended_stay": "1-2 小时",
-        "photo_focus": ["压弯", "林道", "连续山路", "骑行动态"],
-        "image_key": "liaoning-benhuan-cover",
-        "summary": "辽宁机车圈辨识度很高的经典跑山路段，适合拍骑行过程和道路氛围。",
-        "support_role": ["viewpoint"],
-    },
-    {
-        "slug": "huanren-county",
-        "name": "桓仁",
-        "city": "本溪",
-        "region": "辽东",
-        "route_type": "supply-stop",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "半天 / 过夜",
-        "photo_focus": ["停车休整", "县城夜宿", "补给节点"],
-        "image_key": "liaoning-huanren-cover",
-        "summary": "更适合作为本溪山区摩旅的补给与住宿节点，方便把节奏从跑山过渡到休整。",
-        "support_role": ["fuel", "lodging", "repair"],
-    },
-    {
-        "slug": "wunvshan",
-        "name": "五女山周边",
-        "city": "桓仁",
-        "region": "辽东",
-        "route_type": "mountain-view",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "1-2 小时",
-        "photo_focus": ["观景台", "山体远景", "人车合影"],
-        "image_key": "liaoning-wunvshan-cover",
-        "summary": "适合做强目的地感的到达镜头，和桓仁线路组合效果更好。",
-        "support_role": ["viewpoint"],
-    },
-    {
-        "slug": "qingshangou",
-        "name": "青山沟",
-        "city": "丹东宽甸",
-        "region": "辽东",
-        "route_type": "scenic-water",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "2-3 小时",
-        "photo_focus": ["山水景区", "人与车同框", "静态风景"],
-        "image_key": "liaoning-qingshangou-cover",
-        "summary": "山水景区感更强，适合让山路线多一层休闲和拍照价值。",
-        "support_role": ["viewpoint"],
-    },
-    {
-        "slug": "kuandian-county-roads",
-        "name": "宽甸县道沿线",
-        "city": "丹东宽甸",
-        "region": "辽东",
-        "route_type": "county-road",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "intermediate",
-        "recommended_stay": "半天",
-        "photo_focus": ["路牌", "山路", "边境县道", "探索感"],
-        "image_key": "liaoning-kuandian-cover",
-        "summary": "边境和山区气质明显，适合做小众摩旅路线内容。",
-        "support_role": ["fuel", "lodging"],
-    },
-    {
-        "slug": "lujiang-village",
-        "name": "绿江村",
-        "city": "丹东宽甸",
-        "region": "辽东",
-        "route_type": "riverside-village",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "2-4 小时",
-        "photo_focus": ["日出", "日落", "江景", "村落远景"],
-        "image_key": "liaoning-lujiang-cover",
-        "summary": "辽宁摩旅最容易出片的江景村落之一，适合封面图和情绪化内容。",
-        "support_role": ["viewpoint", "lodging"],
-    },
-    {
-        "slug": "dandong-yalu-river",
-        "name": "丹东鸭绿江沿线",
-        "city": "丹东",
-        "region": "辽东",
-        "route_type": "city-riverside",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "1-3 小时",
-        "photo_focus": ["沿江路", "桥", "夜景", "到达收尾"],
-        "image_key": "liaoning-dandong-cover",
-        "summary": "适合用城市和沿江镜头给整条辽宁东线做收官。",
-        "support_role": ["fuel", "lodging", "repair"],
-    },
-    {
-        "slug": "hushan-great-wall-roads",
-        "name": "虎山长城周边公路",
-        "city": "丹东",
-        "region": "辽东",
-        "route_type": "border-landmark",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "1 小时",
-        "photo_focus": ["边境感", "地标到达", "远行感"],
-        "image_key": "liaoning-hushan-cover",
-        "summary": "更适合作为边境主题路线的打卡终点，而不是纯骑行道路内容。",
-        "support_role": ["viewpoint"],
-    },
-    {
-        "slug": "dalian-binhai-road",
-        "name": "大连滨海路",
-        "city": "大连",
-        "region": "辽南",
-        "route_type": "coast",
-        "best_seasons": ["spring", "summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "2-3 小时",
-        "photo_focus": ["海边弯道", "城市海岸线", "临海骑行"],
-        "image_key": "liaoning-binhai-cover",
-        "summary": "辽宁海岸线摩旅里辨识度最高的一条，适合城市轻骑和海边路线内容。",
-        "support_role": ["viewpoint", "fuel"],
-    },
-    {
-        "slug": "bangchuidao-roads",
-        "name": "棒棰岛周边道路",
-        "city": "大连",
-        "region": "辽南",
-        "route_type": "coast-city",
-        "best_seasons": ["spring", "summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "1-2 小时",
-        "photo_focus": ["城市海景", "短途轻骑", "海边合影"],
-        "image_key": "liaoning-bangchuidao-cover",
-        "summary": "更适合大连市内半日轻骑路线，画面偏休闲和城市海景。",
-        "support_role": ["viewpoint"],
-    },
-    {
-        "slug": "jinshitan",
-        "name": "金石滩沿线",
-        "city": "大连",
-        "region": "辽南",
-        "route_type": "coast-scenic",
-        "best_seasons": ["spring", "summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "2-3 小时",
-        "photo_focus": ["海边停车", "景观路", "轻旅行氛围"],
-        "image_key": "liaoning-jinshitan-cover",
-        "summary": "适合拍轻松巡航和景点串联内容，不适合做高强度长线。",
-        "support_role": ["viewpoint", "lodging"],
-    },
-    {
-        "slug": "lvshun-coast-road",
-        "name": "旅顺沿海道路",
-        "city": "大连旅顺",
-        "region": "辽南",
-        "route_type": "coast-history",
-        "best_seasons": ["spring", "summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "2 小时",
-        "photo_focus": ["沿海公路", "海边停靠", "历史氛围"],
-        "image_key": "liaoning-lvshun-cover",
-        "summary": "适合做大连西南线的文化与海景混合骑行内容。",
-        "support_role": ["viewpoint", "fuel"],
-    },
-    {
-        "slug": "red-beach",
-        "name": "红海滩",
-        "city": "盘锦",
-        "region": "辽西南",
-        "route_type": "seasonal-landscape",
-        "best_seasons": ["autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "2 小时",
-        "photo_focus": ["秋季大片", "红色湿地", "栈道打卡"],
-        "image_key": "liaoning-red-beach-cover",
-        "summary": "季节性极强，秋季内容表现力很高，其他季节不建议作为主推封面。",
-        "support_role": ["viewpoint"],
-    },
-    {
-        "slug": "panjin-wetland-roads",
-        "name": "盘锦湿地周边路段",
-        "city": "盘锦",
-        "region": "辽西南",
-        "route_type": "plain-road",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "1-2 小时",
-        "photo_focus": ["公路延伸", "夕阳骑行", "地平线"],
-        "image_key": "liaoning-panjin-road-cover",
-        "summary": "适合做平原公路和慢节奏巡航素材，偏路书感。",
-        "support_role": ["fuel"],
-    },
-    {
-        "slug": "qianshan",
-        "name": "千山",
-        "city": "鞍山",
-        "region": "辽中",
-        "route_type": "mountain-near-city",
-        "best_seasons": ["spring", "summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "半天",
-        "photo_focus": ["近郊山路", "周末短途", "盘山路"],
-        "image_key": "liaoning-qianshan-cover",
-        "summary": "适合做城市周边一天线内容，距离和节奏都对新手更友好。",
-        "support_role": ["fuel", "viewpoint"],
-    },
-    {
-        "slug": "xiuyan-mountain-roads",
-        "name": "岫岩山区道路",
-        "city": "鞍山岫岩",
-        "region": "辽东",
-        "route_type": "mountain-county-road",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "intermediate",
-        "recommended_stay": "半天",
-        "photo_focus": ["小众县道", "探索感", "穿山道路"],
-        "image_key": "liaoning-xiuyan-cover",
-        "summary": "更适合做小众路线和探索感选题，不是标准景区打卡型内容。",
-        "support_role": ["fuel"],
-    },
-    {
-        "slug": "yiwulv-mountain",
-        "name": "医巫闾山",
-        "city": "锦州北镇",
-        "region": "辽西",
-        "route_type": "mountain-scenic",
-        "best_seasons": ["spring", "summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "2 小时",
-        "photo_focus": ["山门", "盘山道", "山体远景"],
-        "image_key": "liaoning-yiwulv-cover",
-        "summary": "更适合并入辽西山线素材，不建议单点独立支撑整条重内容路线。",
-        "support_role": ["viewpoint"],
-    },
-    {
-        "slug": "phoenix-mountain-fengcheng",
-        "name": "凤凰山周边",
-        "city": "丹东凤城",
-        "region": "辽东",
-        "route_type": "mountain-landmark",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "1-2 小时",
-        "photo_focus": ["山门", "进山道路", "地标远景"],
-        "image_key": "liaoning-phoenix-cover",
-        "summary": "适合作为凤城周边支线内容的打卡点，路书里更偏地标节点。",
-        "support_role": ["viewpoint", "fuel"],
-    },
-    {
-        "slug": "huludao-xingcheng-coast",
-        "name": "兴城到葫芦岛海滨沿线",
-        "city": "葫芦岛",
-        "region": "辽西南",
-        "route_type": "coast-city",
-        "best_seasons": ["spring", "summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "2 小时",
-        "photo_focus": ["海边公路", "城市与海", "轻松巡航"],
-        "image_key": "liaoning-xingcheng-cover",
-        "summary": "更适合低强度海边摩旅和城市周边轻骑内容。",
-        "support_role": ["fuel", "lodging"],
-    },
-    {
-        "slug": "juehua-island-departure",
-        "name": "觉华岛出发点与兴城周边",
-        "city": "兴城",
-        "region": "辽西南",
-        "route_type": "coast-checkin",
-        "best_seasons": ["summer", "autumn"],
-        "ride_level": "beginner",
-        "recommended_stay": "1-2 小时",
-        "photo_focus": ["海边集合", "出发点", "轻旅行氛围"],
-        "image_key": "liaoning-juehua-cover",
-        "summary": "更适合作为海滨集结点和周边线路开场，而不是长线核心节点。",
-        "support_role": ["viewpoint"],
-    },
-]
+LIAONING_MOTO_SPOTS: list[SpotDict] = []
 
 
 def get_liaoning_moto_spots() -> list[SpotDict]:
@@ -701,16 +420,7 @@ def _nearby_spots(slug: str) -> list[dict[str, str]]:
 
 
 def _formal_spots_raw() -> list[SpotDict]:
-    spots_by_slug = {
-        item["slug"]: {
-            key: value.copy() if isinstance(value, dict | list) else value
-            for key, value in item.items()
-        }
-        for item in LIAONING_MOTO_SPOTS
-    }
-    for item in _approved_spots_raw():
-        spots_by_slug[item["slug"]] = item
-    return list(spots_by_slug.values())
+    return _approved_spots_raw()
 
 
 def _approved_spots_raw() -> list[SpotDict]:
@@ -729,6 +439,9 @@ def _approved_spots_raw() -> list[SpotDict]:
 
 
 def build_liaoning_spot_detail_context(spot: SpotDict) -> dict[str, Any]:
+    video_analysis = _detail_video_analysis(spot)
+    fixed_spot_info = _detail_fixed_spot_info(spot)
+    keyframe_paths = _detail_keyframes(spot)
     return {
         "spot": {
             "name": spot["name"],
@@ -759,9 +472,70 @@ def build_liaoning_spot_detail_context(spot: SpotDict) -> dict[str, Any]:
                 }
                 for item in spot.get("sources", [])
             ],
+            "video_url": str(spot.get("video_url") or spot.get("videoUrl") or "").strip(),
+            "keyframes": [
+                {
+                    "path": item,
+                    "label": f"关键帧 {index + 1}",
+                    "href": f"/moto/spots/collect/keyframes/{item.replace('data/raw/openclaw_keyframes/', '', 1)}",
+                }
+                for index, item in enumerate(keyframe_paths)
+            ],
+            "video_analysis": video_analysis,
+            "fixed_spot_info": fixed_spot_info,
         },
         "actions": [
             {"label": "返回路线规划", "href": "/moto/planner"},
             {"label": "查看热门路线", "href": "/moto/routes"},
         ],
     }
+
+
+def _detail_keyframes(spot: SpotDict) -> list[str]:
+    value = spot.get("keyframe_paths") or spot.get("keyframePaths") or []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return [str(value).strip()] if str(value).strip() else []
+
+
+def _detail_video_analysis(spot: SpotDict) -> dict[str, Any]:
+    value = spot.get("video_analysis") or spot.get("videoAnalysis") or {}
+    if not isinstance(value, dict):
+        value = {}
+    return {
+        "transcript": str(value.get("transcript") or "").strip(),
+        "ocrText": str(value.get("ocrText") or value.get("ocr_text") or "").strip(),
+        "summary": str(value.get("summary") or "").strip(),
+        "sceneSummary": str(value.get("sceneSummary") or value.get("scene_summary") or "").strip(),
+        "keywords": _detail_string_list(value.get("keywords")),
+        "sceneLabels": _detail_string_list(value.get("sceneLabels") or value.get("scene_labels")),
+        "placeHints": _detail_string_list(value.get("placeHints") or value.get("place_hints")),
+        "supportHints": _detail_string_list(value.get("supportHints") or value.get("support_hints")),
+        "routeHints": _detail_string_list(value.get("routeHints") or value.get("route_hints")),
+        "spotMarkers": _detail_string_list(value.get("spotMarkers") or value.get("spot_markers")),
+        "captions": _detail_string_list(value.get("captions")),
+    }
+
+
+def _detail_fixed_spot_info(spot: SpotDict) -> dict[str, Any]:
+    value = spot.get("fixed_spot_info") or spot.get("fixedSpotInfo") or {}
+    if not isinstance(value, dict):
+        value = {}
+    return {
+        "city": str(value.get("city") or "").strip(),
+        "region": str(value.get("region") or "").strip(),
+        "poiType": str(value.get("poiType") or value.get("poi_type") or "").strip(),
+        "routeType": str(value.get("routeType") or value.get("route_type") or "").strip(),
+        "supportTags": _detail_string_list(value.get("supportTags") or value.get("support_tags")),
+        "spotMarkers": _detail_string_list(value.get("spotMarkers") or value.get("spot_markers")),
+        "photoTags": _detail_string_list(value.get("photoTags") or value.get("photo_tags")),
+        "summary": str(value.get("summary") or "").strip(),
+    }
+
+
+def _detail_string_list(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if value in (None, ""):
+        return []
+    return [str(value).strip()]

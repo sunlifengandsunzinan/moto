@@ -44,39 +44,70 @@ def test_status_api_returns_runtime_details(client):
 
             "spot_markers": ["checkin-point", "coffee-stop"],
 def test_planner_form_exposes_more_routes_and_spots(client):
-    response = client.get("/moto/planner")
+    from pathlib import Path
 
-    assert response.status_code == 200
-    html = response.get_data(as_text=True)
-    assert "优先参考路线模板" in html
-    assert "想经过的打卡点" in html
-    assert "辽宁 2 天大连滨海轻骑线" in html
-    assert "绿江村 · 丹东宽甸" in html
+    root = Path(__file__).resolve().parents[1]
+    approved_path = root / "data" / "reviewed" / "approved_spots.json"
+    original_approved = approved_path.read_text(encoding="utf-8")
+
+    try:
+        approved_path.write_text(
+            '[{"slug": "planner-form-spot", "name": "绿江村", "city": "丹东宽甸", "region": "辽东", "route_type": "riverside-village", "summary": "测试点位", "photo_focus": ["江景"], "support_role": ["viewpoint"]}]\n',
+            encoding="utf-8",
+        )
+
+        response = client.get("/moto/planner")
+
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert "优先参考路线模板" in html
+        assert "想经过的打卡点" in html
+        assert "辽宁 2 天大连滨海轻骑线" in html
+        assert "绿江村 · 丹东宽甸" in html
+    finally:
+        approved_path.write_text(original_approved, encoding="utf-8")
 
 
 def test_planner_result_honors_selected_route_template(client):
-    response = client.post(
-        "/moto/planner/result",
-        data={
-            "route_template": "liaoning-dalian-coast-2-day",
-            "route_region": "north",
-            "origin": "沈阳",
-            "trip_days": "2",
-            "daily_distance": "200",
-            "experience_level": "beginner",
-            "bike_type": "300-500cc",
-            "route_preference": ["coast", "relaxed"],
-            "must_visit_spots": ["dalian-binhai-road", "jinshitan"],
-            "budget_range": "1000-2000",
-            "poi_types": ["fuel", "viewpoint"],
-        },
-    )
+    from pathlib import Path
 
-    assert response.status_code == 200
-    html = response.get_data(as_text=True)
-    assert "辽宁 2 天大连滨海轻骑线" in html
-    assert "沈阳 -&gt; 滨海路 -&gt; 棒棰岛 -&gt; 金石滩" in html
-    assert "大连滨海路、金石滩" in html
+    root = Path(__file__).resolve().parents[1]
+    approved_path = root / "data" / "reviewed" / "approved_spots.json"
+    original_approved = approved_path.read_text(encoding="utf-8")
+
+    try:
+        approved_path.write_text(
+            """[
+  {"slug": "dalian-binhai-road", "name": "大连滨海路", "city": "大连", "region": "辽南", "route_type": "coast", "summary": "测试滨海路", "photo_focus": ["海边弯道"], "support_role": ["fuel", "viewpoint"], "image_key": "liaoning-binhai-cover"},
+  {"slug": "jinshitan", "name": "金石滩", "city": "大连", "region": "辽南", "route_type": "coast-scenic", "summary": "测试金石滩", "photo_focus": ["海岸景观"], "support_role": ["fuel", "viewpoint"], "image_key": "liaoning-jinshi-cover"}
+]\n""",
+            encoding="utf-8",
+        )
+
+        response = client.post(
+            "/moto/planner/result",
+            data={
+                "route_template": "liaoning-dalian-coast-2-day",
+                "route_region": "north",
+                "origin": "沈阳",
+                "trip_days": "2",
+                "daily_distance": "200",
+                "experience_level": "beginner",
+                "bike_type": "300-500cc",
+                "route_preference": ["coast", "relaxed"],
+                "must_visit_spots": ["dalian-binhai-road", "jinshitan"],
+                "budget_range": "1000-2000",
+                "poi_types": ["fuel", "viewpoint"],
+            },
+        )
+
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert "辽宁 2 天大连滨海轻骑线" in html
+        assert "沈阳 -&gt; 滨海路 -&gt; 棒棰岛 -&gt; 金石滩" in html
+        assert "大连滨海路、金石滩" in html
+    finally:
+        approved_path.write_text(original_approved, encoding="utf-8")
 
 
 def test_spot_collection_page_renders_schema_driven_form(client):
@@ -93,6 +124,90 @@ def test_spot_collection_page_renders_schema_driven_form(client):
     assert "清空所有数据" in html
     assert "删除选中的已审批数据" in html
     assert "确认清空所有审核数据吗？该操作会同时删除待审核、已批准和已拒绝数据。" in html
+
+
+def test_spot_collection_page_shows_video_review_insights_and_keyframes(client):
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        candidate_path = root / "data" / "normalized" / "candidate_spots.json"
+        keyframe_dir = root / "data" / "raw" / "openclaw_keyframes" / "dy-test"
+        keyframe_path = keyframe_dir / "frame-01.jpg"
+        original_candidate = candidate_path.read_text(encoding="utf-8")
+
+        keyframe_dir.mkdir(parents=True, exist_ok=True)
+        keyframe_path.write_bytes(b"fake-jpeg-data")
+
+        try:
+                candidate_path.write_text(
+                        """[
+    {
+        "slug": "video-review-candidate",
+        "name": "视频审核候选",
+        "city": "",
+        "region": "",
+        "route_type": "",
+        "summary": "",
+        "confidence_score": "B",
+        "sources": [],
+        "video_url": "https://example.com/test-video.mp4",
+        "keyframe_paths": ["data/raw/openclaw_keyframes/dy-test/frame-01.jpg"],
+        "video_analysis": {
+            "summary": "海边夜骑观景点",
+            "transcript": "这里是大连滨海路，适合夜骑打卡",
+            "ocrText": "滨海路 观景 停车",
+            "placeHints": ["大连"],
+            "routeHints": ["coast"]
+        },
+        "fixed_spot_info": {
+            "city": "大连",
+            "region": "辽南",
+            "poiType": "scenic-spot",
+            "routeType": "coast",
+            "supportTags": ["viewpoint"],
+            "spotMarkers": ["checkin-point"],
+            "photoTags": ["夜景"],
+            "summary": "固定点位信息"
+        }
+    }
+]\n""",
+                        encoding="utf-8",
+                )
+
+                response = client.get("/moto/spots/collect?candidate=video-review-candidate")
+                assert response.status_code == 200
+                html = response.get_data(as_text=True)
+                assert "固定点位识别提示" in html
+                assert "采用视频识别结果填充表单" in html
+                assert "采用视频识别后会覆盖这些内容" in html
+                assert "仅新增" in html
+                assert "当前值：未填写" in html
+                assert "识别后：大连" in html
+                assert "视频推断位置：大连 · 辽南" in html
+                assert "关键帧与视频诊断" in html
+                assert "/moto/spots/collect/keyframes/dy-test/frame-01.jpg" in html
+                assert "海边夜骑观景点" in html
+                assert "这里是大连滨海路，适合夜骑打卡" in html
+
+                apply_response = client.get("/moto/spots/collect?candidate=video-review-candidate&apply_video_analysis=1")
+                apply_html = apply_response.get_data(as_text=True)
+                assert apply_response.status_code == 200
+                assert "当前表单已采用视频识别结果进行预填。" in apply_html
+                assert "覆盖已有值" in apply_html
+                assert 'value="dalian"' not in apply_html
+                assert 'value="scenic-spot"' in apply_html
+                assert 'value="辽南"' in apply_html
+                assert 'value="coast"' in apply_html
+
+                keyframe_response = client.get("/moto/spots/collect/keyframes/dy-test/frame-01.jpg")
+                assert keyframe_response.status_code == 200
+                assert keyframe_response.get_data() == b"fake-jpeg-data"
+        finally:
+                candidate_path.write_text(original_candidate, encoding="utf-8")
+                if keyframe_path.exists():
+                        keyframe_path.unlink()
+                if keyframe_dir.exists():
+                        keyframe_dir.rmdir()
 
 
 def test_spot_collection_page_builds_structured_preview(client):
@@ -153,8 +268,8 @@ def test_spot_collection_page_can_delete_selected_reviewed_items(client):
         candidate_path.write_text("[]\n", encoding="utf-8")
         approved_path.write_text(
             """[
-  {"slug": "approved-a", "name": "已批准 A", "city": "大连", "sources": [], "reviewed_at": "2026-05-27"},
-  {"slug": "approved-b", "name": "已批准 B", "city": "丹东", "sources": [], "reviewed_at": "2026-05-27"}
+  {"slug": "approved-a", "name": "已批准 A", "city": "大连", "region": "辽南", "route_type": "coast", "summary": "测试点位 A", "photo_focus": ["海景"], "support_role": ["viewpoint"], "sources": [], "reviewed_at": "2026-05-27"},
+  {"slug": "approved-b", "name": "已批准 B", "city": "丹东", "region": "辽东", "route_type": "city-riverside", "summary": "测试点位 B", "photo_focus": ["夜景"], "support_role": ["viewpoint"], "sources": [], "reviewed_at": "2026-05-27"}
 ]\n""",
             encoding="utf-8",
         )
@@ -164,6 +279,13 @@ def test_spot_collection_page_can_delete_selected_reviewed_items(client):
 ]\n""",
             encoding="utf-8",
         )
+
+        spots_before = client.get("/moto/spots")
+        assert spots_before.status_code == 200
+        assert "已批准 A" in spots_before.get_data(as_text=True)
+
+        detail_before = client.get("/moto/spots/liaoning/approved-a")
+        assert detail_before.status_code == 200
 
         response = client.post(
             "/moto/spots/reviewed/delete",
@@ -177,6 +299,15 @@ def test_spot_collection_page_can_delete_selected_reviewed_items(client):
         assert "已批准 A" not in approved_path.read_text(encoding="utf-8")
         assert "已拒绝 A" not in rejected_path.read_text(encoding="utf-8")
         assert "已批准 B" in approved_path.read_text(encoding="utf-8")
+
+        spots_after = client.get("/moto/spots")
+        spots_after_html = spots_after.get_data(as_text=True)
+        assert spots_after.status_code == 200
+        assert "已批准 A" not in spots_after_html
+        assert "已批准 B" in spots_after_html
+
+        detail_after = client.get("/moto/spots/liaoning/approved-a")
+        assert detail_after.status_code == 404
     finally:
         candidate_path.write_text(original_candidate, encoding="utf-8")
         approved_path.write_text(original_approved, encoding="utf-8")
@@ -197,8 +328,12 @@ def test_spot_collection_page_can_clear_all_review_data(client):
 
     try:
         candidate_path.write_text('[{"slug": "candidate-a", "name": "待审核 A"}]\n', encoding="utf-8")
-        approved_path.write_text('[{"slug": "approved-a", "name": "已批准 A"}]\n', encoding="utf-8")
+        approved_path.write_text('[{"slug": "approved-a", "name": "已批准 A", "city": "大连", "region": "辽南", "route_type": "coast", "summary": "测试点位 A", "photo_focus": ["海景"], "support_role": ["viewpoint"]}]\n', encoding="utf-8")
         rejected_path.write_text('[{"slug": "rejected-a", "name": "已拒绝 A"}]\n', encoding="utf-8")
+
+        spots_before = client.get("/moto/spots")
+        assert spots_before.status_code == 200
+        assert "已批准 A" in spots_before.get_data(as_text=True)
 
         response = client.post("/moto/spots/reviewed/clear", follow_redirects=True)
 
@@ -208,6 +343,13 @@ def test_spot_collection_page_can_clear_all_review_data(client):
         assert candidate_path.read_text(encoding="utf-8") == "[]\n"
         assert approved_path.read_text(encoding="utf-8") == "[]\n"
         assert rejected_path.read_text(encoding="utf-8") == "[]\n"
+
+        spots_after = client.get("/moto/spots")
+        assert spots_after.status_code == 200
+        assert "已批准 A" not in spots_after.get_data(as_text=True)
+
+        detail_after = client.get("/moto/spots/liaoning/approved-a")
+        assert detail_after.status_code == 404
     finally:
         candidate_path.write_text(original_candidate, encoding="utf-8")
         approved_path.write_text(original_approved, encoding="utf-8")
@@ -215,14 +357,37 @@ def test_spot_collection_page_can_clear_all_review_data(client):
 
 
 def test_spots_index_page_renders_and_filters(client):
-    response = client.get("/moto/spots?region=辽南&support=fuel")
+    from pathlib import Path
 
-    assert response.status_code == 200
-    html = response.get_data(as_text=True)
-    assert "辽宁摩旅点位库" in html
-    assert "大连滨海路" in html
-    assert "适合补油" in html
-    assert "本桓公路" not in html
+    root = Path(__file__).resolve().parents[1]
+    approved_path = root / "data" / "reviewed" / "approved_spots.json"
+    original_approved = approved_path.read_text(encoding="utf-8")
+
+    try:
+        approved_path.write_text(
+            """[
+  {"slug": "coast-fuel-stop", "name": "大连滨海路", "city": "大连", "region": "辽南", "route_type": "coast", "summary": "滨海测试点位", "photo_focus": ["海边弯道"], "support_role": ["fuel", "viewpoint"]},
+  {"slug": "east-view-stop", "name": "丹东沿江停靠点", "city": "丹东", "region": "辽东", "route_type": "city-riverside", "summary": "沿江测试点位", "photo_focus": ["江景"], "support_role": ["viewpoint"]},
+  {"slug": "coast-view-stop", "name": "旅顺观景停靠点", "city": "大连旅顺", "region": "辽南", "route_type": "coast-scenic", "summary": "旅顺测试点位", "photo_focus": ["海景"], "support_role": ["viewpoint"]}
+]\n""",
+            encoding="utf-8",
+        )
+
+        response = client.get("/moto/spots?region=辽南&support=fuel")
+
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert "辽宁摩旅点位库" in html
+        assert "大连滨海路" in html
+        assert "适合补油" in html
+        assert "丹东沿江停靠点" not in html
+        assert "旅顺观景停靠点" not in html
+        assert "<strong>3</strong>\n          <span>总点位</span>" in html
+        assert "<strong>1</strong>\n          <span>当前展示</span>" in html
+        assert "<strong>2</strong>\n          <span>覆盖区域</span>" in html
+        assert "当前展示 1 / 3 个点位" in html
+    finally:
+        approved_path.write_text(original_approved, encoding="utf-8")
 
 
 def test_spots_index_page_prefers_collected_images_for_approved_spots(client):
@@ -284,22 +449,149 @@ def test_spots_index_page_prefers_collected_images_for_approved_spots(client):
         approved_path.write_text(original_approved, encoding="utf-8")
 
 
+def test_spots_index_page_shows_video_brief_for_approved_spots(client):
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        approved_path = root / "data" / "reviewed" / "approved_spots.json"
+        original_approved = approved_path.read_text(encoding="utf-8")
+
+        try:
+                approved_path.write_text(
+                        """[
+    {
+        "slug": "video-brief-spot",
+        "name": "视频简报点位",
+        "city": "大连",
+        "region": "辽南",
+        "route_type": "coast",
+        "summary": "点位摘要",
+        "photo_focus": ["海景"],
+        "support_role": ["viewpoint"],
+        "video_url": "https://example.com/video.mp4",
+        "keyframe_paths": ["data/raw/openclaw_keyframes/video-brief/frame-01.jpg", "data/raw/openclaw_keyframes/video-brief/frame-02.jpg"],
+        "video_analysis": {
+            "summary": "海边落日观景位"
+        },
+        "fixed_spot_info": {
+            "poiType": "scenic-spot",
+            "routeType": "coast"
+        }
+    }
+]\n""",
+                        encoding="utf-8",
+                )
+
+                response = client.get("/moto/spots")
+
+                assert response.status_code == 200
+                html = response.get_data(as_text=True)
+                assert "视频简报点位" in html
+                assert "视频采集" in html
+                assert "关键帧 2 张" in html
+                assert "风景打卡点" in html
+                assert "海岸公路" in html
+                assert "海边落日观景位" in html
+        finally:
+                approved_path.write_text(original_approved, encoding="utf-8")
+
+
 def test_spot_image_gallery_renders_from_structured_data(client):
-    detail_response = client.get("/moto/spots/liaoning/dalian-binhai-road")
+    from pathlib import Path
 
-    assert detail_response.status_code == 200
-    detail_html = detail_response.get_data(as_text=True)
-    assert "图片浏览" in detail_html
-    assert "/moto/spots/liaoning/dalian-binhai-road/images/cover.svg" in detail_html
-    assert "spot-gallery-main-image" in detail_html
-    assert "planner-gallery__thumb" in detail_html
+    root = Path(__file__).resolve().parents[1]
+    approved_path = root / "data" / "reviewed" / "approved_spots.json"
+    original_approved = approved_path.read_text(encoding="utf-8")
 
-    image_response = client.get("/moto/spots/liaoning/dalian-binhai-road/images/cover.svg")
-    assert image_response.status_code == 200
-    assert image_response.mimetype == "image/svg+xml"
-    svg = image_response.get_data(as_text=True)
-    assert "大连滨海路" in svg
-    assert "liaoning-binhai-cover" in svg
+    try:
+        approved_path.write_text(
+            '[{"slug": "dalian-binhai-road", "name": "大连滨海路", "city": "大连", "region": "辽南", "route_type": "coast", "summary": "测试滨海路", "photo_focus": ["海边弯道"], "support_role": ["fuel", "viewpoint"], "image_key": "liaoning-binhai-cover"}]\n',
+            encoding="utf-8",
+        )
+
+        detail_response = client.get("/moto/spots/liaoning/dalian-binhai-road")
+
+        assert detail_response.status_code == 200
+        detail_html = detail_response.get_data(as_text=True)
+        assert "图片浏览" in detail_html
+        assert "/moto/spots/liaoning/dalian-binhai-road/images/cover.svg" in detail_html
+        assert "spot-gallery-main-image" in detail_html
+        assert "planner-gallery__thumb" in detail_html
+
+        image_response = client.get("/moto/spots/liaoning/dalian-binhai-road/images/cover.svg")
+        assert image_response.status_code == 200
+        assert image_response.mimetype == "image/svg+xml"
+        svg = image_response.get_data(as_text=True)
+        assert "大连滨海路" in svg
+        assert "liaoning-binhai-cover" in svg
+    finally:
+        approved_path.write_text(original_approved, encoding="utf-8")
+
+
+def test_approved_spot_detail_shows_video_analysis_and_keyframes(client):
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        approved_path = root / "data" / "reviewed" / "approved_spots.json"
+        original_approved = approved_path.read_text(encoding="utf-8")
+        keyframe_dir = root / "data" / "raw" / "openclaw_keyframes" / "detail-test"
+        keyframe_path = keyframe_dir / "frame-01.jpg"
+        keyframe_dir.mkdir(parents=True, exist_ok=True)
+        keyframe_path.write_bytes(b"detail-fake-jpeg")
+
+        try:
+                approved_path.write_text(
+                        """[
+    {
+        "slug": "detail-video-spot",
+        "name": "详情视频点位",
+        "city": "大连",
+        "region": "辽南",
+        "route_type": "coast",
+        "summary": "详情测试点位",
+        "photo_focus": ["海景"],
+        "support_role": ["viewpoint"],
+        "video_url": "https://example.com/detail-video.mp4",
+        "keyframe_paths": ["data/raw/openclaw_keyframes/detail-test/frame-01.jpg"],
+        "video_analysis": {
+            "summary": "海边视频摘要",
+            "transcript": "视频转写内容",
+            "ocrText": "大连 滨海",
+            "placeHints": ["大连"],
+            "routeHints": ["coast"],
+            "sceneLabels": ["海景"]
+        },
+        "fixed_spot_info": {
+            "city": "大连",
+            "region": "辽南",
+            "poiType": "scenic-spot",
+            "routeType": "coast",
+            "supportTags": ["viewpoint"],
+            "spotMarkers": ["checkin-point"],
+            "summary": "固定点位摘要"
+        },
+        "sources": []
+    }
+]\n""",
+                        encoding="utf-8",
+                )
+
+                detail_response = client.get("/moto/spots/liaoning/detail-video-spot")
+                detail_html = detail_response.get_data(as_text=True)
+                assert detail_response.status_code == 200
+                assert "视频采集诊断" in detail_html
+                assert "视频分析与关键帧" in detail_html
+                assert "https://example.com/detail-video.mp4" in detail_html
+                assert "/moto/spots/collect/keyframes/detail-test/frame-01.jpg" in detail_html
+                assert "固定点位摘要" in detail_html
+                assert "视频转写内容" in detail_html
+                assert "场景标签：海景" in detail_html
+        finally:
+                approved_path.write_text(original_approved, encoding="utf-8")
+                if keyframe_path.exists():
+                        keyframe_path.unlink()
+                if keyframe_dir.exists():
+                        keyframe_dir.rmdir()
 
 
 def test_approved_candidate_becomes_visible_in_formal_spot_library(client):

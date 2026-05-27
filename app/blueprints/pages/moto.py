@@ -1,4 +1,6 @@
-from flask import Blueprint, Response, redirect, render_template, request, url_for
+from pathlib import Path
+
+from flask import Blueprint, Response, redirect, render_template, request, send_file, url_for
 
 from ...services import (
     build_liaoning_spot_detail_context,
@@ -24,6 +26,7 @@ from ...services import (
 
 
 moto_bp = Blueprint("moto", __name__)
+KEYFRAME_ROOT = Path(__file__).resolve().parents[3] / "data" / "raw" / "openclaw_keyframes"
 
 
 @moto_bp.get("/moto")
@@ -85,6 +88,7 @@ def moto_spots() -> str:
 def moto_spot_collect() -> str:
     form_data = request.form if request.method == "POST" else None
     candidate_slug = request.args.get("candidate")
+    apply_video_analysis = request.args.get("apply_video_analysis", "").strip().lower() in {"1", "true", "yes"}
     review_feedback = {
         "decision": request.args.get("review_decision", ""),
         "name": request.args.get("review_name", ""),
@@ -93,8 +97,17 @@ def moto_spot_collect() -> str:
     }
     return render_template(
         "planner/spot_collect.html",
-        **get_spot_collection_context(form_data, candidate_slug, review_feedback),
+        **get_spot_collection_context(form_data, candidate_slug, review_feedback, apply_video_analysis),
     )
+
+
+@moto_bp.get("/moto/spots/collect/keyframes/<path:keyframe_path>")
+def moto_spot_collect_keyframe(keyframe_path: str):
+    normalized = Path(keyframe_path)
+    resolved = (KEYFRAME_ROOT / normalized).resolve()
+    if KEYFRAME_ROOT.resolve() not in resolved.parents or not resolved.exists() or not resolved.is_file():
+        return render_template("404.html"), 404
+    return send_file(resolved)
 
 
 @moto_bp.post("/moto/spots/review/<slug>/<decision>")

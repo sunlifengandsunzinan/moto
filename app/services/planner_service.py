@@ -4,6 +4,7 @@ import json
 from typing import Any, Mapping
 
 from .liaoning_spots import (
+    ROUTE_TYPE_LABELS,
     SUPPORT_LABELS,
     build_preview_spot_image_gallery,
     build_previewable_moto_spot_record,
@@ -12,7 +13,7 @@ from .liaoning_spots import (
     get_liaoning_moto_spots,
     get_moto_spot_collection_schema,
 )
-from .candidate_spots import candidate_to_collection_record, get_candidate_spot_by_slug, get_candidate_spots
+from .candidate_spots import build_candidate_review_media, candidate_to_collection_record, get_candidate_spot_by_slug, get_candidate_spots
 from .candidate_spots import get_reviewed_spots
 
 
@@ -37,17 +38,24 @@ SPOT_MARKER_LABELS = {
     "support-stop": "补给点",
 }
 
+SPOT_TYPE_LABELS = {
+    "scenic-spot": "风景打卡点",
+    "moto-station": "摩托驿站",
+    "support-stop": "补给点",
+}
+
 
 def get_spot_collection_context(
     form_data: Mapping[str, Any] | None = None,
     candidate_slug: str | None = None,
     review_feedback: Mapping[str, str] | None = None,
+    apply_video_analysis: bool = False,
 ) -> dict[str, Any]:
     selected_candidate = get_candidate_spot_by_slug(candidate_slug) if candidate_slug else None
     record = (
         build_spot_collection_record(form_data)
         if form_data
-        else candidate_to_collection_record(selected_candidate)
+        else candidate_to_collection_record(selected_candidate, apply_video_analysis=apply_video_analysis)
         if selected_candidate
         else get_empty_moto_spot_record()
     )
@@ -58,6 +66,8 @@ def get_spot_collection_context(
     missing_required = [field["label"] for field in required_fields if _is_missing(record, field["name"])]
     candidate_queue = [_candidate_card(item, candidate_slug) for item in get_candidate_spots()]
     reviewed_spots = get_reviewed_spots()
+    review_media = build_candidate_review_media(selected_candidate)
+    video_apply_diff = _video_apply_diff(selected_candidate) if selected_candidate else {"has_changes": False, "items": []}
 
     return {
         "page": {
@@ -72,6 +82,11 @@ def get_spot_collection_context(
         },
         "candidate_review": {
             "selected": selected_candidate,
+            "selected_media": review_media,
+            "apply_video_analysis": apply_video_analysis,
+            "video_apply_href": f"/moto/spots/collect?candidate={candidate_slug}&apply_video_analysis=1" if candidate_slug else "",
+            "video_reset_href": f"/moto/spots/collect?candidate={candidate_slug}" if candidate_slug else "",
+            "video_apply_diff": video_apply_diff,
             "queue": candidate_queue,
             "feedback": review_feedback,
             "management": {
@@ -103,6 +118,7 @@ def get_spot_collection_context(
             "先保证必填字段完整，再补道路特征、风险提示和来源信息。",
             "列表字段统一用中文逗号或换行分隔，系统会自动拆分。",
             "sources 建议每行一条，格式：来源类型 | 来源名称 | 来源地址 | 作者 | 是否核验 | 备注。",
+            "如果候选带有抖音视频分析结果，先参考关键帧、本地 OCR 和路线提示，再决定是否批准。",
         ],
     }
 
@@ -529,6 +545,7 @@ def _spot_support_options() -> list[dict[str, str]]:
 
 
 def _spot_card(spot: Mapping[str, Any]) -> dict[str, Any]:
+    video_brief = _spot_video_brief(spot)
     return {
         "name": spot["name"],
         "city": spot["city"],
@@ -545,6 +562,8 @@ def _spot_card(spot: Mapping[str, Any]) -> dict[str, Any]:
             spot["ride_level_label"],
             *spot["best_time_of_day"][:2],
         ],
+        "video_summary": video_brief["summary"],
+        "video_chips": video_brief["chips"],
         "href": f"/moto/spots/liaoning/{spot['slug']}",
         "image_url": spot["image_gallery"][0]["image_url"],
     }
@@ -572,6 +591,114 @@ def _spot_active_filters(spots: list[Mapping[str, Any]], region: str, route_type
         )
         filters.append({"label": "支撑", "value": support_label})
     return filters
+
+
+def _spot_video_brief(spot: Mapping[str, Any]) -> dict[str, Any]:
+    video_analysis = spot.get("video_analysis") or spot.get("videoAnalysis") or {}
+    fixed_spot_info = spot.get("fixed_spot_info") or spot.get("fixedSpotInfo") or {}
+    keyframe_paths = spot.get("keyframe_paths") or spot.get("keyframePaths") or []
+
+    if not isinstance(video_analysis, dict):
+        video_analysis = {}
+    if not isinstance(fixed_spot_info, dict):
+        fixed_spot_info = {}
+    if not isinstance(keyframe_paths, list):
+        keyframe_paths = [keyframe_paths] if keyframe_paths else []
+
+    chips: list[str] = []
+    if spot.get("video_url") or spot.get("videoUrl"):
+        chips.append("视频采集")
+    if keyframe_paths:
+        chips.append(f"关键帧 {len([item for item in keyframe_paths if str(item).strip()])} 张")
+    if fixed_spot_info.get("poiType"):
+        chips.append(_spot_type_label(fixed_spot_info.get("poiType")))
+    if fixed_spot_info.get("routeType"):
+        chips.append(_route_type_label(fixed_spot_info.get("routeType")))
+
+    summary = (
+        str(video_analysis.get("summary") or "").strip()
+        or str(video_analysis.get("sceneSummary") or "").strip()
+        or str(fixed_spot_info.get("summary") or "").strip()
+    )
+    return {"summary": summary, "chips": chips[:4]}
+
+
+def _video_apply_diff(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    baseline = candidate_to_collection_record(candidate, apply_video_analysis=False)
+    applied = candidate_to_collection_record(candidate, apply_video_analysis=True)
+    fields = [
+        ("city", "城市"),
+        ("region", "区域"),
+        ("spot_type", "点位类型"),
+        ("route_type", "路线类型"),
+        ("summary", "摘要"),
+        ("support_role", "支撑标签"),
+        ("spot_markers", "固定标记"),
+        ("photo_focus", "拍摄重点"),
+        ("route_tags", "路线标签"),
+    ]
+    items: list[dict[str, str]] = []
+    for field_name, label in fields:
+        before = _diff_display_value(field_name, baseline.get(field_name))
+        after = _diff_display_value(field_name, applied.get(field_name))
+        if before == after:
+            continue
+        change_kind = "added" if _is_empty_diff_value(baseline.get(field_name)) else "overwritten"
+        items.append(
+            {
+                "label": label,
+                "before": before,
+                "after": after,
+                "change_kind": change_kind,
+                "change_label": "仅新增" if change_kind == "added" else "覆盖已有值",
+            }
+        )
+    return {"has_changes": len(items) > 0, "items": items}
+
+
+def _diff_display_value(field_name: str, value: Any) -> str:
+    if isinstance(value, list):
+        items = [_field_item_label(field_name, item) for item in value if str(item).strip()]
+        return "、".join(items) if items else "未填写"
+    if field_name == "spot_type":
+        return _spot_type_label(value)
+    if field_name == "route_type":
+        return _route_type_label(value)
+    text = str(value or "").strip()
+    return text or "未填写"
+
+
+def _field_item_label(field_name: str, value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if field_name == "support_role":
+        return SUPPORT_LABELS.get(text, text)
+    if field_name == "spot_markers":
+        return SPOT_MARKER_LABELS.get(text, text)
+    return text
+
+
+def _spot_type_label(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return "未填写"
+    return SPOT_TYPE_LABELS.get(text, text)
+
+
+def _route_type_label(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return "未填写"
+    return ROUTE_TYPE_LABELS.get(text, text)
+
+
+def _is_empty_diff_value(value: Any) -> bool:
+    if isinstance(value, list):
+        return not any(str(item).strip() for item in value)
+    if isinstance(value, dict):
+        return not any(str(item).strip() for item in value.values())
+    return not str(value or "").strip()
 
 
 def get_home_context() -> dict[str, Any]:

@@ -381,6 +381,13 @@ a {
   padding: 0 18px 18px;
 }
 
+.planner-library-card__video-summary {
+  margin: 0;
+  color: rgba(23, 50, 77, 0.78);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
 .planner-card,
 .planner-route-card,
 .planner-day-card,
@@ -477,6 +484,68 @@ a {
   border-radius: 18px;
   background: rgba(244, 240, 232, 0.8);
   border: 1px solid rgba(23, 50, 77, 0.08);
+}
+
+.planner-review-insights {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: rgba(255, 245, 236, 0.92);
+  border: 1px solid rgba(220, 110, 44, 0.14);
+}
+
+.planner-review-diff {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.planner-review-diff-card {
+  gap: 10px;
+}
+
+.planner-review-diff-card--added {
+  border-color: rgba(52, 128, 87, 0.2);
+  background: rgba(242, 250, 244, 0.92);
+}
+
+.planner-review-diff-card--overwritten {
+  border-color: rgba(220, 110, 44, 0.18);
+  background: rgba(255, 246, 238, 0.94);
+}
+
+.planner-review-diff-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.planner-review-diff-card__header h3 {
+  margin: 0;
+}
+
+.planner-review-diff-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.planner-review-diff-card__badge--added {
+  background: rgba(52, 128, 87, 0.12);
+  color: #2f6b49;
+}
+
+.planner-review-diff-card__badge--overwritten {
+  background: rgba(220, 110, 44, 0.14);
+  color: #9a4d1d;
 }
 
 .planner-field {
@@ -672,6 +741,10 @@ a {
   line-height: 1.6;
 }
 
+.planner-review-analysis-grid {
+  align-items: start;
+}
+
 .planner-status-strip {
   padding: 14px 16px;
   border-radius: 16px;
@@ -749,6 +822,10 @@ a {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
+}
+
+.planner-gallery__thumbs--keyframes {
+  margin-top: 18px;
 }
 
 .planner-gallery__thumb {

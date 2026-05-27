@@ -118,6 +118,16 @@
                   {% endfor %}
                 </ul>
               {% endif %}
+              {% if spot.video_chips %}
+                <ul class="planner-chip-list planner-library-chip-list planner-library-chip-list--soft">
+                  {% for item in spot.video_chips %}
+                    <li>{{ item }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+              {% if spot.video_summary %}
+                <p class="planner-library-card__video-summary">{{ spot.video_summary }}</p>
+              {% endif %}
             </div>
           </a>
           <div class="planner-actions planner-library-card__footer">

@@ -93,6 +93,10 @@ def normalize_raw_candidate(item: dict[str, Any]) -> dict[str, Any]:
             or item.get("source_images")
             or item.get("sourceImages")
         ),
+        "video_url": str(item.get("video_url") or item.get("videoUrl") or "").strip(),
+        "keyframe_paths": normalize_string_list(item.get("keyframe_paths") or item.get("keyframePaths")),
+        "video_analysis": normalize_video_analysis(item.get("video_analysis") or item.get("videoAnalysis")),
+        "fixed_spot_info": normalize_fixed_spot_info(item.get("fixed_spot_info") or item.get("fixedSpotInfo")),
         "image_key": f"candidate-{slug}",
         "route_tags": route_tags,
         "nearby_spot_slugs": [],
@@ -222,8 +226,16 @@ def _merge_raw_candidate_pair(primary: dict[str, Any], incoming: dict[str, Any])
         "image_urls",
         "spot_markers",
         "comment_location_hints",
+        "keyframe_paths",
     ]:
         merged[key] = _merge_string_lists(merged.get(key), fallback.get(key))
+
+    for key in ["video_url"]:
+        if not merged.get(key) and fallback.get(key):
+            merged[key] = fallback[key]
+
+    merged["video_analysis"] = _merge_video_analysis(merged.get("video_analysis"), fallback.get("video_analysis"))
+    merged["fixed_spot_info"] = _merge_fixed_spot_info(merged.get("fixed_spot_info"), fallback.get("fixed_spot_info"))
 
     return merged
 
@@ -247,6 +259,99 @@ def _merge_string_lists(left: Any, right: Any) -> list[str]:
         if value not in merged:
             merged.append(value)
     return merged
+
+
+def normalize_video_analysis(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {
+            "transcript": "",
+            "ocrText": "",
+            "summary": "",
+            "sceneSummary": "",
+            "keywords": [],
+            "sceneLabels": [],
+            "placeHints": [],
+            "supportHints": [],
+            "routeHints": [],
+            "spotMarkers": [],
+            "captions": [],
+        }
+    return {
+        "transcript": str(value.get("transcript") or "").strip(),
+        "ocrText": str(value.get("ocrText") or value.get("ocr_text") or "").strip(),
+        "summary": str(value.get("summary") or "").strip(),
+        "sceneSummary": str(value.get("sceneSummary") or value.get("scene_summary") or "").strip(),
+        "keywords": normalize_string_list(value.get("keywords")),
+        "sceneLabels": normalize_string_list(value.get("sceneLabels") or value.get("scene_labels")),
+        "placeHints": normalize_string_list(value.get("placeHints") or value.get("place_hints")),
+        "supportHints": normalize_string_list(value.get("supportHints") or value.get("support_hints")),
+        "routeHints": normalize_string_list(value.get("routeHints") or value.get("route_hints")),
+        "spotMarkers": normalize_string_list(value.get("spotMarkers") or value.get("spot_markers")),
+        "captions": normalize_string_list(value.get("captions")),
+    }
+
+
+def normalize_fixed_spot_info(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {
+            "city": "",
+            "region": "",
+            "poiType": "",
+            "routeType": "",
+            "supportTags": [],
+            "spotMarkers": [],
+            "photoTags": [],
+            "summary": "",
+        }
+    return {
+        "city": str(value.get("city") or "").strip(),
+        "region": str(value.get("region") or "").strip(),
+        "poiType": str(value.get("poiType") or value.get("poi_type") or "").strip(),
+        "routeType": str(value.get("routeType") or value.get("route_type") or "").strip(),
+        "supportTags": normalize_string_list(value.get("supportTags") or value.get("support_tags")),
+        "spotMarkers": normalize_string_list(value.get("spotMarkers") or value.get("spot_markers")),
+        "photoTags": normalize_string_list(value.get("photoTags") or value.get("photo_tags")),
+        "summary": str(value.get("summary") or "").strip(),
+    }
+
+
+def _prefer_richer_dict_text(left: dict[str, Any], right: dict[str, Any], key: str) -> str:
+    left_text = str(left.get(key) or "").strip()
+    right_text = str(right.get(key) or "").strip()
+    return right_text if len(right_text) > len(left_text) else left_text
+
+
+def _merge_video_analysis(left: Any, right: Any) -> dict[str, Any]:
+    primary = normalize_video_analysis(left)
+    fallback = normalize_video_analysis(right)
+    return {
+        "transcript": _prefer_richer_dict_text(primary, fallback, "transcript"),
+        "ocrText": _prefer_richer_dict_text(primary, fallback, "ocrText"),
+        "summary": _prefer_richer_dict_text(primary, fallback, "summary"),
+        "sceneSummary": _prefer_richer_dict_text(primary, fallback, "sceneSummary"),
+        "keywords": _merge_string_lists(primary.get("keywords"), fallback.get("keywords")),
+        "sceneLabels": _merge_string_lists(primary.get("sceneLabels"), fallback.get("sceneLabels")),
+        "placeHints": _merge_string_lists(primary.get("placeHints"), fallback.get("placeHints")),
+        "supportHints": _merge_string_lists(primary.get("supportHints"), fallback.get("supportHints")),
+        "routeHints": _merge_string_lists(primary.get("routeHints"), fallback.get("routeHints")),
+        "spotMarkers": _merge_string_lists(primary.get("spotMarkers"), fallback.get("spotMarkers")),
+        "captions": _merge_string_lists(primary.get("captions"), fallback.get("captions")),
+    }
+
+
+def _merge_fixed_spot_info(left: Any, right: Any) -> dict[str, Any]:
+    primary = normalize_fixed_spot_info(left)
+    fallback = normalize_fixed_spot_info(right)
+    return {
+        "city": primary.get("city") or fallback.get("city") or "",
+        "region": primary.get("region") or fallback.get("region") or "",
+        "poiType": primary.get("poiType") or fallback.get("poiType") or "",
+        "routeType": primary.get("routeType") or fallback.get("routeType") or "",
+        "supportTags": _merge_string_lists(primary.get("supportTags"), fallback.get("supportTags")),
+        "spotMarkers": _merge_string_lists(primary.get("spotMarkers"), fallback.get("spotMarkers")),
+        "photoTags": _merge_string_lists(primary.get("photoTags"), fallback.get("photoTags")),
+        "summary": _prefer_richer_dict_text(primary, fallback, "summary"),
+    }
 
 
 def _canonical_place_name(value: str) -> str:

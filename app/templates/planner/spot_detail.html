@@ -140,6 +140,53 @@
       </section>
     {% endif %}
 
+    {% if spot.video_url or spot.keyframes or spot.video_analysis.summary or spot.video_analysis.transcript or spot.fixed_spot_info.summary %}
+      <section class="panel">
+        <p class="eyebrow">视频采集诊断</p>
+        <h2>视频分析与关键帧</h2>
+        {% if spot.video_url %}
+          <div class="planner-status-strip">
+            视频地址：<a href="{{ spot.video_url }}" target="_blank" rel="noreferrer">{{ spot.video_url }}</a>
+          </div>
+        {% endif %}
+        {% if spot.keyframes %}
+          <div class="planner-gallery__thumbs planner-gallery__thumbs--keyframes">
+            {% for frame in spot.keyframes %}
+              <a class="planner-gallery__thumb is-active" href="{{ frame.href }}" target="_blank" rel="noreferrer">
+                <img class="planner-checkpoint-card__image" src="{{ frame.href }}" alt="{{ frame.label }}">
+                <span>{{ frame.label }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        {% endif %}
+        <div class="planner-grid planner-grid--two planner-review-analysis-grid">
+          <article class="planner-source-card">
+            <h3>固定点位信息</h3>
+            <ul class="planner-note-list">
+              <li>城市：{{ spot.fixed_spot_info.city or '未识别' }}</li>
+              <li>区域：{{ spot.fixed_spot_info.region or '未识别' }}</li>
+              <li>点位类型：{{ spot.fixed_spot_info.poiType or '未识别' }}</li>
+              <li>路线类型：{{ spot.fixed_spot_info.routeType or '未识别' }}</li>
+              <li>支撑标签：{{ spot.fixed_spot_info.supportTags | join('、') if spot.fixed_spot_info.supportTags else '未识别' }}</li>
+              <li>固定标记：{{ spot.fixed_spot_info.spotMarkers | join('、') if spot.fixed_spot_info.spotMarkers else '未识别' }}</li>
+              {% if spot.fixed_spot_info.summary %}<li>摘要：{{ spot.fixed_spot_info.summary }}</li>{% endif %}
+            </ul>
+          </article>
+          <article class="planner-source-card">
+            <h3>视频文本结果</h3>
+            <ul class="planner-note-list">
+              <li>摘要：{{ spot.video_analysis.summary or spot.video_analysis.sceneSummary or '未识别' }}</li>
+              <li>转写：{{ spot.video_analysis.transcript or '未识别' }}</li>
+              <li>OCR：{{ spot.video_analysis.ocrText or '未识别' }}</li>
+              <li>地点线索：{{ spot.video_analysis.placeHints | join('、') if spot.video_analysis.placeHints else '未识别' }}</li>
+              <li>路线线索：{{ spot.video_analysis.routeHints | join('、') if spot.video_analysis.routeHints else '未识别' }}</li>
+              <li>场景标签：{{ spot.video_analysis.sceneLabels | join('、') if spot.video_analysis.sceneLabels else '未识别' }}</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    {% endif %}
+
     {% if recommended_routes %}
       <section class="panel">
         <p class="eyebrow">模板挂载建议</p>

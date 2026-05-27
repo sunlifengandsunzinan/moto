@@ -9,7 +9,6 @@ from .candidate_spots import (
 	review_candidate_spot,
 )
 from .liaoning_spots import (
-	LIAONING_MOTO_SPOTS,
 	build_liaoning_spot_detail_context,
 	build_liaoning_spot_image_gallery,
 	build_preview_spot_image_gallery,

@@ -112,6 +112,7 @@ def adapt_openclaw_candidate(item: dict[str, Any]) -> dict[str, Any]:
         "source_name": source_name,
         "source_author": author,
         "source_item_url": str(first_value(item, ["url", "link", "permalink", "source_url", "sourceUrl", "noteUrl", "videoUrl", "shareUrl"]) or ""),
+        "video_url": str(first_value(item, ["video_url", "videoUrl", "playUrl", "downloadUrl"], nested=["video", "videoInfo", "metadata"]) or ""),
         "slug": slug,
         "raw_name": title,
         "city": city,
@@ -126,6 +127,9 @@ def adapt_openclaw_candidate(item: dict[str, Any]) -> dict[str, Any]:
         "summary_hint": summary,
         "photo_tags": photo_tags,
         "image_urls": image_urls,
+        "keyframe_paths": normalize_string_list(first_value(item, ["keyframe_paths", "keyframePaths"]) or item.get("keyframe_paths") or item.get("keyframePaths")),
+        "video_analysis": normalize_video_analysis(item.get("video_analysis") or item.get("videoAnalysis") or {}),
+        "fixed_spot_info": normalize_fixed_spot_info(item.get("fixed_spot_info") or item.get("fixedSpotInfo") or {}),
         "comment_location_hints": normalize_string_list(first_value(item, ["commentLocationHints", "comment_location_hints"]) or item.get("commentLocationHints") or item.get("comment_location_hints")),
         "route_tags": route_tags,
         "road_features": road_features,
@@ -146,6 +150,15 @@ def collect_text_blob(item: dict[str, Any]) -> str:
     values.extend(normalize_string_list(item.get("comment_location_hints")))
     values.extend(normalize_string_list(item.get("commentLocationHints")))
     values.extend(normalize_string_list(item.get("comments")))
+    values.extend(collect_video_analysis_text(item.get("video_analysis") or item.get("videoAnalysis") or {}))
+    fixed_info = item.get("fixed_spot_info") or item.get("fixedSpotInfo") or {}
+    if isinstance(fixed_info, dict):
+        for key in ["city", "region", "poiType", "routeType", "summary"]:
+            value = fixed_info.get(key)
+            if isinstance(value, str) and value.strip():
+                values.append(value)
+        for key in ["supportTags", "spotMarkers", "photoTags", "support_tags", "spot_markers", "photo_tags"]:
+            values.extend(normalize_string_list(fixed_info.get(key)))
     for container_key in ["location", "address", "metadata", "content", "author", "user", "profile"]:
         container = item.get(container_key)
         if not isinstance(container, dict):
@@ -416,6 +429,73 @@ def infer_summary(item: dict[str, Any], title: str, city: str, route_type: str, 
     if support_text:
         return f"来自 OpenClaw 的辽宁候选点：{title}，位于{city or '辽宁'}，偏 {route_type}，可提供{support_text}线索。"
     return f"来自 OpenClaw 的辽宁候选点：{title}，位于{city or '辽宁'}，偏 {route_type}。"
+
+
+def collect_video_analysis_text(video_analysis: Any) -> list[str]:
+    if not isinstance(video_analysis, dict):
+        return []
+    values: list[str] = []
+    for key in ["transcript", "ocrText", "ocr_text", "summary", "sceneSummary", "scene_summary"]:
+        value = video_analysis.get(key)
+        if isinstance(value, str) and value.strip():
+            values.append(value)
+    for key in ["keywords", "sceneLabels", "scene_labels", "placeHints", "place_hints", "supportHints", "support_hints", "routeHints", "route_hints", "spotMarkers", "spot_markers", "captions"]:
+        values.extend(normalize_string_list(video_analysis.get(key)))
+    return values
+
+
+def normalize_video_analysis(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {
+            "transcript": "",
+            "ocrText": "",
+            "summary": "",
+            "sceneSummary": "",
+            "keywords": [],
+            "sceneLabels": [],
+            "placeHints": [],
+            "supportHints": [],
+            "routeHints": [],
+            "spotMarkers": [],
+            "captions": [],
+        }
+    return {
+        "transcript": str(value.get("transcript") or "").strip(),
+        "ocrText": str(value.get("ocrText") or value.get("ocr_text") or "").strip(),
+        "summary": str(value.get("summary") or "").strip(),
+        "sceneSummary": str(value.get("sceneSummary") or value.get("scene_summary") or "").strip(),
+        "keywords": normalize_string_list(value.get("keywords")),
+        "sceneLabels": normalize_string_list(value.get("sceneLabels") or value.get("scene_labels")),
+        "placeHints": normalize_string_list(value.get("placeHints") or value.get("place_hints")),
+        "supportHints": normalize_string_list(value.get("supportHints") or value.get("support_hints")),
+        "routeHints": normalize_string_list(value.get("routeHints") or value.get("route_hints")),
+        "spotMarkers": normalize_string_list(value.get("spotMarkers") or value.get("spot_markers")),
+        "captions": normalize_string_list(value.get("captions")),
+    }
+
+
+def normalize_fixed_spot_info(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {
+            "city": "",
+            "region": "",
+            "poiType": "",
+            "routeType": "",
+            "supportTags": [],
+            "spotMarkers": [],
+            "photoTags": [],
+            "summary": "",
+        }
+    return {
+        "city": str(value.get("city") or "").strip(),
+        "region": str(value.get("region") or "").strip(),
+        "poiType": str(value.get("poiType") or value.get("poi_type") or "").strip(),
+        "routeType": str(value.get("routeType") or value.get("route_type") or "").strip(),
+        "supportTags": normalize_string_list(value.get("supportTags") or value.get("support_tags")),
+        "spotMarkers": normalize_string_list(value.get("spotMarkers") or value.get("spot_markers")),
+        "photoTags": normalize_string_list(value.get("photoTags") or value.get("photo_tags")),
+        "summary": str(value.get("summary") or "").strip(),
+    }
 
 
 def infer_road_features(route_type: str, text_blob: str) -> list[str]:
