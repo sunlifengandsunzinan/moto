@@ -128,19 +128,11 @@
     "photo_focus": [
       "机车合影",
       "出发集结",
-      "驿站停车",
-      "fuel",
-      "lodging",
-      "repair",
-      "集合",
-      "人车同框"
+      "驿站停车"
     ],
     "image_key": "candidate-oc-dy-001",
     "route_tags": [
-      "辽中",
-      "沈阳",
-      "supply-stop",
-      "support"
+      "辽中"
     ],
     "nearby_spot_slugs": [],
     "fuel_support": "nearby",
@@ -150,13 +142,10 @@
     "support_role": [
       "fuel",
       "lodging",
-      "repair",
-      "viewpoint"
+      "repair"
     ],
     "moto_station_features": [
-      "可停车",
-      "骑友集合",
-      "可补给"
+      "可停车"
     ],
     "confidence_score": "B",
     "sources": [
@@ -188,26 +177,17 @@
     "best_time_of_day": [],
     "ride_level": "beginner",
     "recommended_stay": "1-2 小时",
-    "road_features": [
-      "沿江停靠"
-    ],
+    "road_features": [],
     "risk_notes": [],
     "summary": "适合鸭绿江沿线夜景和人车同框内容拍摄。",
     "photo_focus": [
       "沿江路",
       "夜景",
-      "人车同框",
-      "river",
-      "night-view",
-      "拍照",
-      "viewpoint"
+      "人车同框"
     ],
     "image_key": "candidate-oc-xhs-002",
     "route_tags": [
-      "辽东",
-      "丹东",
-      "city-riverside",
-      "photo-friendly"
+      "辽东"
     ],
     "nearby_spot_slugs": [],
     "fuel_support": "unknown",
