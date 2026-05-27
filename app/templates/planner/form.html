@@ -40,8 +40,23 @@
                 {% endfor %}
               </div>
             {% elif field.type == 'checkbox_group' %}
+              {% if field.name == 'must_visit_spots' and field.highlighted_options %}
+                <div class="planner-spot-highlight">
+                  <p class="planner-spot-highlight__title">新批准点位</p>
+                  <p class="planner-spot-highlight__hint">这些点位刚完成审核，已经进入正式点位库，会优先影响路线推荐。</p>
+                  <div class="planner-choice-group planner-choice-group--wrap">
+                    {% for option in field.highlighted_options %}
+                      <label class="planner-choice planner-choice--highlight">
+                        <input type="checkbox" name="{{ field.name }}" value="{{ option.value }}" {% if option.value in field.value %}checked{% endif %}>
+                        <span>{{ option.label }}</span>
+                      </label>
+                    {% endfor %}
+                  </div>
+                </div>
+              {% endif %}
+              {% set checkbox_options = field.regular_options if field.name == 'must_visit_spots' else field.options %}
               <div class="planner-choice-group planner-choice-group--wrap">
-                {% for option in field.options %}
+                {% for option in checkbox_options %}
                   <label class="planner-choice">
                     <input type="checkbox" name="{{ field.name }}" value="{{ option.value }}" {% if option.value in field.value %}checked{% endif %}>
                     <span>{{ option.label }}</span>

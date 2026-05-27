@@ -1,11 +1,337 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Mapping
 
-from .liaoning_spots import get_liaoning_moto_spots
+from .liaoning_spots import (
+    SUPPORT_LABELS,
+    build_preview_spot_image_gallery,
+    build_previewable_moto_spot_record,
+    get_approved_moto_spots,
+    get_empty_moto_spot_record,
+    get_liaoning_moto_spots,
+    get_moto_spot_collection_schema,
+)
+from .candidate_spots import candidate_to_collection_record, get_candidate_spot_by_slug, get_candidate_spots
 
 
 RouteDict = dict[str, Any]
+
+
+COLLECTION_GROUP_LABELS = {
+    "identity": "基础识别",
+    "location": "位置与可达性",
+    "travel": "骑行与出行判断",
+    "content": "内容展示",
+    "planning": "规划关系",
+    "support": "补给与驿站支持",
+    "quality": "质量与核验",
+}
+
+
+def get_spot_collection_context(
+    form_data: Mapping[str, Any] | None = None,
+    candidate_slug: str | None = None,
+    review_feedback: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    selected_candidate = get_candidate_spot_by_slug(candidate_slug) if candidate_slug else None
+    record = (
+        build_spot_collection_record(form_data)
+        if form_data
+        else candidate_to_collection_record(selected_candidate)
+        if selected_candidate
+        else get_empty_moto_spot_record()
+    )
+    preview_record = build_previewable_moto_spot_record(record)
+    schema = get_moto_spot_collection_schema()
+    groups = _collection_groups(schema, record)
+    required_fields = [field for field in schema if field["required"]]
+    missing_required = [field["label"] for field in required_fields if _is_missing(record, field["name"])]
+    candidate_queue = [_candidate_card(item, candidate_slug) for item in get_candidate_spots()]
+
+    return {
+        "page": {
+            "title": "录入摩旅点位",
+            "description": "按固定字段收集打卡点、摩托驿站、补给点和中转节点。先做结构化录入，再决定是否入库。",
+        },
+        "collection_form": {
+            "action": f"/moto/spots/collect?candidate={candidate_slug}" if candidate_slug else "/moto/spots/collect",
+            "method": "post",
+            "groups": groups,
+            "submit_label": "生成结构化预览",
+        },
+        "candidate_review": {
+            "selected": selected_candidate,
+            "queue": candidate_queue,
+            "feedback": review_feedback,
+        },
+        "preview": {
+            "record": record,
+            "json": json.dumps(record, ensure_ascii=False, indent=2),
+            "missing_required": missing_required,
+            "image_gallery": build_preview_spot_image_gallery(preview_record),
+        },
+        "tips": [
+            "先保证必填字段完整，再补道路特征、风险提示和来源信息。",
+            "列表字段统一用中文逗号或换行分隔，系统会自动拆分。",
+            "sources 建议每行一条，格式：来源类型 | 来源名称 | 来源地址 | 作者 | 是否核验 | 备注。",
+        ],
+    }
+
+
+def _candidate_card(candidate: Mapping[str, Any], selected_slug: str | None) -> dict[str, Any]:
+    return {
+        "slug": candidate["slug"],
+        "name": candidate["name"],
+        "city": candidate["city"],
+        "summary": candidate["summary"],
+        "confidence_score": candidate["confidence_score"],
+        "source_count": candidate["source_count"],
+        "review_href": candidate["review_href"],
+        "is_selected": candidate["slug"] == selected_slug,
+    }
+
+
+def build_spot_collection_record(form_data: Mapping[str, Any]) -> dict[str, Any]:
+    template = get_empty_moto_spot_record()
+    record = {
+        key: value.copy() if isinstance(value, dict | list) else value
+        for key, value in template.items()
+    }
+
+    scalar_fields = [
+        "slug",
+        "name",
+        "spot_type",
+        "city",
+        "region",
+        "route_type",
+        "access_level",
+        "ride_level",
+        "recommended_stay",
+        "summary",
+        "image_key",
+        "fuel_support",
+        "repair_support",
+        "lodging_support",
+        "food_support",
+        "confidence_score",
+        "last_verified_at",
+    ]
+    list_fields = [
+        "best_seasons",
+        "best_time_of_day",
+        "road_features",
+        "risk_notes",
+        "photo_focus",
+        "route_tags",
+        "nearby_spot_slugs",
+        "support_role",
+        "moto_station_features",
+    ]
+
+    for name in scalar_fields:
+        value = str(form_data.get(name, "")).strip()
+        if value:
+            record[name] = value
+
+    for name in list_fields:
+        record[name] = _split_collection_list(str(form_data.get(name, "")))
+
+    record["parking_friendly"] = _parse_boolean(form_data.get("parking_friendly"))
+    record["coordinates"] = {
+        "lat": _parse_float(form_data.get("coordinates_lat")),
+        "lng": _parse_float(form_data.get("coordinates_lng")),
+    }
+    record["sources"] = _parse_sources_form(form_data)
+    return record
+
+
+def _collection_groups(schema: list[dict[str, Any]], record: Mapping[str, Any]) -> list[dict[str, Any]]:
+    groups: list[dict[str, Any]] = []
+    by_group = {group: [] for group in COLLECTION_GROUP_LABELS}
+
+    for field in schema:
+        by_group[field["group"]].append(_collection_field(field, record))
+
+    for group, label in COLLECTION_GROUP_LABELS.items():
+        groups.append({"key": group, "label": label, "fields": by_group[group]})
+
+    return groups
+
+
+def _collection_field(field: Mapping[str, Any], record: Mapping[str, Any]) -> dict[str, Any]:
+    name = str(field["name"])
+    field_type = str(field["type"])
+    component = "text"
+    value: Any = record.get(name, "")
+
+    if name == "summary":
+        component = "textarea"
+    elif field_type == "list[string]":
+        component = "textarea"
+        value = "\n".join(record.get(name, []))
+    elif field_type == "list[object]":
+        component = "sources"
+        value = _source_rows(record.get(name, []))
+    elif field_type == "boolean":
+        component = "select"
+        value = "yes" if value is True else "no" if value is False else ""
+    elif field_type == "object" and name == "coordinates":
+        component = "coordinates"
+        value = {
+            "lat": "" if record.get(name, {}).get("lat") is None else record[name]["lat"],
+            "lng": "" if record.get(name, {}).get("lng") is None else record[name]["lng"],
+        }
+
+    return {
+        "name": name,
+        "label": field["label"],
+        "required": field["required"],
+        "group": field["group"],
+        "component": component,
+        "value": value,
+        "example": field["example"],
+        "type": field_type,
+        "options": _collection_options(name, field_type),
+    }
+
+
+def _collection_options(name: str, field_type: str) -> list[dict[str, str]]:
+    if field_type != "boolean":
+        return []
+    return [
+        {"label": "未填写", "value": ""},
+        {"label": "是", "value": "yes"},
+        {"label": "否", "value": "no"},
+    ]
+
+
+def _is_missing(record: Mapping[str, Any], field_name: str) -> bool:
+    value = record.get(field_name)
+    if isinstance(value, list):
+        return len(value) == 0
+    if isinstance(value, dict):
+        return all(item in (None, "") for item in value.values())
+    return value in (None, "")
+
+
+def _split_collection_list(raw: str) -> list[str]:
+    normalized = raw.replace("，", ",").replace("\n", ",")
+    return [item.strip() for item in normalized.split(",") if item.strip()]
+
+
+def _parse_boolean(value: Any) -> bool | None:
+    normalized = str(value or "").strip().lower()
+    if normalized == "yes":
+        return True
+    if normalized == "no":
+        return False
+    return None
+
+
+def _parse_float(value: Any) -> float | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def _parse_sources(raw: str) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for line in raw.splitlines():
+        parts = [part.strip() for part in line.split("|")]
+        if not any(parts):
+            continue
+        if len(parts) >= 6:
+            item = {
+                "type": parts[0],
+                "name": parts[1],
+                "url": parts[2],
+                "author": parts[3],
+                "verified": parts[4].lower() in {"yes", "true", "1", "是"},
+                "note": parts[5],
+            }
+        else:
+            item = {
+                "type": parts[0] if len(parts) > 0 else "",
+                "name": parts[1] if len(parts) > 1 else "",
+                "url": "",
+                "author": "",
+                "verified": (parts[2].lower() in {"yes", "true", "1", "是"}) if len(parts) > 2 else False,
+                "note": parts[3] if len(parts) > 3 else "",
+            }
+        items.append(item)
+    return items
+
+
+def _parse_sources_form(form_data: Mapping[str, Any]) -> list[dict[str, Any]]:
+    types = _form_list_values(form_data, "sources_type")
+    names = _form_list_values(form_data, "sources_name")
+    urls = _form_list_values(form_data, "sources_url")
+    authors = _form_list_values(form_data, "sources_author")
+    verified_values = _form_list_values(form_data, "sources_verified")
+    notes = _form_list_values(form_data, "sources_note")
+
+    if any(types + names + urls + authors + verified_values + notes):
+        row_count = max(len(types), len(names), len(urls), len(authors), len(verified_values), len(notes))
+        items: list[dict[str, Any]] = []
+        for index in range(row_count):
+            item = {
+                "type": types[index] if index < len(types) else "",
+                "name": names[index] if index < len(names) else "",
+                "url": urls[index] if index < len(urls) else "",
+                "author": authors[index] if index < len(authors) else "",
+                "verified": (verified_values[index].lower() in {"yes", "true", "1", "是"}) if index < len(verified_values) else False,
+                "note": notes[index] if index < len(notes) else "",
+            }
+            if any(str(value).strip() for key, value in item.items() if key != "verified") or item["verified"]:
+                items.append(item)
+        return items
+
+    return _parse_sources(str(form_data.get("sources", "")))
+
+
+def _form_list_values(form_data: Mapping[str, Any], field_name: str) -> list[str]:
+    getlist = getattr(form_data, "getlist", None)
+    if callable(getlist):
+        return [str(value).strip() for value in getlist(field_name)]
+
+    value = form_data.get(field_name, [])
+    if isinstance(value, list):
+        return [str(item).strip() for item in value]
+    if value in (None, ""):
+        return []
+    return [str(value).strip()]
+
+
+def _source_rows(sources: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = [
+        {
+            "type": str(item.get("type", "")),
+            "name": str(item.get("name", "")),
+            "url": str(item.get("url", "")),
+            "author": str(item.get("author", "")),
+            "verified": "yes" if item.get("verified") else "no",
+            "note": str(item.get("note", "")),
+        }
+        for item in sources
+    ]
+    while len(rows) < 3:
+        rows.append(
+            {
+                "type": "",
+                "name": "",
+                "url": "",
+                "author": "",
+                "verified": "",
+                "note": "",
+            }
+        )
+    return rows
 
 
 def planner_route_options() -> list[dict[str, str]]:
@@ -27,10 +353,156 @@ def planner_region_options() -> list[dict[str, str]]:
 
 
 def planner_spot_options() -> list[dict[str, str]]:
+    approved_spot_slugs = {spot["slug"] for spot in get_approved_moto_spots()}
     return [
-        {"label": f"{spot['name']} · {spot['city']}", "value": spot["slug"]}
+        {
+            "label": f"{spot['name']} · {spot['city']}",
+            "value": spot["slug"],
+            "is_newly_approved": spot["slug"] in approved_spot_slugs,
+        }
         for spot in get_liaoning_moto_spots()
     ]
+
+
+def planner_must_visit_field() -> dict[str, Any]:
+    options = planner_spot_options()
+    highlighted_options = [option for option in options if option["is_newly_approved"]]
+    regular_options = [option for option in options if not option["is_newly_approved"]]
+    return {
+        "name": "must_visit_spots",
+        "label": "想经过的打卡点",
+        "type": "checkbox_group",
+        "value": [],
+        "options": options,
+        "highlighted_options": highlighted_options,
+        "regular_options": regular_options,
+    }
+
+
+def get_spots_index_context(query: Mapping[str, Any]) -> dict[str, Any]:
+    spots = get_liaoning_moto_spots()
+    region = str(query.get("region", "")).strip()
+    route_type = str(query.get("route_type", "")).strip()
+    support = str(query.get("support", "")).strip()
+
+    filtered_spots = [spot for spot in spots if _spot_matches_filters(spot, region, route_type, support)]
+
+    return {
+        "page": {
+            "title": "辽宁摩旅点位库",
+            "description": "把打卡点、补给节点和适合串联的骑行地标放在同一张结构化清单里，方便先看点位再规划路线。",
+        },
+        "filters": {
+            "action": "/moto/spots",
+            "fields": [
+                {
+                    "name": "region",
+                    "label": "区域",
+                    "value": region,
+                    "options": _spot_filter_options(spots, "region", "全部区域"),
+                },
+                {
+                    "name": "route_type",
+                    "label": "线路类型",
+                    "value": route_type,
+                    "options": _spot_route_type_options(spots),
+                },
+                {
+                    "name": "support",
+                    "label": "支撑能力",
+                    "value": support,
+                    "options": _spot_support_options(),
+                },
+            ],
+        },
+        "stats": {
+            "total": len(spots),
+            "visible": len(filtered_spots),
+            "regions": len({spot["region"] for spot in spots}),
+        },
+        "spots": [_spot_card(spot) for spot in filtered_spots],
+        "empty_state": {
+            "title": "当前筛选下还没有命中的点位",
+            "description": "先放宽筛选条件，或者去录入页补充新的摩旅点位。",
+            "action": {"label": "去录入点位", "href": "/moto/spots/collect"},
+        },
+    }
+
+
+def build_route_recommendations_for_spot(spot: Mapping[str, Any], limit: int = 3) -> list[dict[str, Any]]:
+    recommendations: list[dict[str, Any]] = []
+    for route in get_route_templates():
+        score = spot_route_affinity_score(spot, route)
+        if score <= 0:
+            continue
+        recommendations.append(
+            {
+                "slug": route["slug"],
+                "title": route["title"],
+                "summary": route["summary"],
+                "score": score,
+                "reasons": _spot_route_recommendation_reasons(spot, route),
+                "route_href": f"/moto/routes/{route['slug']}",
+                "planner_href": f"/moto/planner?route={route['slug']}&origin={spot['city']}",
+            }
+        )
+
+    recommendations.sort(key=lambda item: item["score"], reverse=True)
+    return recommendations[:limit]
+
+
+def _spot_matches_filters(spot: Mapping[str, Any], region: str, route_type: str, support: str) -> bool:
+    if region and spot["region"] != region:
+        return False
+    if route_type and spot["route_type"] != route_type:
+        return False
+    if support and support not in spot["support_role"]:
+        return False
+    return True
+
+
+def _spot_filter_options(spots: list[Mapping[str, Any]], field: str, default_label: str) -> list[dict[str, str]]:
+    values = sorted({str(spot[field]) for spot in spots})
+    return [{"label": default_label, "value": ""}] + [
+        {"label": value, "value": value} for value in values
+    ]
+
+
+def _spot_route_type_options(spots: list[Mapping[str, Any]]) -> list[dict[str, str]]:
+    options = [{"label": "全部类型", "value": ""}]
+    seen: set[str] = set()
+    for spot in spots:
+        if spot["route_type"] in seen:
+            continue
+        seen.add(spot["route_type"])
+        options.append({"label": spot["route_type_label"], "value": spot["route_type"]})
+    return options
+
+
+def _spot_support_options() -> list[dict[str, str]]:
+    return [
+        {"label": "全部支撑", "value": ""},
+        {"label": "适合补油", "value": "fuel"},
+        {"label": "适合过夜", "value": "lodging"},
+        {"label": "附近可维修", "value": "repair"},
+        {"label": "适合观景停留", "value": "viewpoint"},
+    ]
+
+
+def _spot_card(spot: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "name": spot["name"],
+        "city": spot["city"],
+        "region": spot["region"],
+        "summary": spot["summary"],
+        "route_type_label": spot["route_type_label"],
+        "ride_level_label": spot["ride_level_label"],
+        "season_labels": spot["season_labels"],
+        "support_labels": spot["support_labels"],
+        "best_time_of_day": spot["best_time_of_day"],
+        "href": f"/moto/spots/liaoning/{spot['slug']}",
+        "image_url": spot["image_gallery"][0]["image_url"],
+    }
 
 
 def get_home_context() -> dict[str, Any]:
@@ -202,11 +674,7 @@ def get_planner_form_context(route_slug: str | None = None, origin: str | None =
                     ],
                 },
                 {
-                    "name": "must_visit_spots",
-                    "label": "想经过的打卡点",
-                    "type": "checkbox_group",
-                    "value": [],
-                    "options": planner_spot_options(),
+                    **planner_must_visit_field(),
                 },
                 {
                     "name": "budget_range",
@@ -1034,6 +1502,7 @@ def score_route(route: RouteDict, preferences: Mapping[str, Any]) -> int:
 
     matched_spots = set(preferences.get("must_visit_spots", [])) & set(route.get("spot_slugs", []))
     score += len(matched_spots) * 4
+    score += selected_spot_affinity_score(route, preferences)
 
     if preferences["daily_distance"] <= 200 and route["difficulty"] == "easy":
         score += 2
@@ -1044,6 +1513,105 @@ def score_route(route: RouteDict, preferences: Mapping[str, Any]) -> int:
         score += 3
 
     return score
+
+
+def selected_spot_affinity_score(route: RouteDict, preferences: Mapping[str, Any]) -> int:
+    selected_spots = set(preferences.get("must_visit_spots", []))
+    if not selected_spots:
+        return 0
+
+    catalog = {spot["slug"]: spot for spot in get_liaoning_moto_spots()}
+    route_spots = set(route.get("spot_slugs", []))
+    return sum(
+        spot_route_affinity_score(catalog[slug], route)
+        for slug in selected_spots
+        if slug in catalog and slug not in route_spots
+    )
+
+
+def spot_route_affinity_score(spot: Mapping[str, Any], route: Mapping[str, Any]) -> int:
+    score = 0
+
+    if _spot_route_family(spot) == route.get("region"):
+        score += 4
+
+    matched_styles = _spot_route_styles(spot) & set(route.get("scenery_type", []))
+    score += len(matched_styles) * 2
+
+    ride_level = str(spot.get("ride_level") or "")
+    if ride_level == "beginner" and route.get("difficulty") == "easy":
+        score += 2
+    elif ride_level in {"intermediate", "advanced"} and route.get("difficulty") == "medium":
+        score += 2
+
+    poi_types = set(route.get("pois", {}).keys())
+    score += min(2, len(set(spot.get("support_role", [])) & poi_types))
+
+    return score
+
+
+def _spot_route_recommendation_reasons(spot: Mapping[str, Any], route: Mapping[str, Any]) -> list[str]:
+    reasons: list[str] = []
+
+    if _spot_route_family(spot) == route.get("region"):
+        reasons.append("同属辽宁线，挂入后不需要改动区域逻辑")
+
+    matched_styles = _spot_route_styles(spot) & set(route.get("scenery_type", []))
+    if matched_styles:
+        reasons.append(f"路线风格契合：{' / '.join(_route_style_label(item) for item in sorted(matched_styles))}")
+
+    ride_level = str(spot.get("ride_level") or "")
+    if ride_level == "beginner" and route.get("difficulty") == "easy":
+        reasons.append("新手友好点位，适合挂到低强度模板")
+    elif ride_level in {"intermediate", "advanced"} and route.get("difficulty") == "medium":
+        reasons.append("骑行强度匹配，适合挂到进阶模板")
+
+    support_overlap = set(spot.get("support_role", [])) & set(route.get("pois", {}).keys())
+    if support_overlap:
+        reasons.append(f"补给能力能承接模板需求：{' / '.join(SUPPORT_LABELS.get(item, item) for item in sorted(support_overlap))}")
+
+    return reasons or ["点位属性与现有模板存在基础匹配，可作为候选补充点位"]
+
+
+def _route_style_label(style: str) -> str:
+    return {
+        "coast": "海边",
+        "mountain": "山路",
+        "niche": "小众",
+        "relaxed": "轻松",
+        "scenic": "风景",
+    }.get(style, style)
+
+
+def _spot_route_family(spot: Mapping[str, Any]) -> str:
+    region = str(spot.get("region") or "")
+    return "north" if region.startswith("辽") else ""
+
+
+def _spot_route_styles(spot: Mapping[str, Any]) -> set[str]:
+    route_type = str(spot.get("route_type") or "")
+    style_map = {
+        "border-landmark": {"niche", "scenic"},
+        "city-riverside": {"relaxed", "scenic"},
+        "coast": {"coast", "relaxed", "scenic"},
+        "coast-checkin": {"coast", "scenic"},
+        "coast-city": {"coast", "relaxed", "scenic"},
+        "coast-history": {"coast", "niche", "scenic"},
+        "coast-scenic": {"coast", "scenic"},
+        "county-road": {"niche", "scenic"},
+        "mountain": {"mountain", "scenic"},
+        "mountain-county-road": {"mountain", "niche", "scenic"},
+        "mountain-landmark": {"mountain", "niche", "scenic"},
+        "mountain-near-city": {"mountain", "relaxed", "scenic"},
+        "mountain-scenic": {"mountain", "scenic"},
+        "mountain-view": {"mountain", "scenic"},
+        "plain-road": {"relaxed", "scenic"},
+        "riverside-village": {"niche", "relaxed", "scenic"},
+        "scenic-water": {"niche", "scenic"},
+        "seasonal-landscape": {"niche", "scenic"},
+        "supply-stop": {"relaxed"},
+    }
+    return style_map.get(route_type, {"scenic"})
 
 
 def build_route_title(preferences: Mapping[str, Any], route: RouteDict) -> str:

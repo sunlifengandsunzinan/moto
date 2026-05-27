@@ -1,0 +1,20 @@
+[
+  {
+    "city": "沈阳",
+    "region": "辽中",
+    "query": "摩托驿站",
+    "category": "moto-station"
+  },
+  {
+    "city": "大连",
+    "region": "辽南",
+    "query": "沿海观景停车点",
+    "category": "scenic-spot"
+  },
+  {
+    "city": "丹东",
+    "region": "辽东",
+    "query": "加油站",
+    "category": "support-stop"
+  }
+]

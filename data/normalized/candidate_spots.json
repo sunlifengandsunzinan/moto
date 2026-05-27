@@ -1,0 +1,234 @@
+[
+  {
+    "slug": "shenyang-rider-station",
+    "name": "沈阳骑士驿站",
+    "spot_type": "moto-station",
+    "city": "沈阳",
+    "region": "辽中",
+    "route_type": "supply-stop",
+    "coordinates": {
+      "lat": 41.8057,
+      "lng": 123.4315
+    },
+    "access_level": "easy",
+    "parking_friendly": true,
+    "best_seasons": [],
+    "best_time_of_day": [],
+    "ride_level": "beginner",
+    "recommended_stay": "1-2 小时",
+    "road_features": [],
+    "risk_notes": [],
+    "summary": "适合出发前集合、补给和过夜。",
+    "photo_focus": [
+      "机车合影",
+      "出发集结"
+    ],
+    "image_key": "candidate-shenyang-rider-station",
+    "route_tags": [
+      "辽中"
+    ],
+    "nearby_spot_slugs": [],
+    "fuel_support": "nearby",
+    "repair_support": "available",
+    "lodging_support": "available",
+    "food_support": "unknown",
+    "support_role": [
+      "fuel",
+      "lodging",
+      "repair"
+    ],
+    "moto_station_features": [
+      "可停车"
+    ],
+    "confidence_score": "B",
+    "sources": [
+      {
+        "type": "map",
+        "name": "osm",
+        "url": "https://www.openstreetmap.org/?mlat=41.8057&mlon=123.4315#map=15/41.8057/123.4315",
+        "author": "OpenStreetMap contributors",
+        "verified": false,
+        "note": "captured_at=2026-05-27"
+      }
+    ],
+    "last_verified_at": ""
+  },
+  {
+    "slug": "dandong-riverside-stop",
+    "name": "丹东沿江骑士停靠点",
+    "spot_type": "scenic-spot",
+    "city": "丹东",
+    "region": "辽东",
+    "route_type": "city-riverside",
+    "coordinates": {
+      "lat": 40.1243,
+      "lng": 124.383
+    },
+    "access_level": "easy",
+    "parking_friendly": true,
+    "best_seasons": [],
+    "best_time_of_day": [],
+    "ride_level": "beginner",
+    "recommended_stay": "1-2 小时",
+    "road_features": [],
+    "risk_notes": [],
+    "summary": "适合作为鸭绿江沿线收官停靠点。",
+    "photo_focus": [
+      "沿江路",
+      "夜景",
+      "人车同框"
+    ],
+    "image_key": "candidate-dandong-riverside-stop",
+    "route_tags": [
+      "辽东"
+    ],
+    "nearby_spot_slugs": [],
+    "fuel_support": "nearby",
+    "repair_support": "unknown",
+    "lodging_support": "unknown",
+    "food_support": "unknown",
+    "support_role": [
+      "viewpoint",
+      "fuel"
+    ],
+    "moto_station_features": [],
+    "confidence_score": "B",
+    "sources": [
+      {
+        "type": "map",
+        "name": "osm",
+        "url": "https://www.openstreetmap.org/?mlat=40.1243&mlon=124.383#map=15/40.1243/124.383",
+        "author": "OpenStreetMap contributors",
+        "verified": false,
+        "note": "captured_at=2026-05-27"
+      }
+    ],
+    "last_verified_at": ""
+  },
+  {
+    "slug": "oc-dy-001",
+    "name": "沈阳东郊骑士集合点",
+    "spot_type": "moto-station",
+    "city": "沈阳",
+    "region": "辽中",
+    "route_type": "supply-stop",
+    "coordinates": {
+      "lat": 41.8392,
+      "lng": 123.5174
+    },
+    "access_level": "easy",
+    "parking_friendly": true,
+    "best_seasons": [],
+    "best_time_of_day": [],
+    "ride_level": "beginner",
+    "recommended_stay": "1-2 小时",
+    "road_features": [],
+    "risk_notes": [],
+    "summary": "适合沈阳东郊出发前集合、补给和夜宿。",
+    "photo_focus": [
+      "机车合影",
+      "出发集结",
+      "驿站停车",
+      "fuel",
+      "lodging",
+      "repair",
+      "集合",
+      "人车同框"
+    ],
+    "image_key": "candidate-oc-dy-001",
+    "route_tags": [
+      "辽中",
+      "沈阳",
+      "supply-stop",
+      "support"
+    ],
+    "nearby_spot_slugs": [],
+    "fuel_support": "nearby",
+    "repair_support": "available",
+    "lodging_support": "available",
+    "food_support": "unknown",
+    "support_role": [
+      "fuel",
+      "lodging",
+      "repair",
+      "viewpoint"
+    ],
+    "moto_station_features": [
+      "可停车",
+      "骑友集合",
+      "可补给"
+    ],
+    "confidence_score": "B",
+    "sources": [
+      {
+        "type": "content",
+        "name": "douyin",
+        "url": "https://www.douyin.com/video/liaoning-rider-station-001",
+        "author": "辽中骑士补给站",
+        "verified": false,
+        "note": "captured_at=2026-05-27"
+      }
+    ],
+    "last_verified_at": ""
+  },
+  {
+    "slug": "oc-xhs-002",
+    "name": "丹东沿江夜景停靠位",
+    "spot_type": "scenic-spot",
+    "city": "丹东",
+    "region": "辽东",
+    "route_type": "city-riverside",
+    "coordinates": {
+      "lat": 40.1199,
+      "lng": 124.3891
+    },
+    "access_level": "easy",
+    "parking_friendly": true,
+    "best_seasons": [],
+    "best_time_of_day": [],
+    "ride_level": "beginner",
+    "recommended_stay": "1-2 小时",
+    "road_features": [
+      "沿江停靠"
+    ],
+    "risk_notes": [],
+    "summary": "适合鸭绿江沿线夜景和人车同框内容拍摄。",
+    "photo_focus": [
+      "沿江路",
+      "夜景",
+      "人车同框",
+      "river",
+      "night-view",
+      "拍照",
+      "viewpoint"
+    ],
+    "image_key": "candidate-oc-xhs-002",
+    "route_tags": [
+      "辽东",
+      "丹东",
+      "city-riverside",
+      "photo-friendly"
+    ],
+    "nearby_spot_slugs": [],
+    "fuel_support": "unknown",
+    "repair_support": "unknown",
+    "lodging_support": "unknown",
+    "food_support": "unknown",
+    "support_role": [
+      "viewpoint"
+    ],
+    "moto_station_features": [],
+    "confidence_score": "B",
+    "sources": [
+      {
+        "type": "content",
+        "name": "xiaohongshu",
+        "url": "https://www.xiaohongshu.com/explore/liaoning-riverside-night-stop-002",
+        "author": "辽东摩旅路书",
+        "verified": false,
+        "note": "captured_at=2026-05-27"
+      }
+    ],
+    "last_verified_at": ""
+  }
+]

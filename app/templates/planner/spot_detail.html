@@ -15,6 +15,39 @@
       </ul>
     </section>
 
+    <section class="panel">
+      <div class="planner-section-heading">
+        <p class="eyebrow">图片浏览</p>
+        <h2>基于采集数据生成的图卡</h2>
+      </div>
+      <div class="planner-gallery" data-spot-gallery>
+        <div class="planner-gallery__stage panel">
+          <img class="planner-gallery__main-image" id="spot-gallery-main-image" src="{{ spot.image_gallery[0].image_url }}" alt="{{ spot.image_gallery[0].label }}">
+          <div class="planner-gallery__meta">
+            <p class="eyebrow">当前图卡</p>
+            <h3 id="spot-gallery-main-title">{{ spot.image_gallery[0].label }}</h3>
+            <p id="spot-gallery-main-caption">{{ spot.image_gallery[0].caption }}</p>
+            <a class="button-secondary" id="spot-gallery-main-link" href="{{ spot.image_gallery[0].image_url }}" target="_blank" rel="noreferrer">单独打开</a>
+          </div>
+        </div>
+        <div class="planner-gallery__thumbs">
+          {% for image in spot.image_gallery %}
+            <button
+              class="planner-gallery__thumb {% if loop.first %}is-active{% endif %}"
+              type="button"
+              data-image-url="{{ image.image_url }}"
+              data-image-label="{{ image.label }}"
+              data-image-caption="{{ image.caption }}"
+              aria-pressed="{% if loop.first %}true{% else %}false{% endif %}"
+            >
+              <img class="planner-checkpoint-card__image" src="{{ image.image_url }}" alt="{{ image.label }}">
+              <span>{{ image.label }}</span>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
     <section class="planner-grid planner-grid--two">
       <section class="panel">
         <p class="eyebrow">适合什么时候去</p>
@@ -30,6 +63,12 @@
             <li>{{ focus }}</li>
           {% endfor %}
         </ul>
+        <h2>更容易出片的时段</h2>
+        <ul class="planner-chip-list">
+          {% for slot in spot.best_time_of_day %}
+            <li>{{ slot }}</li>
+          {% endfor %}
+        </ul>
       </section>
 
       <section class="panel">
@@ -42,8 +81,93 @@
             <li>{{ item }}</li>
           {% endfor %}
         </ul>
+        <h2>道路特征</h2>
+        <ul class="planner-chip-list">
+          {% for feature in spot.road_features %}
+            <li>{{ feature }}</li>
+          {% endfor %}
+        </ul>
+        <h2>风险提醒</h2>
+        <ul class="planner-note-list">
+          {% for note in spot.risk_notes %}
+            <li>{{ note }}</li>
+          {% endfor %}
+        </ul>
       </section>
     </section>
+
+    <section class="planner-grid planner-grid--two">
+      <section class="panel">
+        <p class="eyebrow">规划属性</p>
+        <h2>结构化标签</h2>
+        <ul class="planner-chip-list">
+          {% for tag in spot.route_tags %}
+            <li>{{ tag }}</li>
+          {% endfor %}
+        </ul>
+        <p>结构化停留时长：{{ spot.stay_duration.min_hours }}-{{ spot.stay_duration.max_hours }} 小时{% if spot.stay_duration.is_overnight %}，支持过夜{% endif %}</p>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">附近可串联</p>
+        <h2>相邻打卡点</h2>
+        <ul class="planner-note-list">
+          {% for nearby in spot.nearby_spots %}
+            <li><a href="{{ nearby.href }}">{{ nearby.name }} · {{ nearby.city }}</a></li>
+          {% endfor %}
+        </ul>
+      </section>
+    </section>
+
+    {% if spot.sources %}
+      <section class="panel">
+        <p class="eyebrow">来源信息</p>
+        <h2>采集来源与作者</h2>
+        <div class="planner-stack">
+          {% for source in spot.sources %}
+            <article class="planner-source-card">
+              <div class="planner-source-card__meta">
+                <span class="planner-source-card__badge">{{ source.type or '未分类来源' }}</span>
+                <span>{{ '已核验' if source.verified else '待核验' }}</span>
+              </div>
+              <h3>{{ source.name or '未命名来源' }}</h3>
+              {% if source.author %}<p>作者 / 提供者：{{ source.author }}</p>{% endif %}
+              {% if source.url %}<p><a href="{{ source.url }}" target="_blank" rel="noreferrer">{{ source.url }}</a></p>{% endif %}
+              {% if source.note %}<p>{{ source.note }}</p>{% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% if recommended_routes %}
+      <section class="panel">
+        <p class="eyebrow">模板挂载建议</p>
+        <h2>更适合挂入这些现有路线模板</h2>
+        <div class="planner-stack">
+          {% for route in recommended_routes %}
+            <article class="planner-route-fit-card">
+              <div class="planner-route-fit-card__header">
+                <div>
+                  <h3>{{ route.title }}</h3>
+                  <p>{{ route.summary }}</p>
+                </div>
+                <span class="planner-route-fit-card__score">匹配度 {{ route.score }}</span>
+              </div>
+              <ul class="planner-note-list">
+                {% for reason in route.reasons %}
+                  <li>{{ reason }}</li>
+                {% endfor %}
+              </ul>
+              <div class="planner-actions">
+                <a class="button-secondary" href="{{ route.route_href }}">查看路线模板</a>
+                <a class="button-primary" href="{{ route.planner_href }}">按这个模板继续规划</a>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
 
     <section class="panel planner-cta-strip">
       <div>
@@ -58,4 +182,43 @@
       </div>
     </section>
   </main>
+  <script>
+    (() => {
+      const gallery = document.querySelector('[data-spot-gallery]');
+      if (!gallery) {
+        return;
+      }
+
+      const mainImage = document.getElementById('spot-gallery-main-image');
+      const mainTitle = document.getElementById('spot-gallery-main-title');
+      const mainCaption = document.getElementById('spot-gallery-main-caption');
+      const mainLink = document.getElementById('spot-gallery-main-link');
+      const thumbs = gallery.querySelectorAll('.planner-gallery__thumb');
+
+      thumbs.forEach((thumb) => {
+        thumb.addEventListener('click', () => {
+          const imageUrl = thumb.dataset.imageUrl;
+          const imageLabel = thumb.dataset.imageLabel;
+          const imageCaption = thumb.dataset.imageCaption;
+
+          if (!imageUrl || !imageLabel) {
+            return;
+          }
+
+          mainImage.src = imageUrl;
+          mainImage.alt = imageLabel;
+          mainTitle.textContent = imageLabel;
+          mainCaption.textContent = imageCaption || '';
+          mainLink.href = imageUrl;
+
+          thumbs.forEach((item) => {
+            item.classList.remove('is-active');
+            item.setAttribute('aria-pressed', 'false');
+          });
+          thumb.classList.add('is-active');
+          thumb.setAttribute('aria-pressed', 'true');
+        });
+      });
+    })();
+  </script>
 {% endblock %}

@@ -1,0 +1,48 @@
+{
+  "source": "openclaw",
+  "exported_at": "2026-05-27T12:00:00+08:00",
+  "items": [
+    {
+      "platform": "douyin",
+      "poiId": "oc-dy-001",
+      "name": "沈阳东郊骑士集合点",
+      "sourceUrl": "https://www.douyin.com/video/liaoning-rider-station-001",
+      "owner": "辽中骑士补给站",
+      "provider": "openclaw",
+      "location": {
+        "city": "沈阳",
+        "region": "辽中",
+        "latitude": 41.8392,
+        "longitude": 123.5174
+      },
+      "poiType": "moto-station",
+      "keywords": ["fuel", "lodging", "repair", "机车合影", "集合"],
+      "excerpt": "适合沈阳东郊出发前集合、补给和夜宿。",
+      "photoTags": ["机车合影", "出发集结", "驿站停车"],
+      "publishedAt": "2026-05-27",
+      "supportTags": ["fuel", "lodging", "repair"],
+      "routeType": "supply-stop"
+    },
+    {
+      "platform": "xiaohongshu",
+      "poiId": "oc-xhs-002",
+      "name": "丹东沿江夜景停靠位",
+      "sourceUrl": "https://www.xiaohongshu.com/explore/liaoning-riverside-night-stop-002",
+      "owner": "辽东摩旅路书",
+      "platformName": "openclaw",
+      "geo": {
+        "lat": 40.1199,
+        "lon": 124.3891
+      },
+      "cityName": "丹东",
+      "regionName": "辽东",
+      "poiType": "scenic-spot",
+      "keywords": ["river", "night-view", "拍照", "viewpoint"],
+      "excerpt": "适合鸭绿江沿线夜景和人车同框内容拍摄。",
+      "photoTags": ["沿江路", "夜景", "人车同框"],
+      "publishedAt": "2026-05-27",
+      "supportTags": ["viewpoint", "fuel"],
+      "routeType": "city-riverside"
+    }
+  ]
+}

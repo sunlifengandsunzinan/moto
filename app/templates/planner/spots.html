@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}辽宁摩旅点位库{% endblock %}
+
+{% block content %}
+  <main class="planner-shell">
+    <section class="panel">
+      <nav class="planner-nav">
+        <a class="planner-brand" href="{{ url_for('moto.moto_home') }}">摩旅计划</a>
+        <div class="planner-nav__links">
+          <a href="/moto/planner">路线规划</a>
+          <a href="/moto/routes">热门路线</a>
+          <a href="/moto/spots">点位库</a>
+          <a href="/moto/spots/collect">录入点位</a>
+        </div>
+      </nav>
+      <p class="eyebrow">点位库</p>
+      <h1>{{ page.title }}</h1>
+      <p class="subtitle">{{ page.description }}</p>
+      <div class="planner-chip-list">
+        <li>总点位 {{ stats.total }}</li>
+        <li>当前展示 {{ stats.visible }}</li>
+        <li>覆盖区域 {{ stats.regions }}</li>
+      </div>
+      <form action="{{ filters.action }}" method="get" class="planner-inline-form">
+        {% for item in filters.fields %}
+          <label>
+            <span>{{ item.label }}</span>
+            <select name="{{ item.name }}">
+              {% for option in item.options %}
+                <option value="{{ option.value }}" {% if option.value == item.value %}selected{% endif %}>{{ option.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        {% endfor %}
+        <button class="button-secondary" type="submit">筛选</button>
+      </form>
+    </section>
+
+    <section class="planner-grid planner-grid--three">
+      {% for spot in spots %}
+        <article class="panel planner-route-card">
+          <a class="planner-spot-card-link" href="{{ spot.href }}">
+            <img class="planner-checkpoint-card__image" src="{{ spot.image_url }}" alt="{{ spot.name }}">
+          </a>
+          <p class="eyebrow">{{ spot.region }} · {{ spot.city }}</p>
+          <h2><a href="{{ spot.href }}">{{ spot.name }}</a></h2>
+          <p>{{ spot.summary }}</p>
+          <ul class="planner-chip-list">
+            <li>{{ spot.route_type_label }}</li>
+            <li>{{ spot.ride_level_label }}</li>
+            {% for slot in spot.best_time_of_day %}
+              <li>{{ slot }}</li>
+            {% endfor %}
+          </ul>
+          <ul class="planner-chip-list">
+            {% for season in spot.season_labels %}
+              <li>{{ season }}</li>
+            {% endfor %}
+          </ul>
+          <ul class="planner-note-list">
+            {% for support in spot.support_labels %}
+              <li>{{ support }}</li>
+            {% endfor %}
+          </ul>
+          <div class="planner-actions">
+            <a class="button-secondary" href="{{ spot.href }}">查看详情</a>
+            <a class="button-primary" href="/moto/planner">加入规划</a>
+          </div>
+        </article>
+      {% else %}
+        <article class="panel">
+          <h2>{{ empty_state.title }}</h2>
+          <p>{{ empty_state.description }}</p>
+          <a class="button-primary" href="{{ empty_state.action.href }}">{{ empty_state.action.label }}</a>
+        </article>
+      {% endfor %}
+    </section>
+  </main>
+{% endblock %}

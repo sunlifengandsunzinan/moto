@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}录入摩旅点位{% endblock %}
+
+{% block content %}
+  <main class="planner-shell">
+    <section class="panel">
+      <nav class="planner-nav">
+        <a class="planner-brand" href="{{ url_for('moto.moto_home') }}">摩旅计划</a>
+        <div class="planner-nav__links">
+          <a href="/moto/planner">路线规划</a>
+          <a href="/moto/routes">热门路线</a>
+          <a href="/moto/spots">点位库</a>
+          <a href="/moto/spots/collect">录入点位</a>
+        </div>
+      </nav>
+      <p class="eyebrow">点位采集</p>
+      <h1>{{ page.title }}</h1>
+      <p class="subtitle">{{ page.description }}</p>
+      {% if candidate_review.selected %}
+        <div class="planner-selected-route">
+          <strong>当前审核候选：</strong>
+          <span>{{ candidate_review.selected.name }} · {{ candidate_review.selected.city }}</span>
+          <span>可信度 {{ candidate_review.selected.confidence_score }} · 来源 {{ candidate_review.selected.source_count }} 个</span>
+        </div>
+      {% endif %}
+      {% if candidate_review.feedback and candidate_review.feedback.decision %}
+        <div class="planner-status-strip">
+          已{{ '批准' if candidate_review.feedback.decision == 'approve' else '拒绝' }}候选：{{ candidate_review.feedback.name }}
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="planner-grid planner-grid--two">
+      <section class="panel planner-form-panel">
+        <div class="planner-section-heading">
+          <p class="eyebrow">录入表单</p>
+          <h2>按固定 schema 填写</h2>
+        </div>
+        <form action="{{ collection_form.action }}" method="{{ collection_form.method }}" class="planner-form">
+          {% for group in collection_form.groups %}
+            <section class="planner-stack">
+              <div class="planner-section-heading">
+                <p class="eyebrow">{{ group.key }}</p>
+                <h3>{{ group.label }}</h3>
+              </div>
+              {% for field in group.fields %}
+                <div class="planner-field">
+                  <label for="{{ field.name }}">{{ field.label }}</label>
+                  <div class="planner-field__meta">
+                    <span>{{ field.type }}</span>
+                    {% if field.required %}<span class="planner-required-badge">必填</span>{% endif %}
+                  </div>
+                  {% if field.component == 'textarea' %}
+                    <textarea id="{{ field.name }}" name="{{ field.name }}">{{ field.value }}</textarea>
+                  {% elif field.component == 'sources' %}
+                    <div class="planner-source-grid planner-source-grid--header" aria-hidden="true">
+                      <span>来源类型</span>
+                      <span>来源名称</span>
+                      <span>来源地址</span>
+                      <span>作者</span>
+                      <span>是否核验</span>
+                      <span>备注</span>
+                    </div>
+                    <div class="planner-stack planner-stack--compact">
+                      {% for row in field.value %}
+                        <div class="planner-source-grid">
+                          <input name="sources_type" type="text" value="{{ row.type }}" placeholder="map / manual / article">
+                          <input name="sources_name" type="text" value="{{ row.name }}" placeholder="来源名称">
+                          <input name="sources_url" type="text" value="{{ row.url }}" placeholder="https://...">
+                          <input name="sources_author" type="text" value="{{ row.author }}" placeholder="作者或提供者">
+                          <select name="sources_verified">
+                            <option value="" {% if row.verified == '' %}selected{% endif %}>未填写</option>
+                            <option value="yes" {% if row.verified == 'yes' %}selected{% endif %}>是</option>
+                            <option value="no" {% if row.verified == 'no' %}selected{% endif %}>否</option>
+                          </select>
+                          <input name="sources_note" type="text" value="{{ row.note }}" placeholder="时间、核验情况、补充说明">
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% elif field.component == 'select' %}
+                    <select id="{{ field.name }}" name="{{ field.name }}">
+                      {% for option in field.options %}
+                        <option value="{{ option.value }}" {% if option.value == field.value %}selected{% endif %}>{{ option.label }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif field.component == 'coordinates' %}
+                    <div class="planner-grid planner-grid--two">
+                      <input id="{{ field.name }}_lat" name="coordinates_lat" type="text" value="{{ field.value.lat }}" placeholder="纬度，例如 38.914">
+                      <input id="{{ field.name }}_lng" name="coordinates_lng" type="text" value="{{ field.value.lng }}" placeholder="经度，例如 121.614">
+                    </div>
+                  {% else %}
+                    <input id="{{ field.name }}" name="{{ field.name }}" type="text" value="{{ field.value }}">
+                  {% endif %}
+                  <p class="planner-field__example">示例：{{ field.example }}</p>
+                </div>
+              {% endfor %}
+            </section>
+          {% endfor %}
+          <button class="button-primary" type="submit">{{ collection_form.submit_label }}</button>
+        </form>
+        {% if candidate_review.selected %}
+          <div class="planner-actions">
+            <form action="/moto/spots/review/{{ candidate_review.selected.slug }}/approve" method="post">
+              <button class="button-primary" type="submit">批准候选</button>
+            </form>
+            <form action="/moto/spots/review/{{ candidate_review.selected.slug }}/reject" method="post">
+              <button class="button-secondary" type="submit">拒绝候选</button>
+            </form>
+          </div>
+        {% endif %}
+      </section>
+
+      <section class="planner-stack">
+        <section class="panel">
+          <div class="planner-section-heading">
+            <p class="eyebrow">候选队列</p>
+            <h2>自动化采集待审核</h2>
+          </div>
+          <ul class="planner-note-list">
+            {% for item in candidate_review.queue %}
+              <li>
+                <strong>{{ item.name }}</strong>
+                <span>{{ item.city }} · 可信度 {{ item.confidence_score }} · 来源 {{ item.source_count }} 个</span>
+                <a href="{{ item.review_href }}">{% if item.is_selected %}当前候选{% else %}载入审核{% endif %}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+
+        <section class="panel">
+          <div class="planner-section-heading">
+            <p class="eyebrow">录入提示</p>
+            <h2>先把结构录准</h2>
+          </div>
+          <ul class="planner-note-list">
+            {% for tip in tips %}
+              <li>{{ tip }}</li>
+            {% endfor %}
+          </ul>
+        </section>
+
+        <section class="panel">
+          <div class="planner-section-heading">
+            <p class="eyebrow">预览结果</p>
+            <h2>结构化记录</h2>
+          </div>
+          {% if preview.missing_required %}
+            <div class="planner-status-strip">
+              还缺这些必填字段：{{ preview.missing_required | join('、') }}
+            </div>
+          {% else %}
+            <div class="planner-status-strip">
+              必填字段已齐，可以继续补充来源和支撑信息。
+            </div>
+          {% endif %}
+          <div class="planner-stack">
+            <div class="planner-section-heading">
+              <p class="eyebrow">图片预览</p>
+              <h3>提交前先看图卡效果</h3>
+            </div>
+            <div class="planner-grid planner-grid--three">
+              {% for image in preview.image_gallery %}
+                <article class="planner-checkpoint-card">
+                  <img class="planner-checkpoint-card__image" src="{{ image.image_url }}" alt="{{ image.label }}">
+                  <div class="planner-checkpoint-card__body">
+                    <h3>{{ image.label }}</h3>
+                    <p>{{ image.caption }}</p>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          </div>
+          <pre class="planner-code-block">{{ preview.json }}</pre>
+        </section>
+      </section>
+    </section>
+  </main>
+{% endblock %}
