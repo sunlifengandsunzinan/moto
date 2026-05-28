@@ -729,3 +729,142 @@ def test_approved_candidate_detail_shows_source_url_and_author(client):
         candidate_path.write_text(original_candidate, encoding="utf-8")
         approved_path.write_text(original_approved, encoding="utf-8")
         rejected_path.write_text(original_rejected, encoding="utf-8")
+
+
+def test_local_collector_monitor_page_renders_status_summary(client, tmp_path, monkeypatch):
+        from app.services import collector_monitor
+
+        status_path = tmp_path / "local_collection_status.json"
+        output_path = tmp_path / "openclaw_export.json"
+        status_path.write_text(
+                """{
+    "state": "success",
+    "run_mode": "loop",
+    "current_stage": "idle",
+    "pipeline_status": "success",
+    "health": "ok",
+    "last_heartbeat": "2026-05-28T09:00:00+00:00",
+    "last_success_at": "2026-05-28T09:00:00+00:00",
+    "last_pipeline_at": "2026-05-28T09:00:05+00:00",
+    "items_collected": 12,
+    "cycle_count": 2,
+    "current_task_index": 108,
+    "tasks_completed": 108,
+    "tasks_total": 108,
+    "last_duration_seconds": 14.2,
+    "pipeline_summary": "adapted openclaw export -> normalized raw candidates",
+    "recent_cycles": [
+        {"cycle": 2, "finished_at": "2026-05-28T09:00:00+00:00", "state": "success", "items_collected": 12, "tasks_completed": 108, "tasks_total": 108, "duration_seconds": 14.2, "pipeline_status": "success"}
+    ],
+    "events": [
+        {"at": "2026-05-28T09:00:00+00:00", "level": "info", "message": "本地采集完成，共输出 12 条候选数据。"}
+    ]
+}
+""",
+                encoding="utf-8",
+        )
+        output_path.write_text(
+                """{
+    "source": "local-collector",
+    "exported_at": "2026-05-28T09:00:00+00:00",
+    "items": [{"name": "测试点位 1"}, {"name": "测试点位 2"}]
+}
+""",
+                encoding="utf-8",
+        )
+
+        monkeypatch.setattr(collector_monitor, "COLLECTOR_STATUS_PATH", status_path)
+        monkeypatch.setattr(collector_monitor, "COLLECTOR_OUTPUT_PATH", output_path)
+
+        response = client.get("/moto/collector/monitor")
+
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert "本地采集监控" in html
+        assert "最近一次成功" in html
+        assert "循环常驻" in html
+        assert "已完成" in html
+        assert "adapted openclaw export -&gt; normalized raw candidates" in html
+        assert "最近几轮采集结果" in html
+        assert "第 2 轮" in html
+        assert "本地采集完成，共输出 12 条候选数据。" in html
+        assert "108 / 108" in html
+
+
+def test_local_collector_monitor_api_returns_status_payload(client, tmp_path, monkeypatch):
+        from app.services import collector_monitor
+
+        status_path = tmp_path / "local_collection_status.json"
+        output_path = tmp_path / "openclaw_export.json"
+        status_path.write_text(
+                """{
+    "state": "sleeping",
+    "run_mode": "loop",
+    "current_stage": "sleeping",
+    "pipeline_status": "success",
+    "last_heartbeat": "2026-05-28T09:05:00+00:00",
+    "last_pipeline_at": "2026-05-28T09:04:58+00:00",
+    "items_collected": 4,
+    "cycle_count": 3,
+    "current_task_index": 108,
+    "tasks_completed": 21,
+    "tasks_total": 108,
+    "current_task": "等待下一轮采集",
+    "next_run_at": "2099-05-28T09:10:00+00:00",
+    "pipeline_summary": "adapted openclaw export -> normalized raw candidates",
+    "recent_cycles": [
+        {"cycle": 3, "finished_at": "2026-05-28T09:04:58+00:00", "state": "success", "items_collected": 4, "tasks_completed": 108, "tasks_total": 108, "duration_seconds": 18.6, "pipeline_status": "success"}
+    ],
+    "events": [
+        {"at": "2026-05-28T09:05:00+00:00", "level": "info", "message": "等待 300 秒后开始下一轮采集。"}
+    ]
+}
+""",
+                encoding="utf-8",
+        )
+        output_path.write_text(
+                """{
+    "source": "local-collector",
+    "exported_at": "2026-05-28T09:00:00+00:00",
+    "items": [{"name": "测试点位"}]
+}
+""",
+                encoding="utf-8",
+        )
+
+        monkeypatch.setattr(collector_monitor, "COLLECTOR_STATUS_PATH", status_path)
+        monkeypatch.setattr(collector_monitor, "COLLECTOR_OUTPUT_PATH", output_path)
+
+        response = client.get("/api/collector-monitor")
+
+        assert response.status_code == 200
+        payload = response.get_json()
+        assert payload["page"]["title"] == "本地采集监控"
+        assert payload["monitor"]["health"]["label"] == "等待下一轮"
+        assert payload["monitor"]["run_mode_label"] == "循环常驻"
+        assert payload["monitor"]["current_stage_label"] == "等待下一轮"
+        assert payload["monitor"]["pipeline_status_label"] == "已完成"
+        assert payload["monitor"]["current_task"] == "等待下一轮采集"
+        assert payload["monitor"]["metrics"][2]["value"] == "1"
+        assert payload["monitor"]["recent_cycles"][0]["cycle"] == "3"
+
+
+    def test_local_collector_monitor_start_and_stop_routes_return_feedback(client, monkeypatch):
+        from app.blueprints.pages import moto as moto_pages
+
+        monkeypatch.setattr(moto_pages, "start_local_collector", lambda interval_seconds: {"pid": 12345, "interval_seconds": interval_seconds})
+        monkeypatch.setattr(moto_pages, "stop_local_collector", lambda: {"pid": 12345})
+
+        start_response = client.post(
+            "/moto/collector/monitor/start",
+            data={"interval_seconds": "600"},
+            follow_redirects=False,
+        )
+        assert start_response.status_code == 302
+        assert "monitor_message=" in start_response.headers["Location"]
+        assert "12345" in start_response.headers["Location"]
+
+        stop_response = client.post("/moto/collector/monitor/stop", follow_redirects=False)
+        assert stop_response.status_code == 302
+        assert "monitor_message=" in stop_response.headers["Location"]
+        assert "12345" in stop_response.headers["Location"]

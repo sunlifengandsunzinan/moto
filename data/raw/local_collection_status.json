@@ -1,0 +1,47 @@
+{
+  "state": "stopped",
+  "run_mode": "loop",
+  "current_stage": "idle",
+  "pipeline_status": "success",
+  "pipeline_summary": "adapted openclaw export -> normalized raw candidates",
+  "cycle_count": 3,
+  "current_task": "当前无采集任务",
+  "current_task_index": 108,
+  "tasks_total": 108,
+  "items_collected": 6,
+  "last_heartbeat": "2026-05-28T01:39:44.182553+00:00",
+  "last_success_at": "2026-05-28T09:59:40+00:00",
+  "last_pipeline_at": "2026-05-28T09:59:50+00:00",
+  "next_run_at": "",
+  "last_duration_seconds": 18.6,
+  "events": [
+    {
+      "at": "2026-05-28T01:39:47.255298+00:00",
+      "level": "info",
+      "message": "已停止本地采集进程，PID=88621。"
+    },
+    {
+      "at": "2026-05-28T01:39:44.183735+00:00",
+      "level": "info",
+      "message": "已启动本地采集进程，PID=88621，间隔 60 秒。"
+    },
+    {
+      "at": "2026-05-28T01:39:14.478527+00:00",
+      "level": "info",
+      "message": "已停止本地采集进程，PID=87639。"
+    },
+    {
+      "at": "2026-05-28T01:39:11.371809+00:00",
+      "level": "info",
+      "message": "已启动本地采集进程，PID=87639，间隔 300 秒。"
+    },
+    {
+      "at": "2026-05-28T10:00:00+00:00",
+      "level": "info",
+      "message": "等待 300 秒后开始下一轮采集。"
+    }
+  ],
+  "health": "warning",
+  "pid": null,
+  "collector_name": "liaoning-local-social-collector"
+}

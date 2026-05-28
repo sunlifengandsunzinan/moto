@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}本地采集监控{% endblock %}
+
+{% block content %}
+  <main class="planner-shell planner-shell--narrow">
+    <section class="panel">
+      <nav class="planner-nav">
+        <a class="planner-brand" href="{{ url_for('moto.moto_home') }}">摩旅计划</a>
+        <div class="planner-nav__links">
+          <a href="/moto/planner">路线规划</a>
+          <a href="/moto/routes">热门路线</a>
+          <a href="/moto/spots">点位库</a>
+          <a href="/moto/collector/monitor">采集监控</a>
+        </div>
+      </nav>
+      <p class="eyebrow">采集监控</p>
+      <div class="panel-hero__header">
+        <div>
+          <h1>{{ page.title }}</h1>
+          <p class="subtitle">{{ page.description }}</p>
+        </div>
+        <span class="status-pill status-pill--{{ monitor.health.kind }}">{{ monitor.health.label }}</span>
+      </div>
+      {% if feedback and feedback.message %}
+        <div class="planner-status-strip collector-monitor-feedback collector-monitor-feedback--{{ feedback.kind }}">{{ feedback.message }}</div>
+      {% endif %}
+      <div class="planner-actions collector-monitor-controls">
+        <form action="/moto/collector/monitor/start" method="post" class="planner-inline-form collector-monitor-start-form">
+          <label>
+            <span>循环间隔</span>
+            <select name="interval_seconds">
+              <option value="60">60 秒</option>
+              <option value="300" selected>300 秒</option>
+              <option value="600">600 秒</option>
+              <option value="1800">1800 秒</option>
+            </select>
+          </label>
+          <button class="button-primary" type="submit" {% if not monitor.process.can_start %}disabled{% endif %}>启动采集</button>
+        </form>
+        <form action="/moto/collector/monitor/stop" method="post">
+          <button class="button-secondary" type="submit" {% if not monitor.process.can_stop %}disabled{% endif %}>停止采集</button>
+        </form>
+      </div>
+      <div class="metrics-grid">
+        {% for item in monitor.metrics %}
+          <article class="metric-card">
+            <span class="metric-label">{{ item.label }}</span>
+            <strong class="metric-value">{{ item.value }}</strong>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel panel-split collector-monitor-grid">
+      <article>
+        <p class="section-label">运行摘要</p>
+        <h2>脚本与状态文件</h2>
+        <ul class="link-list">
+          <li><span>运行命令</span><strong>{{ monitor.script_command }}</strong></li>
+          <li><span>进程 PID</span><strong>{{ monitor.process.pid or '未运行' }}</strong></li>
+          {% for item in monitor.summary %}
+            <li><span>{{ item.label }}</span><strong>{{ item.value }}</strong></li>
+          {% endfor %}
+          <li><span>最近错误</span><strong>{{ monitor.last_error }}</strong></li>
+        </ul>
+      </article>
+      <article>
+        <p class="section-label">当前进度</p>
+        <h2>任务与流水线阶段</h2>
+        <div class="endpoint-list collector-monitor-events">
+          <article class="endpoint-card collector-monitor-event">
+            <span class="endpoint-kind">模式</span>
+            <strong>{{ monitor.run_mode_label }}</strong>
+            <span class="endpoint-path">当前阶段：{{ monitor.current_stage_label }}</span>
+          </article>
+          <article class="endpoint-card collector-monitor-event">
+            <span class="endpoint-kind">任务</span>
+            <strong>{{ monitor.current_task }}</strong>
+            <span class="endpoint-path">流水线：{{ monitor.pipeline_status_label }} · {{ monitor.pipeline_summary }}</span>
+          </article>
+          <article class="endpoint-card collector-monitor-event">
+            <span class="endpoint-kind">调度</span>
+            <strong>下次执行：{{ monitor.next_run_at }}</strong>
+            <span class="endpoint-path">最近流水线：{{ monitor.last_pipeline_at }}</span>
+          </article>
+        </div>
+      </article>
+      <article>
+        <p class="section-label">运行日志</p>
+        <h2>最近事件</h2>
+        <div class="endpoint-list collector-monitor-events">
+          {% for event in monitor.events %}
+            <article class="endpoint-card collector-monitor-event collector-monitor-event--{{ event.level }}">
+              <span class="endpoint-kind">{{ event.level }}</span>
+              <strong>{{ event.at }}</strong>
+              <span class="endpoint-path">{{ event.message }}</span>
+            </article>
+          {% else %}
+            <article class="endpoint-card collector-monitor-event">
+              <span class="endpoint-kind">info</span>
+              <strong>暂无事件</strong>
+              <span class="endpoint-path">本地采集脚本还没有写入状态记录。</span>
+            </article>
+          {% endfor %}
+        </div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="planner-section-heading">
+        <p class="eyebrow">趋势</p>
+        <h2>最近几轮采集结果</h2>
+      </div>
+      <div class="endpoint-list collector-monitor-events collector-monitor-cycles">
+        {% for cycle in monitor.recent_cycles %}
+          <article class="endpoint-card collector-monitor-event">
+            <span class="endpoint-kind">第 {{ cycle.cycle }} 轮</span>
+            <strong>{{ cycle.finished_at }}</strong>
+            <span class="endpoint-path">状态：{{ cycle.state_label }} · 本轮采集：{{ cycle.items_collected }} · 任务进度：{{ cycle.task_progress }}</span>
+            <span class="endpoint-path">流水线：{{ cycle.pipeline_status_label }} · 耗时：{{ cycle.duration }}</span>
+          </article>
+        {% else %}
+          <article class="endpoint-card collector-monitor-event">
+            <span class="endpoint-kind">暂无趋势</span>
+            <strong>还没有采集轮次记录</strong>
+            <span class="endpoint-path">启动本地采集后，这里会展示最近几轮的数量、耗时和流水线状态。</span>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+{% endblock %}

@@ -1,9 +1,12 @@
 from pathlib import Path
 
-from flask import Blueprint, Response, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, Response, jsonify, redirect, render_template, request, send_file, url_for
 
 from ...services import (
     build_liaoning_spot_detail_context,
+    get_collection_monitor_context,
+    start_local_collector,
+    stop_local_collector,
     build_plan_result,
     build_route_recommendations_for_spot,
     build_spot_collection_record,
@@ -32,6 +35,65 @@ KEYFRAME_ROOT = Path(__file__).resolve().parents[3] / "data" / "raw" / "openclaw
 @moto_bp.get("/moto")
 def moto_home() -> str:
     return render_template("planner/home.html", **get_home_context())
+
+
+@moto_bp.get("/moto/collector/monitor")
+def moto_collector_monitor() -> str:
+    context = get_collection_monitor_context()
+    context["feedback"] = {
+        "message": request.args.get("monitor_message", ""),
+        "kind": request.args.get("monitor_kind", "info"),
+    }
+    return render_template("planner/collector_monitor.html", **context)
+
+
+@moto_bp.get("/moto/collector/monitor.json")
+def moto_collector_monitor_json():
+    return jsonify(get_collection_monitor_context())
+
+
+@moto_bp.post("/moto/collector/monitor/start")
+def moto_collector_monitor_start():
+    interval_raw = request.form.get("interval_seconds", "300")
+    try:
+        interval_seconds = max(int(interval_raw), 0)
+        result = start_local_collector(interval_seconds)
+        return redirect(
+            url_for(
+                "moto.moto_collector_monitor",
+                monitor_kind="info",
+                monitor_message=f"已启动本地采集进程，PID={result['pid']}，间隔 {result['interval_seconds']} 秒。",
+            )
+        )
+    except Exception as error:
+        return redirect(
+            url_for(
+                "moto.moto_collector_monitor",
+                monitor_kind="error",
+                monitor_message=str(error),
+            )
+        )
+
+
+@moto_bp.post("/moto/collector/monitor/stop")
+def moto_collector_monitor_stop():
+    try:
+        result = stop_local_collector()
+        return redirect(
+            url_for(
+                "moto.moto_collector_monitor",
+                monitor_kind="info",
+                monitor_message=f"已停止本地采集进程，PID={result['pid']}。",
+            )
+        )
+    except Exception as error:
+        return redirect(
+            url_for(
+                "moto.moto_collector_monitor",
+                monitor_kind="error",
+                monitor_message=str(error),
+            )
+        )
 
 
 @moto_bp.get("/moto/planner")

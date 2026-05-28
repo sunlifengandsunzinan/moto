@@ -708,6 +708,7 @@ def get_home_context() -> dict[str, Any]:
             "links": [
                 {"label": "开始规划", "href": "/moto/planner"},
                 {"label": "热门路线", "href": "/moto/routes"},
+                {"label": "采集监控", "href": "/moto/collector/monitor"},
                 {"label": "定制规划", "href": "/moto/custom"},
             ],
         },

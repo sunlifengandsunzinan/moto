@@ -88,6 +88,22 @@ a {
   font-size: 0.72rem;
 }
 
+.status-pill--ok {
+  background: #2f6b49;
+}
+
+.status-pill--warning {
+  background: #9a6a24;
+}
+
+.status-pill--error {
+  background: #9b3d36;
+}
+
+.status-pill--running {
+  background: #255c84;
+}
+
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -162,6 +178,75 @@ a {
 .endpoint-card strong,
 .endpoint-path {
   word-break: break-word;
+}
+
+.collector-monitor-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.collector-monitor-controls {
+  margin-top: 18px;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.collector-monitor-start-form {
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.collector-monitor-start-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.collector-monitor-feedback {
+  margin-top: 18px;
+}
+
+.collector-monitor-feedback--error {
+  background: rgba(252, 241, 239, 0.94);
+  border-color: rgba(155, 61, 54, 0.18);
+}
+
+.collector-monitor-cycles {
+  display: grid;
+  gap: 14px;
+}
+
+.collector-monitor-events {
+  display: grid;
+  gap: 14px;
+}
+
+.collector-monitor-event {
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.collector-monitor-event--error {
+  border-color: rgba(155, 61, 54, 0.18);
+  background: rgba(252, 241, 239, 0.94);
+}
+
+.collector-monitor-event--warning {
+  border-color: rgba(154, 106, 36, 0.18);
+  background: rgba(255, 248, 238, 0.94);
+}
+
+.collector-monitor-event--info {
+  border-color: rgba(37, 92, 132, 0.16);
+}
+
+.collector-monitor-event strong {
+  margin: 0;
+}
+
+.button-primary:disabled,
+.button-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .planner-shell {
