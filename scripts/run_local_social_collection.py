@@ -17,9 +17,13 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.run_candidate_pipeline import main as run_candidate_pipeline_main
+from scripts.adapt_openclaw_candidates import adapt_openclaw_candidate
+from scripts.normalize_candidate_spots import NORMALIZED_PATH as CANDIDATE_QUEUE_PATH
+from scripts.normalize_candidate_spots import normalize_raw_candidate
 
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "raw" / "openclaw_export.json"
 DEFAULT_STATUS_PATH = PROJECT_ROOT / "data" / "raw" / "local_collection_status.json"
+DEFAULT_RAW_CANDIDATES_PATH = PROJECT_ROOT / "data" / "raw" / "local_collector_candidates.json"
 DEFAULT_SOURCE_PATHS = [PROJECT_ROOT / "data" / "raw" / "openclaw_export.example.json"]
 
 TASK_SPEC = {
@@ -124,6 +128,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--source", action="append", dest="sources", help="Wrapped JSON source file(s) used as local collection feed.")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT_PATH), help="Wrapped export output path.")
     parser.add_argument("--status", default=str(DEFAULT_STATUS_PATH), help="Collector heartbeat/status file path.")
+    parser.add_argument("--raw-candidates-output", default=str(DEFAULT_RAW_CANDIDATES_PATH), help="Raw candidate output path used to feed the pending-review queue.")
     parser.add_argument("--interval", type=int, default=0, help="Repeat interval in seconds. 0 runs once.")
     parser.add_argument("--max-items", type=int, default=TASK_SPEC["max_items_per_keyword"], help="Per-task result cap.")
     parser.add_argument("--skip-pipeline", action="store_true", help="Skip adapt + normalize pipeline after each collection cycle.")
@@ -526,6 +531,188 @@ def write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def read_json_list(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    data = read_json_file(path)
+    return [item for item in data if isinstance(item, dict)] if isinstance(data, list) else []
+
+
+def write_json_list(path: Path, items: list[dict[str, Any]]) -> None:
+    write_json(path, items)
+
+
+def normalize_collected_candidates(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        normalized.append(adapt_openclaw_candidate(item))
+    return normalized
+
+
+def pending_candidates_match(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    left_slug = str(left.get("slug") or "").strip()
+    right_slug = str(right.get("slug") or "").strip()
+    if left_slug and right_slug and left_slug == right_slug:
+        return True
+
+    left_city = str(left.get("city") or "").strip()
+    right_city = str(right.get("city") or "").strip()
+    if left_city and right_city and left_city == right_city:
+        left_name = canonical_place_name(left.get("name") or left.get("raw_name") or "")
+        right_name = canonical_place_name(right.get("name") or right.get("raw_name") or "")
+        if left_name and right_name and left_name == right_name:
+            return True
+    return False
+
+
+def prefer_richer_text(left: Any, right: Any) -> str:
+    left_text = str(left or "").strip()
+    right_text = str(right or "").strip()
+    return right_text if len(right_text) > len(left_text) else left_text
+
+
+def merge_unique_dicts(primary: Any, incoming: Any) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for value in [*(primary or []), *(incoming or [])]:
+        if not isinstance(value, dict):
+            continue
+        key = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(value)
+    return merged
+
+
+def merge_candidate_mappings(primary: Any, incoming: Any) -> dict[str, Any]:
+    left = primary if isinstance(primary, dict) else {}
+    right = incoming if isinstance(incoming, dict) else {}
+    merged = {**left}
+    for key, value in right.items():
+        if isinstance(value, list):
+            merged[key] = dedupe_strings([*(left.get(key) or []), *value])
+            continue
+        if value not in (None, "") and merged.get(key) in (None, ""):
+            merged[key] = value
+            continue
+        if key in {"summary", "transcript", "ocrText", "sceneSummary"}:
+            merged[key] = prefer_richer_text(merged.get(key), value)
+    return merged
+
+
+def merge_pending_candidate(primary: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+    merged = {
+        key: value.copy() if isinstance(value, dict | list) else value
+        for key, value in primary.items()
+    }
+
+    for key in [
+        "spot_type",
+        "city",
+        "region",
+        "route_type",
+        "access_level",
+        "ride_level",
+        "recommended_stay",
+        "video_url",
+        "image_key",
+        "fuel_support",
+        "repair_support",
+        "lodging_support",
+        "food_support",
+        "confidence_score",
+        "last_verified_at",
+    ]:
+        if merged.get(key) in (None, "") and incoming.get(key) not in (None, ""):
+            merged[key] = incoming[key]
+
+    for key in ["name", "summary"]:
+        merged[key] = prefer_richer_text(merged.get(key), incoming.get(key))
+
+    for key in [
+        "spot_markers",
+        "best_seasons",
+        "best_time_of_day",
+        "road_features",
+        "risk_notes",
+        "photo_focus",
+        "image_urls",
+        "keyframe_paths",
+        "route_tags",
+        "nearby_spot_slugs",
+        "support_role",
+        "moto_station_features",
+    ]:
+        merged[key] = dedupe_strings([*(merged.get(key) or []), *(incoming.get(key) or [])])
+
+    if merged.get("parking_friendly") is None and incoming.get("parking_friendly") is not None:
+        merged["parking_friendly"] = incoming["parking_friendly"]
+
+    primary_coordinates = merged.get("coordinates") if isinstance(merged.get("coordinates"), dict) else {}
+    incoming_coordinates = incoming.get("coordinates") if isinstance(incoming.get("coordinates"), dict) else {}
+    merged["coordinates"] = {
+        "lat": primary_coordinates.get("lat") if primary_coordinates.get("lat") is not None else incoming_coordinates.get("lat"),
+        "lng": primary_coordinates.get("lng") if primary_coordinates.get("lng") is not None else incoming_coordinates.get("lng"),
+    }
+    merged["sources"] = merge_unique_dicts(merged.get("sources"), incoming.get("sources"))
+    merged["video_analysis"] = merge_candidate_mappings(merged.get("video_analysis"), incoming.get("video_analysis"))
+    merged["fixed_spot_info"] = merge_candidate_mappings(merged.get("fixed_spot_info"), incoming.get("fixed_spot_info"))
+    return merged
+
+
+def find_matching_pending_candidate(candidates: list[dict[str, Any]], target: dict[str, Any]) -> dict[str, Any] | None:
+    return next((item for item in candidates if pending_candidates_match(item, target)), None)
+
+
+def summarize_pending_queue_delta(before: list[dict[str, Any]], after: list[dict[str, Any]], normalized_candidates: list[dict[str, Any]]) -> dict[str, int]:
+    added = 0
+    updated = 0
+    for candidate in normalized_candidates:
+        before_match = find_matching_pending_candidate(before, candidate)
+        after_match = find_matching_pending_candidate(after, candidate)
+        if before_match is None and after_match is not None:
+            added += 1
+            continue
+        if before_match is not None and after_match is not None:
+            before_snapshot = json.dumps(before_match, ensure_ascii=False, sort_keys=True)
+            after_snapshot = json.dumps(after_match, ensure_ascii=False, sort_keys=True)
+            if before_snapshot != after_snapshot:
+                updated += 1
+    return {
+        "processed": len(normalized_candidates),
+        "added": added,
+        "updated": updated,
+        "total": len(after),
+    }
+
+
+def sync_pending_candidate_queue(raw_candidates: list[dict[str, Any]]) -> dict[str, int]:
+    existing = read_json_list(CANDIDATE_QUEUE_PATH)
+    normalized_candidates = [normalize_raw_candidate(item) for item in raw_candidates if isinstance(item, dict)]
+    added = 0
+    updated = 0
+
+    for incoming in normalized_candidates:
+        match_index = next((index for index, item in enumerate(existing) if pending_candidates_match(item, incoming)), None)
+        if match_index is None:
+            existing.insert(0, incoming)
+            added += 1
+            continue
+        existing[match_index] = merge_pending_candidate(existing[match_index], incoming)
+        updated += 1
+
+    write_json_list(CANDIDATE_QUEUE_PATH, existing)
+    return {
+        "processed": len(normalized_candidates),
+        "added": added,
+        "updated": updated,
+        "total": len(existing),
+    }
+
+
 def update_status(status_path: Path, **changes: Any) -> None:
     current: dict[str, Any] = {}
     if status_path.exists():
@@ -560,7 +747,15 @@ def update_status(status_path: Path, **changes: Any) -> None:
     write_json(status_path, current)
 
 
-def run_once(source_paths: list[Path], output_path: Path, status_path: Path, max_items: int, cycle_index: int, run_pipeline: bool) -> dict[str, Any]:
+def run_once(
+    source_paths: list[Path],
+    output_path: Path,
+    raw_candidates_path: Path,
+    status_path: Path,
+    max_items: int,
+    cycle_index: int,
+    run_pipeline: bool,
+) -> dict[str, Any]:
     source_items = load_source_items(source_paths)
     tasks = build_search_tasks(max_items)
     start = time.time()
@@ -574,6 +769,7 @@ def run_once(source_paths: list[Path], output_path: Path, status_path: Path, max
         last_heartbeat=now_iso(),
         source_paths=[str(path) for path in source_paths],
         output_path=str(output_path),
+        raw_candidates_path=str(raw_candidates_path),
         tasks_total=len(tasks),
         tasks_completed=0,
         items_collected=0,
@@ -624,9 +820,14 @@ def run_once(source_paths: list[Path], output_path: Path, status_path: Path, max
         "items": deduped,
     }
     write_json(output_path, payload)
+    raw_candidates = normalize_collected_candidates(deduped)
+    write_json(raw_candidates_path, raw_candidates)
+    normalized_candidates = [normalize_raw_candidate(item) for item in raw_candidates if isinstance(item, dict)]
 
     pipeline_summary = "skipped"
+    queue_sync = {"processed": 0, "added": 0, "updated": 0, "total": len(read_json_list(CANDIDATE_QUEUE_PATH))}
     if run_pipeline:
+        queue_before = read_json_list(CANDIDATE_QUEUE_PATH)
         update_status(
             status_path,
             state="running",
@@ -639,13 +840,32 @@ def run_once(source_paths: list[Path], output_path: Path, status_path: Path, max
         )
         run_candidate_pipeline_main()
         pipeline_summary = "adapted openclaw export -> normalized raw candidates"
+        queue_after = read_json_list(CANDIDATE_QUEUE_PATH)
+        queue_sync = summarize_pending_queue_delta(queue_before, queue_after, normalized_candidates)
         update_status(
             status_path,
             pipeline_status="success",
             last_pipeline_at=now_iso(),
             pipeline_summary=pipeline_summary,
             last_heartbeat=now_iso(),
+            pending_candidates_processed=queue_sync["processed"],
+            pending_candidates_added=queue_sync["added"],
+            pending_candidates_updated=queue_sync["updated"],
+            pending_candidates_total=queue_sync["total"],
             event_message="adapt + normalize 流水线执行完成。",
+        )
+    else:
+        queue_sync = sync_pending_candidate_queue(raw_candidates)
+        update_status(
+            status_path,
+            last_heartbeat=now_iso(),
+            pipeline_status="skipped",
+            pipeline_summary="skipped pipeline; synced pending review queue directly",
+            pending_candidates_processed=queue_sync["processed"],
+            pending_candidates_added=queue_sync["added"],
+            pending_candidates_updated=queue_sync["updated"],
+            pending_candidates_total=queue_sync["total"],
+            event_message=f"待审批队列已直接同步 {queue_sync['processed']} 条候选数据。",
         )
 
     duration_seconds = round(time.time() - start, 2)
@@ -665,6 +885,10 @@ def run_once(source_paths: list[Path], output_path: Path, status_path: Path, max
         current_task_index=len(tasks),
         last_error="",
         pipeline_summary=pipeline_summary,
+        pending_candidates_processed=queue_sync["processed"],
+        pending_candidates_added=queue_sync["added"],
+        pending_candidates_updated=queue_sync["updated"],
+        pending_candidates_total=queue_sync["total"],
         cycle_entry={
             "cycle": cycle_index,
             "finished_at": now_iso(),
@@ -674,6 +898,10 @@ def run_once(source_paths: list[Path], output_path: Path, status_path: Path, max
             "tasks_total": len(tasks),
             "duration_seconds": duration_seconds,
             "pipeline_status": "success" if run_pipeline else "skipped",
+            "pending_candidates_processed": queue_sync["processed"],
+            "pending_candidates_added": queue_sync["added"],
+            "pending_candidates_updated": queue_sync["updated"],
+            "pending_candidates_total": queue_sync["total"],
         },
         event_message=f"本地采集完成，共输出 {len(deduped)} 条候选数据。",
     )
@@ -684,6 +912,7 @@ def main() -> None:
     args = parse_args()
     source_paths = [Path(value).resolve() for value in args.sources] if args.sources else DEFAULT_SOURCE_PATHS
     output_path = Path(args.output).resolve()
+    raw_candidates_path = Path(args.raw_candidates_output).resolve()
     status_path = Path(args.status).resolve()
     cycle_index = 0
     run_pipeline = not args.skip_pipeline
@@ -691,7 +920,7 @@ def main() -> None:
     while True:
         cycle_index += 1
         try:
-            payload = run_once(source_paths, output_path, status_path, args.max_items, cycle_index, run_pipeline)
+            payload = run_once(source_paths, output_path, raw_candidates_path, status_path, args.max_items, cycle_index, run_pipeline)
             print(f"local collection completed: {len(payload['items'])} items -> {output_path}")
         except Exception as error:  # pragma: no cover - defensive status handling
             update_status(

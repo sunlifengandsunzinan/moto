@@ -1,20 +1,55 @@
 {
   "state": "stopped",
-  "run_mode": "loop",
+  "run_mode": "once",
   "current_stage": "idle",
   "pipeline_status": "success",
   "pipeline_summary": "adapted openclaw export -> normalized raw candidates",
-  "cycle_count": 3,
+  "cycle_count": 1,
   "current_task": "当前无采集任务",
-  "current_task_index": 108,
-  "tasks_total": 108,
-  "items_collected": 6,
-  "last_heartbeat": "2026-05-28T01:39:44.182553+00:00",
-  "last_success_at": "2026-05-28T09:59:40+00:00",
-  "last_pipeline_at": "2026-05-28T09:59:50+00:00",
+  "current_task_index": 240,
+  "tasks_total": 240,
+  "items_collected": 0,
+  "last_heartbeat": "2026-05-28T02:43:51.887630+00:00",
+  "last_success_at": "2026-05-28T02:43:51.887642+00:00",
+  "last_pipeline_at": "2026-05-28T02:43:51.882723+00:00",
   "next_run_at": "",
-  "last_duration_seconds": 18.6,
+  "last_duration_seconds": 1.2,
   "events": [
+    {
+      "at": "2026-05-28T02:44:50.125957+00:00",
+      "level": "info",
+      "message": "已停止本地采集进程，PID=96483。"
+    },
+    {
+      "at": "2026-05-28T02:43:51.896161+00:00",
+      "level": "info",
+      "message": "等待 300 秒后开始下一轮采集。"
+    },
+    {
+      "at": "2026-05-28T02:43:51.891354+00:00",
+      "level": "info",
+      "message": "本地采集完成，共输出 0 条候选数据。"
+    },
+    {
+      "at": "2026-05-28T02:43:51.886509+00:00",
+      "level": "info",
+      "message": "adapt + normalize 流水线执行完成。"
+    },
+    {
+      "at": "2026-05-28T02:43:51.859251+00:00",
+      "level": "info",
+      "message": "采集完成，开始执行 adapt + normalize 流水线。"
+    },
+    {
+      "at": "2026-05-28T02:43:50.687323+00:00",
+      "level": "info",
+      "message": "本地采集任务已启动，第 1 轮。"
+    },
+    {
+      "at": "2026-05-28T02:43:50.573209+00:00",
+      "level": "info",
+      "message": "已启动本地采集进程，PID=96483，间隔 300 秒。"
+    },
     {
       "at": "2026-05-28T01:39:47.255298+00:00",
       "level": "info",
@@ -43,5 +78,40 @@
   ],
   "health": "warning",
   "pid": null,
-  "collector_name": "liaoning-local-social-collector"
+  "collector_name": "liaoning-local-social-collector",
+  "started_at": "2026-05-28T02:43:50.686214+00:00",
+  "source_paths": [
+    "/Users/Lifeng.Sun/workspace/Personal/data/raw/openclaw_export.example.json"
+  ],
+  "output_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/openclaw_export.json",
+  "raw_candidates_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/local_collector_candidates.json",
+  "tasks_completed": 240,
+  "pipeline_enabled": true,
+  "last_error": "",
+  "pending_candidates_processed": 0,
+  "pending_candidates_added": 0,
+  "pending_candidates_updated": 0,
+  "pending_candidates_total": 3,
+  "cycle_entry": {
+    "cycle": 1,
+    "finished_at": "2026-05-28T02:43:51.887653+00:00",
+    "state": "success",
+    "items_collected": 0,
+    "tasks_completed": 240,
+    "tasks_total": 240,
+    "duration_seconds": 1.2,
+    "pipeline_status": "success"
+  },
+  "recent_cycles": [
+    {
+      "cycle": 1,
+      "finished_at": "2026-05-28T02:43:51.887653+00:00",
+      "state": "success",
+      "items_collected": 0,
+      "tasks_completed": 240,
+      "tasks_total": 240,
+      "duration_seconds": 1.2,
+      "pipeline_status": "success"
+    }
+  ]
 }

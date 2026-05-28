@@ -1,11 +1,5 @@
 {
   "source": "local-collector",
-  "items": [
-    {
-      "name": "a"
-    },
-    {
-      "name": "b"
-    }
-  ]
+  "exported_at": "2026-05-28T02:43:51.845062+00:00",
+  "items": []
 }

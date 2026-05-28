@@ -468,6 +468,7 @@ def get_spots_index_context(query: Mapping[str, Any]) -> dict[str, Any]:
             ],
             "active_filters": active_filters,
             "has_active_filters": len(active_filters) > 0,
+            "quick_groups": _spot_quick_filter_groups(spots, region, route_type, support),
         },
         "stats": {
             "total": len(spots),
@@ -546,6 +547,8 @@ def _spot_support_options() -> list[dict[str, str]]:
 
 def _spot_card(spot: Mapping[str, Any]) -> dict[str, Any]:
     video_brief = _spot_video_brief(spot)
+    support_labels = spot["support_labels"]
+    summary_tags = [item for item in [spot["route_type_label"], spot["ride_level_label"], *support_labels[:1]] if item]
     return {
         "name": spot["name"],
         "city": spot["city"],
@@ -555,13 +558,15 @@ def _spot_card(spot: Mapping[str, Any]) -> dict[str, Any]:
         "route_type_label": spot["route_type_label"],
         "ride_level_label": spot["ride_level_label"],
         "season_labels": spot["season_labels"],
-        "support_labels": spot["support_labels"],
+        "support_labels": support_labels,
         "best_time_of_day": spot["best_time_of_day"],
         "quick_meta": [
             spot["route_type_label"],
             spot["ride_level_label"],
             *spot["best_time_of_day"][:2],
         ],
+        "summary_tags": summary_tags,
+        "summary_tags_count": len(summary_tags),
         "video_summary": video_brief["summary"],
         "video_chips": video_brief["chips"],
         "href": f"/moto/spots/liaoning/{spot['slug']}",
@@ -591,6 +596,53 @@ def _spot_active_filters(spots: list[Mapping[str, Any]], region: str, route_type
         )
         filters.append({"label": "支撑", "value": support_label})
     return filters
+
+
+def _spot_quick_filter_groups(
+    spots: list[Mapping[str, Any]],
+    region: str,
+    route_type: str,
+    support: str,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "title": "按区域看",
+            "items": [
+                _spot_quick_filter_item(
+                    label=option["label"],
+                    current=region,
+                    target=option["value"],
+                    query={"region": option["value"], "route_type": route_type, "support": support},
+                )
+                for option in _spot_filter_options(spots, "region", "全部区域")
+            ],
+        },
+        {
+            "title": "按需求看",
+            "items": [
+                _spot_quick_filter_item(
+                    label=option["label"],
+                    current=support,
+                    target=option["value"],
+                    query={"region": region, "route_type": route_type, "support": option["value"]},
+                )
+                for option in _spot_support_options()
+            ],
+        },
+    ]
+
+
+def _spot_quick_filter_item(label: str, current: str, target: str, query: Mapping[str, str]) -> dict[str, Any]:
+    return {
+        "label": label,
+        "href": _build_spot_query_href(query),
+        "is_active": current == target,
+    }
+
+
+def _build_spot_query_href(query: Mapping[str, str]) -> str:
+    pairs = [f"{key}={value}" for key, value in query.items() if value]
+    return "/moto/spots" if not pairs else f"/moto/spots?{'&'.join(pairs)}"
 
 
 def _spot_video_brief(spot: Mapping[str, Any]) -> dict[str, Any]:

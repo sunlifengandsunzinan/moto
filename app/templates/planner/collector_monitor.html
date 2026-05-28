@@ -78,6 +78,7 @@
             <span class="endpoint-kind">任务</span>
             <strong>{{ monitor.current_task }}</strong>
             <span class="endpoint-path">流水线：{{ monitor.pipeline_status_label }} · {{ monitor.pipeline_summary }}</span>
+            <span class="endpoint-path">待审批增量：新增 {{ monitor.pending_queue_delta.added }} · 更新 {{ monitor.pending_queue_delta.updated }} · 队列总量 {{ monitor.pending_queue_delta.total }}</span>
           </article>
           <article class="endpoint-card collector-monitor-event">
             <span class="endpoint-kind">调度</span>
@@ -112,6 +113,15 @@
         <p class="eyebrow">趋势</p>
         <h2>最近几轮采集结果</h2>
       </div>
+      <div class="collector-monitor-trend-cards">
+        {% for item in monitor.pending_trend_cards %}
+          <article class="metric-card collector-monitor-trend-card">
+            <span class="metric-label">{{ item.label }}</span>
+            <strong class="metric-value">{{ item.value }}</strong>
+            <span class="endpoint-path">{{ item.hint }}</span>
+          </article>
+        {% endfor %}
+      </div>
       <div class="endpoint-list collector-monitor-events collector-monitor-cycles">
         {% for cycle in monitor.recent_cycles %}
           <article class="endpoint-card collector-monitor-event">
@@ -119,12 +129,13 @@
             <strong>{{ cycle.finished_at }}</strong>
             <span class="endpoint-path">状态：{{ cycle.state_label }} · 本轮采集：{{ cycle.items_collected }} · 任务进度：{{ cycle.task_progress }}</span>
             <span class="endpoint-path">流水线：{{ cycle.pipeline_status_label }} · 耗时：{{ cycle.duration }}</span>
+            <span class="endpoint-path">待审批增量：{{ cycle.pending_delta }}</span>
           </article>
         {% else %}
           <article class="endpoint-card collector-monitor-event">
             <span class="endpoint-kind">暂无趋势</span>
             <strong>还没有采集轮次记录</strong>
-            <span class="endpoint-path">启动本地采集后，这里会展示最近几轮的数量、耗时和流水线状态。</span>
+            <span class="endpoint-path">启动本地采集后，这里会展示最近几轮的数量、耗时、流水线状态和待审批增量。</span>
           </article>
         {% endfor %}
       </div>

@@ -39,9 +39,9 @@ def get_collection_monitor_context() -> dict[str, Any]:
             "current_stage_label": _stage_label(status.get("current_stage")),
             "pipeline_status_label": _pipeline_status_label(status.get("pipeline_status")),
             "script_command": f".venv/bin/python {COLLECTOR_SCRIPT_PATH.relative_to(PROJECT_ROOT)}",
-            "status_file": str(COLLECTOR_STATUS_PATH.relative_to(PROJECT_ROOT)),
-            "output_file": str(COLLECTOR_OUTPUT_PATH.relative_to(PROJECT_ROOT)),
-            "log_file": str(COLLECTOR_LOG_PATH.relative_to(PROJECT_ROOT)),
+            "status_file": _display_path(COLLECTOR_STATUS_PATH),
+            "output_file": _display_path(COLLECTOR_OUTPUT_PATH),
+            "log_file": _display_path(COLLECTOR_LOG_PATH),
             "last_heartbeat": _display_time(status.get("last_heartbeat")),
             "last_success_at": _display_time(status.get("last_success_at")),
             "last_error_at": _display_time(status.get("last_error_at")),
@@ -50,6 +50,13 @@ def get_collection_monitor_context() -> dict[str, Any]:
             "last_error": str(status.get("last_error") or "无"),
             "current_task": str(status.get("current_task") or "当前无采集任务"),
             "pipeline_summary": str(status.get("pipeline_summary") or "未记录"),
+            "pending_queue_delta": {
+                "processed": str(status.get("pending_candidates_processed", 0)),
+                "added": str(status.get("pending_candidates_added", 0)),
+                "updated": str(status.get("pending_candidates_updated", 0)),
+                "total": str(status.get("pending_candidates_total", 0)),
+            },
+            "pending_trend_cards": _build_pending_trend_cards(status),
             "process": process_info,
             "recent_cycles": _normalize_recent_cycles(status.get("recent_cycles")),
             "events": _normalize_events(status.get("events")),
@@ -61,6 +68,8 @@ def get_collection_monitor_context() -> dict[str, Any]:
                 {"label": "当前阶段", "value": _stage_label(status.get("current_stage"))},
                 {"label": "当前任务序号", "value": f"{task_index} / {task_total}"},
                 {"label": "本轮采集", "value": str(status.get("items_collected", 0))},
+                {"label": "新增待审批", "value": str(status.get("pending_candidates_added", 0))},
+                {"label": "更新待审批", "value": str(status.get("pending_candidates_updated", 0))},
                 {"label": "流水线状态", "value": _pipeline_status_label(status.get("pipeline_status"))},
                 {"label": "轮次", "value": str(status.get("cycle_count", 0))},
                 {"label": "最近耗时", "value": _display_duration(status.get("last_duration_seconds"))},
@@ -73,9 +82,10 @@ def get_collection_monitor_context() -> dict[str, Any]:
                 {"label": "当前任务", "value": str(status.get("current_task") or "当前无采集任务")},
                 {"label": "下次执行", "value": _display_time(status.get("next_run_at"))},
                 {"label": "流水线摘要", "value": str(status.get("pipeline_summary") or "未记录")},
-                {"label": "日志文件", "value": str(COLLECTOR_LOG_PATH.relative_to(PROJECT_ROOT))},
-                {"label": "输出文件", "value": str(COLLECTOR_OUTPUT_PATH.relative_to(PROJECT_ROOT))},
-                {"label": "状态文件", "value": str(COLLECTOR_STATUS_PATH.relative_to(PROJECT_ROOT))},
+                {"label": "待审批增量", "value": f"新增 {status.get('pending_candidates_added', 0)} · 更新 {status.get('pending_candidates_updated', 0)} · 队列总量 {status.get('pending_candidates_total', 0)}"},
+                {"label": "日志文件", "value": _display_path(COLLECTOR_LOG_PATH)},
+                {"label": "输出文件", "value": _display_path(COLLECTOR_OUTPUT_PATH)},
+                {"label": "状态文件", "value": _display_path(COLLECTOR_STATUS_PATH)},
             ],
         },
     }
@@ -164,7 +174,7 @@ def get_collection_process_info(status: dict[str, Any] | None = None) -> dict[st
         "is_running": is_running,
         "can_start": not is_running,
         "can_stop": is_running,
-        "log_file": str(COLLECTOR_LOG_PATH.relative_to(PROJECT_ROOT)),
+        "log_file": _display_path(COLLECTOR_LOG_PATH),
         "default_interval_seconds": DEFAULT_COLLECTOR_INTERVAL_SECONDS,
     }
 
@@ -241,6 +251,13 @@ def _display_duration(value: Any) -> str:
     return f"{seconds:.2f} 秒"
 
 
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def _state_label(value: Any) -> str:
     mapping = {
         "idle": "未启动",
@@ -314,9 +331,57 @@ def _normalize_recent_cycles(value: Any) -> list[dict[str, str]]:
                 "task_progress": f"{item.get('tasks_completed', 0)} / {item.get('tasks_total', 0)}",
                 "duration": _display_duration(item.get("duration_seconds")),
                 "pipeline_status_label": _pipeline_status_label(item.get("pipeline_status")),
+                "pending_delta": f"新增 {item.get('pending_candidates_added', 0)} · 更新 {item.get('pending_candidates_updated', 0)} · 队列总量 {item.get('pending_candidates_total', 0)}",
             }
         )
     return result
+
+
+def _build_pending_trend_cards(status: dict[str, Any]) -> list[dict[str, str]]:
+    recent_cycles = status.get("recent_cycles") if isinstance(status.get("recent_cycles"), list) else []
+    current_added = int(status.get("pending_candidates_added") or 0)
+    current_updated = int(status.get("pending_candidates_updated") or 0)
+    current_total = int(status.get("pending_candidates_total") or 0)
+
+    previous_added = _recent_cycle_metric(recent_cycles, 1, "pending_candidates_added")
+    previous_updated = _recent_cycle_metric(recent_cycles, 1, "pending_candidates_updated")
+    previous_total = _recent_cycle_metric(recent_cycles, 1, "pending_candidates_total")
+
+    recent_three_added = _recent_cycle_sum(recent_cycles, "pending_candidates_added")
+    recent_three_updated = _recent_cycle_sum(recent_cycles, "pending_candidates_updated")
+
+    return [
+        {
+            "label": "新增待审批",
+            "value": str(current_added),
+            "hint": f"上一轮 {previous_added} · 最近 3 轮累计 {recent_three_added}",
+        },
+        {
+            "label": "更新待审批",
+            "value": str(current_updated),
+            "hint": f"上一轮 {previous_updated} · 最近 3 轮累计 {recent_three_updated}",
+        },
+        {
+            "label": "队列总量",
+            "value": str(current_total),
+            "hint": f"上一轮 {previous_total} · 当前待审批池规模",
+        },
+    ]
+
+
+def _recent_cycle_metric(cycles: list[Any], index: int, key: str) -> int:
+    if len(cycles) <= index or not isinstance(cycles[index], dict):
+        return 0
+    return int(cycles[index].get(key) or 0)
+
+
+def _recent_cycle_sum(cycles: list[Any], key: str) -> int:
+    total = 0
+    for item in cycles[:3]:
+        if not isinstance(item, dict):
+            continue
+        total += int(item.get(key) or 0)
+    return total
 
 
 def _read_pid(status: dict[str, Any]) -> int | None:

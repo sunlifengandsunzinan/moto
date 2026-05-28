@@ -386,6 +386,9 @@ def test_spots_index_page_renders_and_filters(client):
         assert "<strong>1</strong>\n          <span>当前展示</span>" in html
         assert "<strong>2</strong>\n          <span>覆盖区域</span>" in html
         assert "当前展示 1 / 3 个点位" in html
+        assert "按区域看" in html
+        assert "按需求看" in html
+        assert "先点常用条件，再决定要不要展开全部筛选" in html
     finally:
         approved_path.write_text(original_approved, encoding="utf-8")
 
@@ -492,6 +495,7 @@ def test_spots_index_page_shows_video_brief_for_approved_spots(client):
                 assert "风景打卡点" in html
                 assert "海岸公路" in html
                 assert "海边落日观景位" in html
+                assert "点开可看图片、来源和适合接入的路线模板。" in html
         finally:
                 approved_path.write_text(original_approved, encoding="utf-8")
 
@@ -751,10 +755,15 @@ def test_local_collector_monitor_page_renders_status_summary(client, tmp_path, m
     "current_task_index": 108,
     "tasks_completed": 108,
     "tasks_total": 108,
+    "pending_candidates_processed": 12,
+    "pending_candidates_added": 5,
+    "pending_candidates_updated": 2,
+    "pending_candidates_total": 31,
     "last_duration_seconds": 14.2,
     "pipeline_summary": "adapted openclaw export -> normalized raw candidates",
     "recent_cycles": [
-        {"cycle": 2, "finished_at": "2026-05-28T09:00:00+00:00", "state": "success", "items_collected": 12, "tasks_completed": 108, "tasks_total": 108, "duration_seconds": 14.2, "pipeline_status": "success"}
+        {"cycle": 2, "finished_at": "2026-05-28T09:00:00+00:00", "state": "success", "items_collected": 12, "tasks_completed": 108, "tasks_total": 108, "duration_seconds": 14.2, "pipeline_status": "success", "pending_candidates_added": 5, "pending_candidates_updated": 2, "pending_candidates_total": 31},
+        {"cycle": 1, "finished_at": "2026-05-28T08:54:00+00:00", "state": "success", "items_collected": 8, "tasks_completed": 108, "tasks_total": 108, "duration_seconds": 12.1, "pipeline_status": "success", "pending_candidates_added": 3, "pending_candidates_updated": 1, "pending_candidates_total": 26}
     ],
     "events": [
         {"at": "2026-05-28T09:00:00+00:00", "level": "info", "message": "本地采集完成，共输出 12 条候选数据。"}
@@ -785,6 +794,10 @@ def test_local_collector_monitor_page_renders_status_summary(client, tmp_path, m
         assert "循环常驻" in html
         assert "已完成" in html
         assert "adapted openclaw export -&gt; normalized raw candidates" in html
+        assert "待审批增量：新增 5 · 更新 2 · 队列总量 31" in html
+        assert "新增待审批" in html
+        assert "上一轮 3 · 最近 3 轮累计 8" in html
+        assert "队列总量" in html
         assert "最近几轮采集结果" in html
         assert "第 2 轮" in html
         assert "本地采集完成，共输出 12 条候选数据。" in html
@@ -811,9 +824,14 @@ def test_local_collector_monitor_api_returns_status_payload(client, tmp_path, mo
     "tasks_total": 108,
     "current_task": "等待下一轮采集",
     "next_run_at": "2099-05-28T09:10:00+00:00",
+    "pending_candidates_processed": 4,
+    "pending_candidates_added": 1,
+    "pending_candidates_updated": 3,
+    "pending_candidates_total": 28,
     "pipeline_summary": "adapted openclaw export -> normalized raw candidates",
     "recent_cycles": [
-        {"cycle": 3, "finished_at": "2026-05-28T09:04:58+00:00", "state": "success", "items_collected": 4, "tasks_completed": 108, "tasks_total": 108, "duration_seconds": 18.6, "pipeline_status": "success"}
+        {"cycle": 3, "finished_at": "2026-05-28T09:04:58+00:00", "state": "success", "items_collected": 4, "tasks_completed": 108, "tasks_total": 108, "duration_seconds": 18.6, "pipeline_status": "success", "pending_candidates_added": 1, "pending_candidates_updated": 3, "pending_candidates_total": 28},
+        {"cycle": 2, "finished_at": "2026-05-28T08:59:58+00:00", "state": "success", "items_collected": 6, "tasks_completed": 108, "tasks_total": 108, "duration_seconds": 16.3, "pipeline_status": "success", "pending_candidates_added": 2, "pending_candidates_updated": 1, "pending_candidates_total": 27}
     ],
     "events": [
         {"at": "2026-05-28T09:05:00+00:00", "level": "info", "message": "等待 300 秒后开始下一轮采集。"}
@@ -847,6 +865,10 @@ def test_local_collector_monitor_api_returns_status_payload(client, tmp_path, mo
         assert payload["monitor"]["current_task"] == "等待下一轮采集"
         assert payload["monitor"]["metrics"][2]["value"] == "1"
         assert payload["monitor"]["recent_cycles"][0]["cycle"] == "3"
+        assert payload["monitor"]["pending_queue_delta"]["added"] == "1"
+        assert payload["monitor"]["recent_cycles"][0]["pending_delta"] == "新增 1 · 更新 3 · 队列总量 28"
+        assert payload["monitor"]["pending_trend_cards"][0]["value"] == "1"
+        assert payload["monitor"]["pending_trend_cards"][0]["hint"] == "上一轮 2 · 最近 3 轮累计 3"
 
 
     def test_local_collector_monitor_start_and_stop_routes_return_feedback(client, monkeypatch):
@@ -868,3 +890,65 @@ def test_local_collector_monitor_api_returns_status_payload(client, tmp_path, mo
         assert stop_response.status_code == 302
         assert "monitor_message=" in stop_response.headers["Location"]
         assert "12345" in stop_response.headers["Location"]
+
+
+    def test_local_collector_run_once_syncs_items_into_pending_queue_when_pipeline_skipped(tmp_path):
+        import json
+        from scripts import run_local_social_collection as collector
+
+        source_path = tmp_path / "source.json"
+        output_path = tmp_path / "openclaw_export.json"
+        raw_candidates_path = tmp_path / "local_collector_candidates.json"
+        status_path = tmp_path / "local_collection_status.json"
+        pending_queue_path = tmp_path / "candidate_spots.json"
+
+        source_path.write_text(
+            json.dumps(
+                {
+                    "items": [
+                        {
+                            "platform": "xiaohongshu",
+                            "title": "大连滨海观景停靠点",
+                            "summary": "海边实拍，适合机车打卡和补油。",
+                            "url": "https://www.xiaohongshu.com/explore/spot-a",
+                            "author": "辽南骑士",
+                            "city": "大连",
+                            "region": "辽南",
+                            "routeType": "coast",
+                            "supportTags": ["fuel", "viewpoint"],
+                            "spotMarkers": ["checkin-point"],
+                            "imageUrls": ["https://example.com/spot-a.jpg"],
+                            "comments": [{"text": "就在大连滨海路边上"}],
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ) + "\n",
+            encoding="utf-8",
+        )
+
+        original_queue_path = collector.CANDIDATE_QUEUE_PATH
+        collector.CANDIDATE_QUEUE_PATH = pending_queue_path
+        try:
+            payload = collector.run_once(
+                [source_path],
+                output_path,
+                raw_candidates_path,
+                status_path,
+                max_items=5,
+                cycle_index=1,
+                run_pipeline=False,
+            )
+
+            queue = json.loads(pending_queue_path.read_text(encoding="utf-8"))
+            raw_candidates = json.loads(raw_candidates_path.read_text(encoding="utf-8"))
+
+            assert len(payload["items"]) == 1
+            assert len(raw_candidates) == 1
+            assert len(queue) == 1
+            assert queue[0]["name"] == "大连滨海观景停靠点"
+            assert queue[0]["city"] == "大连"
+            assert queue[0]["region"] == "辽南"
+            assert queue[0]["route_type"] == "coast"
+        finally:
+            collector.CANDIDATE_QUEUE_PATH = original_queue_path

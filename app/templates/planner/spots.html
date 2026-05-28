@@ -19,6 +19,7 @@
           <p class="eyebrow">点位库</p>
           <h1>{{ page.title }}</h1>
           <p class="subtitle">{{ page.description }}</p>
+          <p class="planner-library-hero__hint">按区域或补给场景快速缩小列表，适合手机里先刷一遍，再进入详情或路线规划。</p>
         </div>
         <div class="planner-actions planner-library-hero__actions">
           {% for action in entry_actions %}
@@ -50,11 +51,23 @@
       <div class="planner-library-toolbar__header">
         <div class="planner-section-heading">
           <p class="eyebrow">快速筛选</p>
-          <h2>先缩小范围，再点进详情</h2>
+          <h2>先点常用条件，再决定要不要展开全部筛选</h2>
         </div>
         <div class="planner-status-strip planner-library-toolbar__status">
           当前展示 {{ stats.visible }} / {{ stats.total }} 个点位
         </div>
+      </div>
+      <div class="planner-library-quick-groups">
+        {% for group in filters.quick_groups %}
+          <div class="planner-library-quick-group">
+            <span>{{ group.title }}</span>
+            <div class="planner-library-quick-group__chips">
+              {% for item in group["items"] %}
+                <a class="planner-library-quick-chip{% if item.is_active %} is-active{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
       </div>
       {% if filters.has_active_filters %}
         <div class="planner-library-active-filters">
@@ -95,6 +108,13 @@
               <div class="planner-library-card__location">{{ spot.region }} · {{ spot.city }}</div>
             </div>
             <div class="planner-library-card__body">
+              {% if spot.summary_tags %}
+                <ul class="planner-chip-list planner-library-chip-list planner-library-chip-list--summary">
+                  {% for item in spot.summary_tags %}
+                    <li>{{ item }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
               <div class="planner-library-card__header">
                 <h2>{{ spot.name }}</h2>
                 <p>{{ spot.summary }}</p>
@@ -128,11 +148,12 @@
               {% if spot.video_summary %}
                 <p class="planner-library-card__video-summary">{{ spot.video_summary }}</p>
               {% endif %}
+              <p class="planner-library-card__tap-hint">点开可看图片、来源和适合接入的路线模板。</p>
             </div>
           </a>
           <div class="planner-actions planner-library-card__footer">
-            <a class="button-primary" href="{{ spot.href }}">查看点位</a>
-            <a class="button-secondary" href="/moto/planner?origin={{ spot.city }}">去规划</a>
+            <a class="button-primary" href="{{ spot.href }}">查看详情</a>
+            <a class="button-secondary" href="/moto/planner?origin={{ spot.city }}">从这里出发</a>
           </div>
         </article>
       {% else %}
