@@ -1,20 +1,35 @@
 {
   "state": "stopped",
-  "run_mode": "once",
+  "run_mode": "manual",
   "current_stage": "idle",
-  "pipeline_status": "success",
+  "pipeline_status": "idle",
   "pipeline_summary": "adapted openclaw export -> normalized raw candidates",
   "cycle_count": 1,
   "current_task": "当前无采集任务",
-  "current_task_index": 240,
+  "current_task_index": 18,
   "tasks_total": 240,
   "items_collected": 0,
-  "last_heartbeat": "2026-05-28T02:43:51.887630+00:00",
+  "last_heartbeat": "2026-05-28T03:04:43.046902+00:00",
   "last_success_at": "2026-05-28T02:43:51.887642+00:00",
   "last_pipeline_at": "2026-05-28T02:43:51.882723+00:00",
   "next_run_at": "",
   "last_duration_seconds": 1.2,
   "events": [
+    {
+      "at": "2026-05-28T03:04:46.088989+00:00",
+      "level": "info",
+      "message": "已停止本地采集进程，PID=6924。"
+    },
+    {
+      "at": "2026-05-28T03:04:42.964195+00:00",
+      "level": "info",
+      "message": "本地采集任务已启动，第 1 轮。"
+    },
+    {
+      "at": "2026-05-28T03:04:42.885398+00:00",
+      "level": "info",
+      "message": "已启动本地采集进程，PID=6924，将持续采集直到手动停止。"
+    },
     {
       "at": "2026-05-28T02:44:50.125957+00:00",
       "level": "info",
@@ -79,13 +94,13 @@
   "health": "warning",
   "pid": null,
   "collector_name": "liaoning-local-social-collector",
-  "started_at": "2026-05-28T02:43:50.686214+00:00",
+  "started_at": "2026-05-28T03:04:42.963437+00:00",
   "source_paths": [
     "/Users/Lifeng.Sun/workspace/Personal/data/raw/openclaw_export.example.json"
   ],
   "output_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/openclaw_export.json",
   "raw_candidates_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/local_collector_candidates.json",
-  "tasks_completed": 240,
+  "tasks_completed": 18,
   "pipeline_enabled": true,
   "last_error": "",
   "pending_candidates_processed": 0,

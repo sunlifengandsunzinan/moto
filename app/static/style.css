@@ -195,9 +195,9 @@ a {
   gap: 12px;
 }
 
-.collector-monitor-start-form label {
-  display: grid;
-  gap: 8px;
+.collector-monitor-start-form__hint {
+  margin: 0;
+  max-width: 28rem;
 }
 
 .collector-monitor-feedback {

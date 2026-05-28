@@ -17,7 +17,6 @@ COLLECTOR_OUTPUT_PATH = PROJECT_ROOT / "data" / "raw" / "openclaw_export.json"
 COLLECTOR_SCRIPT_PATH = PROJECT_ROOT / "scripts" / "run_local_social_collection.py"
 COLLECTOR_LOG_PATH = PROJECT_ROOT / "data" / "raw" / "local_collection.log"
 COLLECTOR_PID_PATH = PROJECT_ROOT / "data" / "raw" / "local_collection.pid"
-DEFAULT_COLLECTOR_INTERVAL_SECONDS = 300
 
 
 def get_collection_monitor_context() -> dict[str, Any]:
@@ -46,7 +45,6 @@ def get_collection_monitor_context() -> dict[str, Any]:
             "last_success_at": _display_time(status.get("last_success_at")),
             "last_error_at": _display_time(status.get("last_error_at")),
             "last_pipeline_at": _display_time(status.get("last_pipeline_at")),
-            "next_run_at": _display_time(status.get("next_run_at")),
             "last_error": str(status.get("last_error") or "无"),
             "current_task": str(status.get("current_task") or "当前无采集任务"),
             "pipeline_summary": str(status.get("pipeline_summary") or "未记录"),
@@ -80,7 +78,6 @@ def get_collection_monitor_context() -> dict[str, Any]:
                 {"label": "最近流水线", "value": _display_time(status.get("last_pipeline_at"))},
                 {"label": "最近错误", "value": _display_time(status.get("last_error_at"))},
                 {"label": "当前任务", "value": str(status.get("current_task") or "当前无采集任务")},
-                {"label": "下次执行", "value": _display_time(status.get("next_run_at"))},
                 {"label": "流水线摘要", "value": str(status.get("pipeline_summary") or "未记录")},
                 {"label": "待审批增量", "value": f"新增 {status.get('pending_candidates_added', 0)} · 更新 {status.get('pending_candidates_updated', 0)} · 队列总量 {status.get('pending_candidates_total', 0)}"},
                 {"label": "日志文件", "value": _display_path(COLLECTOR_LOG_PATH)},
@@ -99,15 +96,13 @@ def get_collection_monitor_api_payload() -> dict[str, Any]:
     }
 
 
-def start_local_collector(interval_seconds: int = DEFAULT_COLLECTOR_INTERVAL_SECONDS) -> dict[str, Any]:
+def start_local_collector() -> dict[str, Any]:
     process_info = get_collection_process_info()
     if process_info["is_running"]:
         raise RuntimeError("本地采集脚本已经在运行。")
 
     python_executable = PROJECT_ROOT / ".venv" / "bin" / "python"
-    command = [str(python_executable if python_executable.exists() else Path(sys.executable)), str(COLLECTOR_SCRIPT_PATH)]
-    if interval_seconds > 0:
-        command.extend(["--interval", str(interval_seconds)])
+    command = [str(python_executable if python_executable.exists() else Path(sys.executable)), str(COLLECTOR_SCRIPT_PATH), "--continuous"]
 
     COLLECTOR_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with COLLECTOR_LOG_PATH.open("a", encoding="utf-8") as log_file:
@@ -123,15 +118,15 @@ def start_local_collector(interval_seconds: int = DEFAULT_COLLECTOR_INTERVAL_SEC
     _update_status_file(
         state="running",
         health="running",
-        run_mode="loop" if interval_seconds > 0 else "once",
+        run_mode="manual",
         current_stage="collecting",
         pid=process.pid,
         last_heartbeat=datetime.now(timezone.utc).isoformat(),
         current_task="正在启动本地采集进程",
         next_run_at="",
-        event_message=f"已启动本地采集进程，PID={process.pid}，间隔 {interval_seconds} 秒。",
+        event_message=f"已启动本地采集进程，PID={process.pid}，将持续采集直到手动停止。",
     )
-    return {"pid": process.pid, "interval_seconds": interval_seconds}
+    return {"pid": process.pid}
 
 
 def stop_local_collector() -> dict[str, Any]:
@@ -175,7 +170,6 @@ def get_collection_process_info(status: dict[str, Any] | None = None) -> dict[st
         "can_start": not is_running,
         "can_stop": is_running,
         "log_file": _display_path(COLLECTOR_LOG_PATH),
-        "default_interval_seconds": DEFAULT_COLLECTOR_INTERVAL_SECONDS,
     }
 
 
@@ -203,17 +197,12 @@ def _build_health(status: dict[str, Any]) -> dict[str, str]:
     state = str(status.get("state") or "idle")
     heartbeat = _parse_time(status.get("last_heartbeat"))
     success = _parse_time(status.get("last_success_at"))
-    next_run_at = _parse_time(status.get("next_run_at"))
     now = datetime.now(timezone.utc)
 
-    if state == "running":
+    if state in {"running", "sleeping"}:
         if heartbeat and (now - heartbeat).total_seconds() <= 180:
             return {"kind": "ok", "label": "采集中"}
         return {"kind": "error", "label": "采集中断"}
-    if state == "sleeping":
-        if next_run_at and next_run_at >= now:
-            return {"kind": "ok", "label": "等待下一轮"}
-        return {"kind": "warning", "label": "等待状态过期"}
     if state == "success":
         if success and (now - success).total_seconds() <= 24 * 3600:
             return {"kind": "ok", "label": "正常"}
@@ -262,7 +251,7 @@ def _state_label(value: Any) -> str:
     mapping = {
         "idle": "未启动",
         "running": "运行中",
-        "sleeping": "等待下一轮",
+        "sleeping": "运行中",
         "success": "最近一次成功",
         "error": "最近一次失败",
         "stopped": "已停止",
@@ -273,7 +262,8 @@ def _state_label(value: Any) -> str:
 def _run_mode_label(value: Any) -> str:
     mapping = {
         "once": "单次执行",
-        "loop": "循环常驻",
+        "loop": "手动常驻",
+        "manual": "手动常驻",
     }
     return mapping.get(str(value or "once"), str(value or "once"))
 
@@ -282,7 +272,7 @@ def _stage_label(value: Any) -> str:
     mapping = {
         "collecting": "正在采集",
         "running-pipeline": "正在执行流水线",
-        "sleeping": "等待下一轮",
+        "sleeping": "正在采集",
         "idle": "空闲",
         "error": "异常",
     }

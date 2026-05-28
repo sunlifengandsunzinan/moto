@@ -54,15 +54,13 @@ def moto_collector_monitor_json():
 
 @moto_bp.post("/moto/collector/monitor/start")
 def moto_collector_monitor_start():
-    interval_raw = request.form.get("interval_seconds", "300")
     try:
-        interval_seconds = max(int(interval_raw), 0)
-        result = start_local_collector(interval_seconds)
+        result = start_local_collector()
         return redirect(
             url_for(
                 "moto.moto_collector_monitor",
                 monitor_kind="info",
-                monitor_message=f"已启动本地采集进程，PID={result['pid']}，间隔 {result['interval_seconds']} 秒。",
+                monitor_message=f"已启动本地采集进程，PID={result['pid']}，将持续采集直到手动停止。",
             )
         )
     except Exception as error:

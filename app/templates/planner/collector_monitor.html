@@ -27,15 +27,7 @@
       {% endif %}
       <div class="planner-actions collector-monitor-controls">
         <form action="/moto/collector/monitor/start" method="post" class="planner-inline-form collector-monitor-start-form">
-          <label>
-            <span>循环间隔</span>
-            <select name="interval_seconds">
-              <option value="60">60 秒</option>
-              <option value="300" selected>300 秒</option>
-              <option value="600">600 秒</option>
-              <option value="1800">1800 秒</option>
-            </select>
-          </label>
+          <p class="planner-footnote collector-monitor-start-form__hint">点击启动后会持续采集，直到你手动点“停止采集”。</p>
           <button class="button-primary" type="submit" {% if not monitor.process.can_start %}disabled{% endif %}>启动采集</button>
         </form>
         <form action="/moto/collector/monitor/stop" method="post">
@@ -81,8 +73,8 @@
             <span class="endpoint-path">待审批增量：新增 {{ monitor.pending_queue_delta.added }} · 更新 {{ monitor.pending_queue_delta.updated }} · 队列总量 {{ monitor.pending_queue_delta.total }}</span>
           </article>
           <article class="endpoint-card collector-monitor-event">
-            <span class="endpoint-kind">调度</span>
-            <strong>下次执行：{{ monitor.next_run_at }}</strong>
+            <span class="endpoint-kind">运行方式</span>
+            <strong>运行方式：手动启动，手动停止</strong>
             <span class="endpoint-path">最近流水线：{{ monitor.last_pipeline_at }}</span>
           </article>
         </div>

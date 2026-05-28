@@ -129,7 +129,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT_PATH), help="Wrapped export output path.")
     parser.add_argument("--status", default=str(DEFAULT_STATUS_PATH), help="Collector heartbeat/status file path.")
     parser.add_argument("--raw-candidates-output", default=str(DEFAULT_RAW_CANDIDATES_PATH), help="Raw candidate output path used to feed the pending-review queue.")
-    parser.add_argument("--interval", type=int, default=0, help="Repeat interval in seconds. 0 runs once.")
+    parser.add_argument("--continuous", action="store_true", help="Keep collecting continuously until the process is stopped.")
     parser.add_argument("--max-items", type=int, default=TASK_SPEC["max_items_per_keyword"], help="Per-task result cap.")
     parser.add_argument("--skip-pipeline", action="store_true", help="Skip adapt + normalize pipeline after each collection cycle.")
     return parser.parse_args()
@@ -755,11 +755,11 @@ def run_once(
     max_items: int,
     cycle_index: int,
     run_pipeline: bool,
+    run_mode: str,
 ) -> dict[str, Any]:
     source_items = load_source_items(source_paths)
     tasks = build_search_tasks(max_items)
     start = time.time()
-    run_mode = "loop" if cycle_index > 1 else "once"
     update_status(
         status_path,
         state="running",
@@ -916,11 +916,12 @@ def main() -> None:
     status_path = Path(args.status).resolve()
     cycle_index = 0
     run_pipeline = not args.skip_pipeline
+    run_mode = "manual" if args.continuous else "once"
 
     while True:
         cycle_index += 1
         try:
-            payload = run_once(source_paths, output_path, raw_candidates_path, status_path, args.max_items, cycle_index, run_pipeline)
+            payload = run_once(source_paths, output_path, raw_candidates_path, status_path, args.max_items, cycle_index, run_pipeline, run_mode)
             print(f"local collection completed: {len(payload['items'])} items -> {output_path}")
         except Exception as error:  # pragma: no cover - defensive status handling
             update_status(
@@ -946,19 +947,17 @@ def main() -> None:
                 event_message=f"本地采集失败：{error}",
             )
             raise
-        if args.interval <= 0:
+        if not args.continuous:
             return
-        next_run_at = datetime.now(timezone.utc).timestamp() + args.interval
         update_status(
             status_path,
-            state="sleeping",
-            health="ok",
-            current_stage="sleeping",
-            next_run_at=datetime.fromtimestamp(next_run_at, tz=timezone.utc).isoformat(),
-            current_task="等待下一轮采集",
-            event_message=f"等待 {args.interval} 秒后开始下一轮采集。",
+            state="running",
+            health="running",
+            current_stage="collecting",
+            next_run_at="",
+            current_task="准备继续采集下一轮",
+            event_message="上一轮采集完成，继续执行下一轮。",
         )
-        time.sleep(args.interval)
 
 
 if __name__ == "__main__":

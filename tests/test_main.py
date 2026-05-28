@@ -743,7 +743,7 @@ def test_local_collector_monitor_page_renders_status_summary(client, tmp_path, m
         status_path.write_text(
                 """{
     "state": "success",
-    "run_mode": "loop",
+    "run_mode": "manual",
     "current_stage": "idle",
     "pipeline_status": "success",
     "health": "ok",
@@ -791,10 +791,11 @@ def test_local_collector_monitor_page_renders_status_summary(client, tmp_path, m
         html = response.get_data(as_text=True)
         assert "本地采集监控" in html
         assert "最近一次成功" in html
-        assert "循环常驻" in html
+        assert "手动常驻" in html
         assert "已完成" in html
         assert "adapted openclaw export -&gt; normalized raw candidates" in html
         assert "待审批增量：新增 5 · 更新 2 · 队列总量 31" in html
+        assert "点击启动后会持续采集，直到你手动点“停止采集”。" in html
         assert "新增待审批" in html
         assert "上一轮 3 · 最近 3 轮累计 8" in html
         assert "队列总量" in html
@@ -811,9 +812,9 @@ def test_local_collector_monitor_api_returns_status_payload(client, tmp_path, mo
         output_path = tmp_path / "openclaw_export.json"
         status_path.write_text(
                 """{
-    "state": "sleeping",
-    "run_mode": "loop",
-    "current_stage": "sleeping",
+    "state": "running",
+    "run_mode": "manual",
+    "current_stage": "collecting",
     "pipeline_status": "success",
     "last_heartbeat": "2026-05-28T09:05:00+00:00",
     "last_pipeline_at": "2026-05-28T09:04:58+00:00",
@@ -822,8 +823,7 @@ def test_local_collector_monitor_api_returns_status_payload(client, tmp_path, mo
     "current_task_index": 108,
     "tasks_completed": 21,
     "tasks_total": 108,
-    "current_task": "等待下一轮采集",
-    "next_run_at": "2099-05-28T09:10:00+00:00",
+    "current_task": "准备继续采集下一轮",
     "pending_candidates_processed": 4,
     "pending_candidates_added": 1,
     "pending_candidates_updated": 3,
@@ -834,7 +834,7 @@ def test_local_collector_monitor_api_returns_status_payload(client, tmp_path, mo
         {"cycle": 2, "finished_at": "2026-05-28T08:59:58+00:00", "state": "success", "items_collected": 6, "tasks_completed": 108, "tasks_total": 108, "duration_seconds": 16.3, "pipeline_status": "success", "pending_candidates_added": 2, "pending_candidates_updated": 1, "pending_candidates_total": 27}
     ],
     "events": [
-        {"at": "2026-05-28T09:05:00+00:00", "level": "info", "message": "等待 300 秒后开始下一轮采集。"}
+        {"at": "2026-05-28T09:05:00+00:00", "level": "info", "message": "上一轮采集完成，继续执行下一轮。"}
     ]
 }
 """,
@@ -858,11 +858,11 @@ def test_local_collector_monitor_api_returns_status_payload(client, tmp_path, mo
         assert response.status_code == 200
         payload = response.get_json()
         assert payload["page"]["title"] == "本地采集监控"
-        assert payload["monitor"]["health"]["label"] == "等待下一轮"
-        assert payload["monitor"]["run_mode_label"] == "循环常驻"
-        assert payload["monitor"]["current_stage_label"] == "等待下一轮"
+        assert payload["monitor"]["health"]["label"] in {"采集中", "正常"}
+        assert payload["monitor"]["run_mode_label"] == "手动常驻"
+        assert payload["monitor"]["current_stage_label"] == "正在采集"
         assert payload["monitor"]["pipeline_status_label"] == "已完成"
-        assert payload["monitor"]["current_task"] == "等待下一轮采集"
+        assert payload["monitor"]["current_task"] == "准备继续采集下一轮"
         assert payload["monitor"]["metrics"][2]["value"] == "1"
         assert payload["monitor"]["recent_cycles"][0]["cycle"] == "3"
         assert payload["monitor"]["pending_queue_delta"]["added"] == "1"
@@ -874,17 +874,17 @@ def test_local_collector_monitor_api_returns_status_payload(client, tmp_path, mo
     def test_local_collector_monitor_start_and_stop_routes_return_feedback(client, monkeypatch):
         from app.blueprints.pages import moto as moto_pages
 
-        monkeypatch.setattr(moto_pages, "start_local_collector", lambda interval_seconds: {"pid": 12345, "interval_seconds": interval_seconds})
+        monkeypatch.setattr(moto_pages, "start_local_collector", lambda: {"pid": 12345})
         monkeypatch.setattr(moto_pages, "stop_local_collector", lambda: {"pid": 12345})
 
         start_response = client.post(
             "/moto/collector/monitor/start",
-            data={"interval_seconds": "600"},
             follow_redirects=False,
         )
         assert start_response.status_code == 302
         assert "monitor_message=" in start_response.headers["Location"]
         assert "12345" in start_response.headers["Location"]
+        assert "%E6%89%8B%E5%8A%A8%E5%81%9C%E6%AD%A2" in start_response.headers["Location"]
 
         stop_response = client.post("/moto/collector/monitor/stop", follow_redirects=False)
         assert stop_response.status_code == 302
