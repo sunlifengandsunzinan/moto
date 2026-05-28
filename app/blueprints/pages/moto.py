@@ -30,6 +30,7 @@ from ...services import (
 
 moto_bp = Blueprint("moto", __name__)
 KEYFRAME_ROOT = Path(__file__).resolve().parents[3] / "data" / "raw" / "openclaw_keyframes"
+LOCAL_VIDEO_ROOT = Path(__file__).resolve().parents[3] / "data" / "raw" / "douyin_videos"
 
 
 @moto_bp.get("/moto")
@@ -168,6 +169,15 @@ def moto_spot_collect_keyframe(keyframe_path: str):
     if KEYFRAME_ROOT.resolve() not in resolved.parents or not resolved.exists() or not resolved.is_file():
         return render_template("404.html"), 404
     return send_file(resolved)
+
+
+@moto_bp.get("/moto/spots/collect/videos/<path:video_path>")
+def moto_spot_collect_video(video_path: str):
+    normalized = Path(video_path)
+    resolved = (LOCAL_VIDEO_ROOT / normalized).resolve()
+    if LOCAL_VIDEO_ROOT.resolve() not in resolved.parents or not resolved.exists() or not resolved.is_file():
+        return render_template("404.html"), 404
+    return send_file(resolved, mimetype="video/mp4")
 
 
 @moto_bp.post("/moto/spots/review/<slug>/<decision>")

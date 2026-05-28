@@ -904,6 +904,13 @@ a {
   align-items: start;
 }
 
+.planner-review-video {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 16px;
+  background: #0f1720;
+}
+
 .planner-status-strip {
   padding: 14px 16px;
   border-radius: 16px;

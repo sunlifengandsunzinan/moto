@@ -94,6 +94,7 @@ def normalize_raw_candidate(item: dict[str, Any]) -> dict[str, Any]:
             or item.get("sourceImages")
         ),
         "video_url": str(item.get("video_url") or item.get("videoUrl") or "").strip(),
+        "local_video_path": str(item.get("local_video_path") or item.get("localVideoPath") or "").strip(),
         "keyframe_paths": normalize_string_list(item.get("keyframe_paths") or item.get("keyframePaths")),
         "video_analysis": normalize_video_analysis(item.get("video_analysis") or item.get("videoAnalysis")),
         "fixed_spot_info": normalize_fixed_spot_info(item.get("fixed_spot_info") or item.get("fixedSpotInfo")),
@@ -203,6 +204,7 @@ def _merge_raw_candidate_pair(primary: dict[str, Any], incoming: dict[str, Any])
         "source_item_url",
         "source_query_url",
         "captured_at",
+        "local_video_path",
     ]:
         if not merged.get(key) and fallback.get(key):
             merged[key] = fallback[key]

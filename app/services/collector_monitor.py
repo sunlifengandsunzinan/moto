@@ -37,10 +37,10 @@ def get_collection_monitor_context() -> dict[str, Any]:
             "run_mode_label": _run_mode_label(status.get("run_mode")),
             "current_stage_label": _stage_label(status.get("current_stage")),
             "pipeline_status_label": _pipeline_status_label(status.get("pipeline_status")),
-            "script_command": f".venv/bin/python {COLLECTOR_SCRIPT_PATH.relative_to(PROJECT_ROOT)}",
-            "status_file": _display_path(COLLECTOR_STATUS_PATH),
-            "output_file": _display_path(COLLECTOR_OUTPUT_PATH),
-            "log_file": _display_path(COLLECTOR_LOG_PATH),
+            "script_command": str(status.get("script_command") or f".venv/bin/python {COLLECTOR_SCRIPT_PATH.relative_to(PROJECT_ROOT)}"),
+            "status_file": _display_dynamic_path(status.get("status_path"), COLLECTOR_STATUS_PATH),
+            "output_file": _display_dynamic_path(status.get("output_path"), COLLECTOR_OUTPUT_PATH),
+            "log_file": _display_dynamic_path(status.get("log_path"), COLLECTOR_LOG_PATH),
             "last_heartbeat": _display_time(status.get("last_heartbeat")),
             "last_success_at": _display_time(status.get("last_success_at")),
             "last_error_at": _display_time(status.get("last_error_at")),
@@ -66,6 +66,9 @@ def get_collection_monitor_context() -> dict[str, Any]:
                 {"label": "当前阶段", "value": _stage_label(status.get("current_stage"))},
                 {"label": "当前任务序号", "value": f"{task_index} / {task_total}"},
                 {"label": "本轮采集", "value": str(status.get("items_collected", 0))},
+                {"label": "单轮下载上限", "value": str(status.get("download_limit") or "未记录")},
+                {"label": "本轮去重跳过", "value": str(status.get("duplicate_candidates_in_run", 0))},
+                {"label": "历史已下载跳过", "value": str(status.get("skipped_already_downloaded", 0))},
                 {"label": "新增待审批", "value": str(status.get("pending_candidates_added", 0))},
                 {"label": "更新待审批", "value": str(status.get("pending_candidates_updated", 0))},
                 {"label": "流水线状态", "value": _pipeline_status_label(status.get("pipeline_status"))},
@@ -79,10 +82,12 @@ def get_collection_monitor_context() -> dict[str, Any]:
                 {"label": "最近错误", "value": _display_time(status.get("last_error_at"))},
                 {"label": "当前任务", "value": str(status.get("current_task") or "当前无采集任务")},
                 {"label": "流水线摘要", "value": str(status.get("pipeline_summary") or "未记录")},
+                {"label": "运行计划", "value": f"计划每 {status.get('expected_run_interval_minutes', '未记录')} 分钟运行一次，每轮最多下载 {status.get('download_limit', '未记录')} 个视频"},
+                {"label": "去重结果", "value": f"本轮重复 {status.get('duplicate_candidates_in_run', 0)} · 历史已下载 {status.get('skipped_already_downloaded', 0)} · 下载上限跳过 {status.get('skipped_download_limit', 0)}"},
                 {"label": "待审批增量", "value": f"新增 {status.get('pending_candidates_added', 0)} · 更新 {status.get('pending_candidates_updated', 0)} · 队列总量 {status.get('pending_candidates_total', 0)}"},
-                {"label": "日志文件", "value": _display_path(COLLECTOR_LOG_PATH)},
-                {"label": "输出文件", "value": _display_path(COLLECTOR_OUTPUT_PATH)},
-                {"label": "状态文件", "value": _display_path(COLLECTOR_STATUS_PATH)},
+                {"label": "日志文件", "value": _display_dynamic_path(status.get('log_path'), COLLECTOR_LOG_PATH)},
+                {"label": "输出文件", "value": _display_dynamic_path(status.get('output_path'), COLLECTOR_OUTPUT_PATH)},
+                {"label": "状态文件", "value": _display_dynamic_path(status.get('status_path'), COLLECTOR_STATUS_PATH)},
             ],
         },
     }
@@ -247,6 +252,13 @@ def _display_path(path: Path) -> str:
         return str(path)
 
 
+def _display_dynamic_path(value: Any, fallback: Path) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return _display_path(fallback)
+    return _display_path(Path(text))
+
+
 def _state_label(value: Any) -> str:
     mapping = {
         "idle": "未启动",
@@ -321,7 +333,10 @@ def _normalize_recent_cycles(value: Any) -> list[dict[str, str]]:
                 "task_progress": f"{item.get('tasks_completed', 0)} / {item.get('tasks_total', 0)}",
                 "duration": _display_duration(item.get("duration_seconds")),
                 "pipeline_status_label": _pipeline_status_label(item.get("pipeline_status")),
-                "pending_delta": f"新增 {item.get('pending_candidates_added', 0)} · 更新 {item.get('pending_candidates_updated', 0)} · 队列总量 {item.get('pending_candidates_total', 0)}",
+                "pending_delta": (
+                    f"新增 {item.get('pending_candidates_added', 0)} · 更新 {item.get('pending_candidates_updated', 0)} · 队列总量 {item.get('pending_candidates_total', 0)}"
+                    f" · 本轮重复 {item.get('duplicate_candidates_in_run', 0)} · 历史已下载 {item.get('skipped_already_downloaded', 0)}"
+                ),
             }
         )
     return result
@@ -332,13 +347,22 @@ def _build_pending_trend_cards(status: dict[str, Any]) -> list[dict[str, str]]:
     current_added = int(status.get("pending_candidates_added") or 0)
     current_updated = int(status.get("pending_candidates_updated") or 0)
     current_total = int(status.get("pending_candidates_total") or 0)
+    current_duplicates = int(status.get("duplicate_candidates_in_run") or 0)
+    current_history_skips = int(status.get("skipped_already_downloaded") or 0)
+    current_download_errors = int(status.get("download_errors") or 0)
 
     previous_added = _recent_cycle_metric(recent_cycles, 1, "pending_candidates_added")
     previous_updated = _recent_cycle_metric(recent_cycles, 1, "pending_candidates_updated")
     previous_total = _recent_cycle_metric(recent_cycles, 1, "pending_candidates_total")
+    previous_duplicates = _recent_cycle_metric(recent_cycles, 1, "duplicate_candidates_in_run")
+    previous_history_skips = _recent_cycle_metric(recent_cycles, 1, "skipped_already_downloaded")
+    previous_download_errors = _recent_cycle_metric(recent_cycles, 1, "download_errors")
 
     recent_three_added = _recent_cycle_sum(recent_cycles, "pending_candidates_added")
     recent_three_updated = _recent_cycle_sum(recent_cycles, "pending_candidates_updated")
+    recent_three_duplicates = _recent_cycle_sum(recent_cycles, "duplicate_candidates_in_run")
+    recent_three_history_skips = _recent_cycle_sum(recent_cycles, "skipped_already_downloaded")
+    recent_three_download_errors = _recent_cycle_sum(recent_cycles, "download_errors")
 
     return [
         {
@@ -355,6 +379,21 @@ def _build_pending_trend_cards(status: dict[str, Any]) -> list[dict[str, str]]:
             "label": "队列总量",
             "value": str(current_total),
             "hint": f"上一轮 {previous_total} · 当前待审批池规模",
+        },
+        {
+            "label": "本轮重复跳过",
+            "value": str(current_duplicates),
+            "hint": f"上一轮 {previous_duplicates} · 最近 3 轮累计 {recent_three_duplicates}",
+        },
+        {
+            "label": "历史已下载跳过",
+            "value": str(current_history_skips),
+            "hint": f"上一轮 {previous_history_skips} · 最近 3 轮累计 {recent_three_history_skips}",
+        },
+        {
+            "label": "下载失败",
+            "value": str(current_download_errors),
+            "hint": f"上一轮 {previous_download_errors} · 最近 3 轮累计 {recent_three_download_errors}",
         },
     ]
 

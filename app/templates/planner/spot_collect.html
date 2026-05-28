@@ -273,6 +273,19 @@
                   视频地址：<a href="{{ candidate_review.selected_media.video_url }}" target="_blank" rel="noreferrer">{{ candidate_review.selected_media.video_url }}</a>
                 </div>
               {% endif %}
+              {% if candidate_review.selected_media.local_video_path %}
+                <div class="planner-status-strip">
+                  本地视频：
+                  {% if candidate_review.selected_media.local_video_href %}
+                    <a href="{{ candidate_review.selected_media.local_video_href }}" target="_blank" rel="noreferrer">{{ candidate_review.selected_media.local_video_path }}</a>
+                  {% else %}
+                    {{ candidate_review.selected_media.local_video_path }}
+                  {% endif %}
+                </div>
+                {% if candidate_review.selected_media.local_video_href %}
+                  <video controls preload="metadata" class="planner-review-video" src="{{ candidate_review.selected_media.local_video_href }}"></video>
+                {% endif %}
+              {% endif %}
               {% if candidate_review.selected_media.keyframes %}
                 <div class="planner-grid planner-grid--three">
                   {% for frame in candidate_review.selected_media.keyframes %}

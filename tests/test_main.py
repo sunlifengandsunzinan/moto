@@ -133,10 +133,14 @@ def test_spot_collection_page_shows_video_review_insights_and_keyframes(client):
         candidate_path = root / "data" / "normalized" / "candidate_spots.json"
         keyframe_dir = root / "data" / "raw" / "openclaw_keyframes" / "dy-test"
         keyframe_path = keyframe_dir / "frame-01.jpg"
+    video_dir = root / "data" / "raw" / "douyin_videos"
+    video_path = video_dir / "video-review-candidate.mp4"
         original_candidate = candidate_path.read_text(encoding="utf-8")
 
         keyframe_dir.mkdir(parents=True, exist_ok=True)
+    video_dir.mkdir(parents=True, exist_ok=True)
         keyframe_path.write_bytes(b"fake-jpeg-data")
+    video_path.write_bytes(b"fake-mp4-data")
 
         try:
                 candidate_path.write_text(
@@ -151,6 +155,7 @@ def test_spot_collection_page_shows_video_review_insights_and_keyframes(client):
         "confidence_score": "B",
         "sources": [],
         "video_url": "https://example.com/test-video.mp4",
+        "local_video_path": "data/raw/douyin_videos/video-review-candidate.mp4",
         "keyframe_paths": ["data/raw/openclaw_keyframes/dy-test/frame-01.jpg"],
         "video_analysis": {
             "summary": "海边夜骑观景点",
@@ -185,6 +190,9 @@ def test_spot_collection_page_shows_video_review_insights_and_keyframes(client):
                 assert "识别后：大连" in html
                 assert "视频推断位置：大连 · 辽南" in html
                 assert "关键帧与视频诊断" in html
+                assert "本地视频：data/raw/douyin_videos/video-review-candidate.mp4" in html
+                assert "/moto/spots/collect/videos/video-review-candidate.mp4" in html
+                assert "<video controls preload=\"metadata\" class=\"planner-review-video\"" in html
                 assert "/moto/spots/collect/keyframes/dy-test/frame-01.jpg" in html
                 assert "海边夜骑观景点" in html
                 assert "这里是大连滨海路，适合夜骑打卡" in html
@@ -202,12 +210,18 @@ def test_spot_collection_page_shows_video_review_insights_and_keyframes(client):
                 keyframe_response = client.get("/moto/spots/collect/keyframes/dy-test/frame-01.jpg")
                 assert keyframe_response.status_code == 200
                 assert keyframe_response.get_data() == b"fake-jpeg-data"
+
+                video_response = client.get("/moto/spots/collect/videos/video-review-candidate.mp4")
+                assert video_response.status_code == 200
+                assert video_response.get_data() == b"fake-mp4-data"
         finally:
                 candidate_path.write_text(original_candidate, encoding="utf-8")
                 if keyframe_path.exists():
                         keyframe_path.unlink()
                 if keyframe_dir.exists():
                         keyframe_dir.rmdir()
+                if video_path.exists():
+                    video_path.unlink()
 
 
 def test_spot_collection_page_builds_structured_preview(client):
@@ -799,6 +813,9 @@ def test_local_collector_monitor_page_renders_status_summary(client, tmp_path, m
         assert "新增待审批" in html
         assert "上一轮 3 · 最近 3 轮累计 8" in html
         assert "队列总量" in html
+        assert "本轮重复跳过" in html
+        assert "历史已下载跳过" in html
+        assert "下载失败" in html
         assert "最近几轮采集结果" in html
         assert "第 2 轮" in html
         assert "本地采集完成，共输出 12 条候选数据。" in html
@@ -869,6 +886,9 @@ def test_local_collector_monitor_api_returns_status_payload(client, tmp_path, mo
         assert payload["monitor"]["recent_cycles"][0]["pending_delta"] == "新增 1 · 更新 3 · 队列总量 28"
         assert payload["monitor"]["pending_trend_cards"][0]["value"] == "1"
         assert payload["monitor"]["pending_trend_cards"][0]["hint"] == "上一轮 2 · 最近 3 轮累计 3"
+        assert payload["monitor"]["pending_trend_cards"][3]["label"] == "本轮重复跳过"
+        assert payload["monitor"]["pending_trend_cards"][4]["label"] == "历史已下载跳过"
+        assert payload["monitor"]["pending_trend_cards"][5]["label"] == "下载失败"
 
 
     def test_local_collector_monitor_start_and_stop_routes_return_feedback(client, monkeypatch):
@@ -952,3 +972,389 @@ def test_local_collector_monitor_api_returns_status_payload(client, tmp_path, mo
             assert queue[0]["route_type"] == "coast"
         finally:
             collector.CANDIDATE_QUEUE_PATH = original_queue_path
+
+
+def test_local_collector_parses_public_search_rss_and_page_meta():
+                from scripts import run_local_social_collection as collector
+
+                rss = """<?xml version='1.0' encoding='utf-8'?>
+<rss version='2.0'>
+    <channel>
+        <item>
+            <title>大连滨海路摩旅实拍</title>
+            <link>https://www.xiaohongshu.com/explore/test-note</link>
+            <description>辽宁摩旅观景与补给记录</description>
+        </item>
+    </channel>
+</rss>
+"""
+                results = collector.parse_search_rss_items(rss)
+                assert results[0]["link"] == "https://www.xiaohongshu.com/explore/test-note"
+
+                html = """
+<html>
+    <head>
+        <title>大连滨海路摩旅实拍</title>
+        <meta property="og:title" content="大连滨海路摩旅实拍" />
+        <meta property="og:description" content="大连滨海路适合机车观景和补油。" />
+        <meta property="og:image" content="https://ci.xiaohongshu.com/test-cover.jpg" />
+        <meta name="keywords" content="辽宁摩旅,大连,滨海路" />
+    </head>
+</html>
+"""
+                item = collector.build_live_item_from_page(
+                        {"platform": "xiaohongshu", "keyword": "辽宁 摩旅", "limit": 5},
+                        results[0],
+                        html,
+                )
+                assert item is not None
+                assert item["city"] == "大连"
+                assert item["region"] == "辽南"
+                assert "https://ci.xiaohongshu.com/test-cover.jpg" in item["imageUrls"]
+
+
+        def test_local_collector_rejects_profile_urls_and_keeps_detail_pages():
+                from scripts import run_local_social_collection as collector
+
+                assert collector.is_supported_search_result_url(
+                    "xiaohongshu",
+                    "https://www.xiaohongshu.com/explore/test-note",
+                ) is True
+                assert collector.is_supported_search_result_url(
+                    "xiaohongshu",
+                    "https://www.xiaohongshu.com/user/profile/123456",
+                ) is False
+                assert collector.is_supported_search_result_url(
+                    "douyin",
+                    "https://www.douyin.com/video/7480000000000000000",
+                ) is True
+                assert collector.is_supported_search_result_url(
+                    "douyin",
+                    "https://www.douyin.com/user/MS4wLjABAAAA",
+                ) is False
+
+
+        def test_deepseek_enrichment_merges_structured_fields_without_overwriting_richer_text():
+                from scripts.deepseek_candidate_enrichment import merge_item_enrichment
+
+                item = {
+                    "platform": "douyin",
+                    "name": "大连滨海夜骑停靠点",
+                    "videoAnalysis": {
+                        "summary": "原始摘要更详细一些",
+                        "ocrText": "滨海路 停车",
+                        "placeHints": ["大连"],
+                    },
+                    "fixedSpotInfo": {
+                        "city": "",
+                        "region": "",
+                        "poiType": "",
+                        "routeType": "",
+                        "supportTags": [],
+                        "spotMarkers": [],
+                        "photoTags": [],
+                        "summary": "",
+                    },
+                }
+                enrichment = {
+                    "poiType": "scenic-spot",
+                    "routeType": "coast",
+                    "supportTags": ["viewpoint", "food"],
+                    "spotMarkers": ["checkin-point", "coffee-stop"],
+                    "photoTags": ["夜景", "海岸线"],
+                    "confidenceScore": "B",
+                    "fixedSpotInfo": {
+                        "city": "大连",
+                        "region": "辽南",
+                        "poiType": "scenic-spot",
+                        "routeType": "coast",
+                        "supportTags": ["viewpoint", "food"],
+                        "spotMarkers": ["checkin-point", "coffee-stop"],
+                        "photoTags": ["夜景", "海岸线"],
+                        "summary": "适合夜骑打卡和咖啡停靠。",
+                    },
+                    "videoAnalysis": {
+                        "summary": "较短摘要",
+                        "sceneSummary": "海边夜景道路，适合机车停靠拍照。",
+                        "routeHints": ["coast"],
+                        "supportHints": ["viewpoint", "food"],
+                    },
+                }
+
+                merged = merge_item_enrichment(item, enrichment)
+
+                assert merged["routeType"] == "coast"
+                assert merged["poiType"] == "scenic-spot"
+                assert merged["confidenceScore"] == "B"
+                assert merged["fixedSpotInfo"]["city"] == "大连"
+                assert merged["fixedSpotInfo"]["region"] == "辽南"
+                assert merged["fixedSpotInfo"]["supportTags"] == ["viewpoint", "food"]
+                assert merged["videoAnalysis"]["summary"] == "原始摘要更详细一些"
+                assert merged["videoAnalysis"]["sceneSummary"] == "海边夜景道路，适合机车停靠拍照。"
+
+
+def test_collect_douyin_videos_extracts_direct_video_candidates_from_payload():
+                                from scripts.collect_douyin_videos import extract_video_candidates_from_payload
+                                from scripts.collect_douyin_videos import resolve_douyin_video_url
+
+                                payload = r'''
+<html>
+    <head>
+        <meta property="og:video" content="https://www.iesdouyin.com/aweme/v1/play/?video_id=123" />
+    </head>
+    <body>
+        <script>
+            window.__DATA__ = {"downloadAddr":"https:\/\/www.iesdouyin.com\/aweme\/v1\/playwm\/?video_id=abc"};
+        </script>
+    </body>
+</html>
+'''
+
+                                candidates = extract_video_candidates_from_payload(payload, "https://www.douyin.com/video/123")
+                                assert "https://www.iesdouyin.com/aweme/v1/playwm/?video_id=abc" in candidates
+
+                                resolved = resolve_douyin_video_url(
+                                                "https://www.douyin.com/video/123",
+                                                payload,
+                                                {"og:video": "https://www.iesdouyin.com/aweme/v1/play/?video_id=123"},
+                                )
+                                assert resolved == "https://www.iesdouyin.com/aweme/v1/play/?video_id=123"
+
+
+def test_collect_douyin_videos_identifies_downloadable_candidates():
+                                from scripts.collect_douyin_videos import is_douyin_candidate
+
+                                assert is_douyin_candidate(
+                                                {"platform": "douyin", "sourceUrl": "https://www.douyin.com/video/7480000000000000000"}
+                                ) is True
+                                assert is_douyin_candidate(
+                                                {"platform": "douyin", "sourceUrl": "https://www.douyin.com/user/MS4wLjABAAAA"}
+                                ) is False
+                                assert is_douyin_candidate(
+                                                {"platform": "douyin", "videoUrl": "https://www.iesdouyin.com/aweme/v1/play/?video_id=123"}
+                                ) is True
+
+
+def test_collect_douyin_videos_builds_raw_candidates_for_downloaded_items_only():
+                                from scripts.collect_douyin_videos import build_raw_candidates
+
+                                raw_candidates = build_raw_candidates(
+                                                [
+                                                                {
+                                                                                "name": "大连滨海夜骑停靠点",
+                                                                                "sourceUrl": "https://www.douyin.com/video/7480000000000000000",
+                                                                                "videoUrl": "https://www.iesdouyin.com/aweme/v1/play/?video_id=123",
+                                                                                "owner": "辽南骑士",
+                                                                                "excerpt": "海边夜骑打卡。",
+                                                                                "keywords": ["大连", "滨海路"],
+                                                                                "imageUrls": ["https://example.com/cover.jpg"],
+                                                                                "capturedAt": "2026-05-28T00:00:00+00:00",
+                                                                                "downloadStatus": "downloaded",
+                                                                                "localVideoPath": "data/raw/douyin_videos/dalian.mp4",
+                                                                },
+                                                                {
+                                                                                "name": "未下载条目",
+                                                                                "sourceUrl": "https://www.douyin.com/video/7480000000000000001",
+                                                                                "downloadStatus": "missing-video-url",
+                                                                },
+                                                ]
+                                )
+
+                                assert len(raw_candidates) == 1
+                                assert raw_candidates[0]["source_item_url"] == "https://www.douyin.com/video/7480000000000000000"
+                                assert raw_candidates[0]["video_url"] == "https://www.iesdouyin.com/aweme/v1/play/?video_id=123"
+                                assert raw_candidates[0]["local_video_path"] == "data/raw/douyin_videos/dalian.mp4"
+
+
+def test_collect_douyin_videos_can_sync_downloaded_items_into_pending_queue(tmp_path):
+                                import scripts.collect_douyin_videos as collector
+                                import scripts.run_local_social_collection as local_collector
+
+                                pending_queue_path = tmp_path / "candidate_spots.json"
+                                original_queue_path = local_collector.CANDIDATE_QUEUE_PATH
+                                local_collector.CANDIDATE_QUEUE_PATH = pending_queue_path
+                                try:
+                                                raw_candidates = collector.build_raw_candidates(
+                                                                [
+                                                                                {
+                                                                                                "name": "大连滨海夜骑停靠点",
+                                                                                                "sourceUrl": "https://www.douyin.com/video/7480000000000000000",
+                                                                                                "videoUrl": "https://www.iesdouyin.com/aweme/v1/play/?video_id=123",
+                                                                                                "owner": "辽南骑士",
+                                                                                                "excerpt": "海边夜骑打卡。",
+                                                                                                "keywords": ["大连", "滨海路"],
+                                                                                                "imageUrls": ["https://example.com/cover.jpg"],
+                                                                                                "capturedAt": "2026-05-28T00:00:00+00:00",
+                                                                                                "downloadStatus": "downloaded",
+                                                                                                "localVideoPath": "data/raw/douyin_videos/dalian.mp4",
+                                                                                }
+                                                                ]
+                                                )
+                                                queue_sync = local_collector.sync_pending_candidate_queue(raw_candidates)
+                                                queue = json.loads(pending_queue_path.read_text(encoding="utf-8"))
+
+                                                assert queue_sync["processed"] == 1
+                                                assert queue_sync["added"] == 1
+                                                assert queue[0]["name"] == "大连滨海夜骑停靠点"
+                                                assert queue[0]["video_url"] == "https://www.iesdouyin.com/aweme/v1/play/?video_id=123"
+                                                assert queue[0]["local_video_path"] == "data/raw/douyin_videos/dalian.mp4"
+                                finally:
+                                                local_collector.CANDIDATE_QUEUE_PATH = original_queue_path
+
+
+def test_collect_douyin_videos_skips_duplicates_in_run_and_history():
+                                from scripts.collect_douyin_videos import dedupe_manifest_items
+
+                                items = [
+                                                {
+                                                                "dedupeKey": "https://www.douyin.com/video/a",
+                                                                "sourceUrl": "https://www.douyin.com/video/a",
+                                                                "videoUrl": "https://www.iesdouyin.com/aweme/v1/play/?video_id=a",
+                                                                "downloadStatus": "pending",
+                                                },
+                                                {
+                                                                "dedupeKey": "https://www.douyin.com/video/a",
+                                                                "sourceUrl": "https://www.douyin.com/video/a",
+                                                                "videoUrl": "https://www.iesdouyin.com/aweme/v1/play/?video_id=a",
+                                                                "downloadStatus": "pending",
+                                                },
+                                                {
+                                                                "dedupeKey": "https://www.douyin.com/video/b",
+                                                                "sourceUrl": "https://www.douyin.com/video/b",
+                                                                "videoUrl": "https://www.iesdouyin.com/aweme/v1/play/?video_id=b",
+                                                                "downloadStatus": "pending",
+                                                },
+                                ]
+                                registry = {
+                                                "downloaded": [
+                                                                {
+                                                                                "dedupe_key": "https://www.douyin.com/video/b",
+                                                                                "sourceUrl": "https://www.douyin.com/video/b",
+                                                                                "videoUrl": "https://www.iesdouyin.com/aweme/v1/play/?video_id=b",
+                                                                }
+                                                ]
+                                }
+
+                                result, stats = dedupe_manifest_items(items, registry)
+
+                                assert result[0]["downloadStatus"] == "pending"
+                                assert result[1]["downloadStatus"] == "skipped-duplicate"
+                                assert result[2]["downloadStatus"] == "skipped-downloaded-history"
+                                assert stats == {
+                                                "duplicates_in_run": 1,
+                                                "already_downloaded": 1,
+                                                "eligible": 1,
+                                }
+
+
+def test_collect_douyin_videos_builds_failure_event_messages_by_reason():
+                                from scripts.collect_douyin_videos import build_failure_event_messages
+
+                                messages = build_failure_event_messages(
+                                                [
+                                                                {
+                                                                                "name": "解析失败视频",
+                                                                                "sourceUrl": "https://www.douyin.com/video/a",
+                                                                                "downloadStatus": "missing-video-url",
+                                                                                "downloadError": "",
+                                                                },
+                                                                {
+                                                                                "name": "网络失败视频",
+                                                                                "sourceUrl": "https://www.douyin.com/video/b",
+                                                                                "downloadStatus": "download-error",
+                                                                                "downloadError": "timed out",
+                                                                },
+                                                                {
+                                                                                "name": "写文件失败视频",
+                                                                                "sourceUrl": "https://www.douyin.com/video/c",
+                                                                                "downloadStatus": "download-error",
+                                                                                "downloadError": "Permission denied",
+                                                                },
+                                                ]
+                                )
+
+                                assert len(messages) == 3
+                                assert "解析不到视频地址 1 条" in messages[0]["message"]
+                                assert "网络失败 1 条" in messages[1]["message"]
+                                assert "写文件失败 1 条" in messages[2]["message"]
+
+
+def test_collector_monitor_context_reads_dynamic_douyin_metrics(tmp_path):
+                                import app.services.collector_monitor as monitor
+
+                                original_status_path = monitor.COLLECTOR_STATUS_PATH
+                                original_output_path = monitor.COLLECTOR_OUTPUT_PATH
+
+                                status_path = tmp_path / "local_collection_status.json"
+                                output_path = tmp_path / "douyin_video_manifest.json"
+                                status_path.write_text(
+                                                json.dumps(
+                                                                {
+                                                                                "collector_name": "douyin-python-video-collector",
+                                                                                "state": "success",
+                                                                                "run_mode": "once",
+                                                                                "current_stage": "idle",
+                                                                                "pipeline_status": "skipped",
+                                                                                "script_command": ".venv/bin/python scripts/collect_douyin_videos.py --download-limit 5",
+                                                                                "output_path": str(output_path),
+                                                                                "log_path": str(tmp_path / "douyin_collection.log"),
+                                                                                "expected_run_interval_minutes": 10,
+                                                                                "download_limit": 5,
+                                                                                "duplicate_candidates_in_run": 2,
+                                                                                "skipped_already_downloaded": 3,
+                                                                                "skipped_download_limit": 1,
+                                                                                "pending_candidates_added": 4,
+                                                                                "pending_candidates_updated": 1,
+                                                                                "pending_candidates_total": 12,
+                                                                                "recent_cycles": [
+                                                                                                {
+                                                                                                                "cycle": 1,
+                                                                                                                "finished_at": "2026-05-28T00:00:00+00:00",
+                                                                                                                "state": "success",
+                                                                                                                "items_collected": 5,
+                                                                                                                "tasks_completed": 8,
+                                                                                                                "tasks_total": 8,
+                                                                                                                "duration_seconds": 12.5,
+                                                                                                                "pipeline_status": "skipped",
+                                                                                                                "pending_candidates_added": 4,
+                                                                                                                "pending_candidates_updated": 1,
+                                                                                                                "pending_candidates_total": 12,
+                                                                                                                "duplicate_candidates_in_run": 2,
+                                                                                                                "skipped_already_downloaded": 3,
+                                                                                                                "download_errors": 1,
+                                                                                                }
+                                                                                ],
+                                                                                "events": [
+                                                                                                {
+                                                                                                                "at": "2026-05-28T00:00:01+00:00",
+                                                                                                                "level": "warning",
+                                                                                                                "message": "失败摘要：网络失败 1 条。样例：网络失败视频 · timed out",
+                                                                                                }
+                                                                                ],
+                                                                },
+                                                                ensure_ascii=False,
+                                                ) + "\n",
+                                                encoding="utf-8",
+                                )
+                                output_path.write_text(json.dumps({"items": [1, 2, 3]}, ensure_ascii=False) + "\n", encoding="utf-8")
+
+                                monitor.COLLECTOR_STATUS_PATH = status_path
+                                monitor.COLLECTOR_OUTPUT_PATH = output_path
+                                try:
+                                                context = monitor.get_collection_monitor_context()
+                                                metrics = {item["label"]: item["value"] for item in context["monitor"]["metrics"]}
+                                                summary = {item["label"]: item["value"] for item in context["monitor"]["summary"]}
+
+                                                assert context["monitor"]["script_command"] == ".venv/bin/python scripts/collect_douyin_videos.py --download-limit 5"
+                                                assert metrics["单轮下载上限"] == "5"
+                                                assert metrics["本轮去重跳过"] == "2"
+                                                assert metrics["历史已下载跳过"] == "3"
+                                                assert "每 10 分钟运行一次" in summary["运行计划"]
+                                                assert "本轮重复 2" in summary["去重结果"]
+                                                assert "历史已下载 3" in context["monitor"]["recent_cycles"][0]["pending_delta"]
+                                                assert context["monitor"]["pending_trend_cards"][3]["value"] == "2"
+                                                assert context["monitor"]["pending_trend_cards"][4]["value"] == "3"
+                                                assert context["monitor"]["events"][0]["message"] == "失败摘要：网络失败 1 条。样例：网络失败视频 · timed out"
+                                finally:
+                                                monitor.COLLECTOR_STATUS_PATH = original_status_path
+                                                monitor.COLLECTOR_OUTPUT_PATH = original_output_path

@@ -3,13 +3,20 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import re
+import ssl
 import sys
 import time
+import xml.etree.ElementTree as ET
 from collections.abc import Iterable
 from datetime import datetime, timezone
+from html import unescape
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote_plus, urljoin, urlparse
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -18,13 +25,26 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from scripts.run_candidate_pipeline import main as run_candidate_pipeline_main
 from scripts.adapt_openclaw_candidates import adapt_openclaw_candidate
+from scripts.deepseek_candidate_enrichment import enrich_items_with_deepseek, is_deepseek_configured
 from scripts.normalize_candidate_spots import NORMALIZED_PATH as CANDIDATE_QUEUE_PATH
 from scripts.normalize_candidate_spots import normalize_raw_candidate
 
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "raw" / "openclaw_export.json"
 DEFAULT_STATUS_PATH = PROJECT_ROOT / "data" / "raw" / "local_collection_status.json"
 DEFAULT_RAW_CANDIDATES_PATH = PROJECT_ROOT / "data" / "raw" / "local_collector_candidates.json"
-DEFAULT_SOURCE_PATHS = [PROJECT_ROOT / "data" / "raw" / "openclaw_export.example.json"]
+DEFAULT_SOURCE_PATHS: list[Path] = []
+DEFAULT_HTTP_TIMEOUT_SECONDS = 20
+LIVE_RESULT_LIMIT_PER_TASK = 6
+HTTP_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
+DEFAULT_TASK_DELAY_MIN_SECONDS = 30
+DEFAULT_TASK_DELAY_MAX_SECONDS = 60
+PLATFORM_SEARCH_DOMAINS = {
+    "douyin": "douyin.com",
+    "xiaohongshu": "xiaohongshu.com",
+}
 
 TASK_SPEC = {
     "name": "liaoning-local-social-collector",
@@ -125,13 +145,17 @@ def now_iso() -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the Liaoning social collector locally without OpenClaw runtime.")
-    parser.add_argument("--source", action="append", dest="sources", help="Wrapped JSON source file(s) used as local collection feed.")
+    parser.add_argument("--source", action="append", dest="sources", help="Wrapped JSON source file(s) used as local collection feed. If omitted, the collector fetches public Douyin/Xiaohongshu pages live.")
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT_PATH), help="Wrapped export output path.")
     parser.add_argument("--status", default=str(DEFAULT_STATUS_PATH), help="Collector heartbeat/status file path.")
     parser.add_argument("--raw-candidates-output", default=str(DEFAULT_RAW_CANDIDATES_PATH), help="Raw candidate output path used to feed the pending-review queue.")
     parser.add_argument("--continuous", action="store_true", help="Keep collecting continuously until the process is stopped.")
     parser.add_argument("--max-items", type=int, default=TASK_SPEC["max_items_per_keyword"], help="Per-task result cap.")
     parser.add_argument("--skip-pipeline", action="store_true", help="Skip adapt + normalize pipeline after each collection cycle.")
+    parser.add_argument("--task-delay-min-seconds", type=float, default=DEFAULT_TASK_DELAY_MIN_SECONDS, help="Minimum delay between live keyword searches.")
+    parser.add_argument("--task-delay-max-seconds", type=float, default=DEFAULT_TASK_DELAY_MAX_SECONDS, help="Maximum delay between live keyword searches.")
+    parser.add_argument("--disable-deepseek", action="store_true", help="Disable DeepSeek-based fixed-field enrichment.")
+    parser.add_argument("--deepseek-timeout-seconds", type=int, default=45, help="Timeout for each DeepSeek enrichment request.")
     return parser.parse_args()
 
 
@@ -517,8 +541,174 @@ def search_local_items(task: dict[str, Any], items: list[dict[str, Any]]) -> lis
     return [item for _, item in scored[: task["limit"]]]
 
 
-def load_source_items(source_paths: list[Path]) -> list[dict[str, Any]]:
+def fetch_remote_text(url: str, timeout_seconds: int = DEFAULT_HTTP_TIMEOUT_SECONDS) -> str:
+    request = Request(url, headers={"User-Agent": HTTP_USER_AGENT, "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"})
+    ssl_context = ssl.create_default_context()
+    try:
+        with urlopen(request, timeout=timeout_seconds, context=ssl_context) as response:
+            charset = response.headers.get_content_charset() or "utf-8"
+            return response.read().decode(charset, errors="ignore")
+    except (ssl.SSLError, URLError) as error:
+        if isinstance(error, URLError) and not isinstance(error.reason, ssl.SSLError):
+            raise
+        insecure_context = ssl._create_unverified_context()
+        with urlopen(request, timeout=timeout_seconds, context=insecure_context) as response:
+            charset = response.headers.get_content_charset() or "utf-8"
+            return response.read().decode(charset, errors="ignore")
+
+
+def strip_html_tags(value: str) -> str:
+    text = re.sub(r"<script\b.*?</script>", " ", value, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<style\b.*?</style>", " ", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<[^>]+>", " ", text)
+    return re.sub(r"\s+", " ", unescape(text)).strip()
+
+
+def parse_search_rss_items(payload: str) -> list[dict[str, str]]:
+    if not payload.strip():
+        return []
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError:
+        return []
+    items: list[dict[str, str]] = []
+    for node in root.findall("./channel/item"):
+        title = strip_html_tags(node.findtext("title") or "")
+        link = (node.findtext("link") or "").strip()
+        description = strip_html_tags(node.findtext("description") or "")
+        if not link:
+            continue
+        items.append({"title": title, "link": link, "description": description})
+    return items
+
+
+def extract_html_title(payload: str) -> str:
+    match = re.search(r"<title[^>]*>(.*?)</title>", payload, flags=re.IGNORECASE | re.DOTALL)
+    return strip_html_tags(match.group(1)) if match else ""
+
+
+def extract_meta_tags(payload: str) -> dict[str, str]:
+    meta: dict[str, str] = {}
+    for match in re.finditer(r"<meta\s+[^>]*(?:name|property)=[\"']([^\"']+)[\"'][^>]*content=[\"']([^\"']*)[\"'][^>]*>", payload, flags=re.IGNORECASE):
+        meta[match.group(1).strip().lower()] = unescape(match.group(2).strip())
+    for match in re.finditer(r"<meta\s+[^>]*content=[\"']([^\"']*)[\"'][^>]*(?:name|property)=[\"']([^\"']+)[\"'][^>]*>", payload, flags=re.IGNORECASE):
+        meta[match.group(2).strip().lower()] = unescape(match.group(1).strip())
+    return meta
+
+
+def infer_city_from_text(value: str) -> str:
+    for city in REGION_MAP:
+        if city in value:
+            return city
+    return ""
+
+
+def collect_public_page_images(payload: str, meta: dict[str, str], base_url: str) -> list[str]:
+    candidates = [
+        meta.get("og:image", ""),
+        meta.get("og:image:url", ""),
+        meta.get("twitter:image", ""),
+        meta.get("image", ""),
+    ]
+    candidates.extend(re.findall(r"https?://[^\"'\s>]+(?:jpg|jpeg|png|webp)(?:\?[^\"'\s>]*)?", payload, flags=re.IGNORECASE))
+    return dedupe_strings(urljoin(base_url, value) if value.startswith("/") else value for value in candidates if value)
+
+
+def build_live_item_from_page(task: dict[str, Any], result: dict[str, str], payload: str) -> dict[str, Any] | None:
+    source_url = result["link"]
+    if PLATFORM_SEARCH_DOMAINS.get(task["platform"], "") not in (urlparse(source_url).netloc or ""):
+        return None
+    meta = extract_meta_tags(payload)
+    title = meta.get("og:title") or meta.get("twitter:title") or extract_html_title(payload) or result["title"]
+    summary = meta.get("description") or meta.get("og:description") or result["description"]
+    text_blob = f"{title} {summary} {result['description']}"
+    city = infer_city_from_text(text_blob)
+    region = REGION_MAP.get(city, "")
+    image_urls = collect_public_page_images(payload, meta, source_url)
+    return {
+        "platform": task["platform"],
+        "title": title,
+        "summary": summary,
+        "url": source_url,
+        "author": meta.get("author") or meta.get("og:site_name") or task["platform"],
+        "city": city,
+        "region": region,
+        "keywords": dedupe_strings([task["keyword"], result["title"], meta.get("keywords", "")]),
+        "contentTags": normalize_string_list(meta.get("keywords")),
+        "imageUrls": image_urls,
+        "publishedAt": meta.get("article:published_time") or meta.get("og:time") or "",
+    }
+
+
+def is_supported_search_result_url(platform: str, source_url: str) -> bool:
+    parsed = urlparse(source_url)
+    host = (parsed.netloc or "").lower()
+    path = (parsed.path or "").lower()
+    if not source_url or PLATFORM_SEARCH_DOMAINS.get(platform, "") not in host:
+        return False
+    if platform == "douyin":
+        if "/user/" in path or "/follow" in path or "/fans" in path:
+            return False
+        return "/video/" in path or "modal_id=" in (parsed.query or "")
+    if platform == "xiaohongshu":
+        if "/user/" in path or "/profile/" in path:
+            return False
+        return "/explore/" in path or "/discovery/item/" in path
+    return False
+
+
+def resolve_task_delay_seconds(delay_range: tuple[float, float] | None) -> float:
+    if delay_range is None:
+        return 0.0
+    minimum, maximum = delay_range
+    floor = max(0.0, float(minimum))
+    ceiling = max(floor, float(maximum))
+    return random.uniform(floor, ceiling)
+
+
+def search_live_items(task: dict[str, Any]) -> list[dict[str, Any]]:
+    domain = PLATFORM_SEARCH_DOMAINS.get(task["platform"])
+    if not domain:
+        return []
+    query = quote_plus(f"site:{domain} {task['keyword']}")
+    rss_url = f"https://www.bing.com/search?format=rss&q={query}"
+    try:
+        rss_payload = fetch_remote_text(rss_url)
+    except Exception:
+        return []
+
+    live_items: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+    for result in parse_search_rss_items(rss_payload):
+        source_url = result["link"]
+        if source_url in seen_urls:
+            continue
+        seen_urls.add(source_url)
+        if domain not in (urlparse(source_url).netloc or ""):
+            continue
+        if not is_supported_search_result_url(task["platform"], source_url):
+            continue
+        try:
+            page_payload = fetch_remote_text(source_url)
+        except Exception:
+            continue
+        item = build_live_item_from_page(task, result, page_payload)
+        if item is None:
+            continue
+        live_items.append(item)
+        if len(live_items) >= min(task["limit"], LIVE_RESULT_LIMIT_PER_TASK):
+            break
+    return live_items
+
+
+def load_source_items(source_paths: list[Path], tasks: list[dict[str, Any]], delay_range: tuple[float, float] | None = None) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
+    if not source_paths:
+        for index, task in enumerate(tasks):
+            if index > 0:
+                time.sleep(resolve_task_delay_seconds(delay_range))
+            items.extend(search_live_items(task))
+        return items
     for path in source_paths:
         if not path.exists():
             continue
@@ -618,6 +808,7 @@ def merge_pending_candidate(primary: dict[str, Any], incoming: dict[str, Any]) -
         "ride_level",
         "recommended_stay",
         "video_url",
+        "local_video_path",
         "image_key",
         "fuel_support",
         "repair_support",
@@ -756,9 +947,12 @@ def run_once(
     cycle_index: int,
     run_pipeline: bool,
     run_mode: str,
+    task_delay_range: tuple[float, float] | None = None,
+    enable_deepseek: bool = True,
+    deepseek_timeout_seconds: int = 45,
 ) -> dict[str, Any]:
-    source_items = load_source_items(source_paths)
     tasks = build_search_tasks(max_items)
+    source_items = load_source_items(source_paths, tasks, task_delay_range)
     start = time.time()
     update_status(
         status_path,
@@ -768,6 +962,7 @@ def run_once(
         started_at=now_iso(),
         last_heartbeat=now_iso(),
         source_paths=[str(path) for path in source_paths],
+        source_mode="live-search" if not source_paths else "local-files",
         output_path=str(output_path),
         raw_candidates_path=str(raw_candidates_path),
         tasks_total=len(tasks),
@@ -776,6 +971,12 @@ def run_once(
         cycle_count=cycle_index,
         run_mode=run_mode,
         pipeline_enabled=run_pipeline,
+        live_search_delay_seconds={
+            "min": task_delay_range[0] if task_delay_range else 0,
+            "max": task_delay_range[1] if task_delay_range else 0,
+        },
+        detail_pages_only=True,
+        ai_enrichment_enabled=enable_deepseek,
         pipeline_status="idle" if run_pipeline else "skipped",
         current_task_index=0,
         pid=os.getpid(),
@@ -813,6 +1014,13 @@ def run_once(
             deduped[existing_index] = merge_items(deduped[existing_index], item)
         else:
             deduped.append(item)
+
+    ai_enrichment_status = "disabled"
+    if enable_deepseek and is_deepseek_configured() and deduped:
+        deduped = enrich_items_with_deepseek(deduped, timeout_seconds=deepseek_timeout_seconds)
+        ai_enrichment_status = "success"
+    elif enable_deepseek:
+        ai_enrichment_status = "skipped-no-api-key"
 
     payload = {
         "source": "local-collector",
@@ -852,6 +1060,7 @@ def run_once(
             pending_candidates_added=queue_sync["added"],
             pending_candidates_updated=queue_sync["updated"],
             pending_candidates_total=queue_sync["total"],
+            ai_enrichment_status=ai_enrichment_status,
             event_message="adapt + normalize 流水线执行完成。",
         )
     else:
@@ -865,6 +1074,7 @@ def run_once(
             pending_candidates_added=queue_sync["added"],
             pending_candidates_updated=queue_sync["updated"],
             pending_candidates_total=queue_sync["total"],
+            ai_enrichment_status=ai_enrichment_status,
             event_message=f"待审批队列已直接同步 {queue_sync['processed']} 条候选数据。",
         )
 
@@ -889,6 +1099,7 @@ def run_once(
         pending_candidates_added=queue_sync["added"],
         pending_candidates_updated=queue_sync["updated"],
         pending_candidates_total=queue_sync["total"],
+        ai_enrichment_status=ai_enrichment_status,
         cycle_entry={
             "cycle": cycle_index,
             "finished_at": now_iso(),
@@ -902,6 +1113,7 @@ def run_once(
             "pending_candidates_added": queue_sync["added"],
             "pending_candidates_updated": queue_sync["updated"],
             "pending_candidates_total": queue_sync["total"],
+            "ai_enrichment_status": ai_enrichment_status,
         },
         event_message=f"本地采集完成，共输出 {len(deduped)} 条候选数据。",
     )
@@ -917,11 +1129,25 @@ def main() -> None:
     cycle_index = 0
     run_pipeline = not args.skip_pipeline
     run_mode = "manual" if args.continuous else "once"
+    task_delay_range = (args.task_delay_min_seconds, args.task_delay_max_seconds)
+    enable_deepseek = not args.disable_deepseek
 
     while True:
         cycle_index += 1
         try:
-            payload = run_once(source_paths, output_path, raw_candidates_path, status_path, args.max_items, cycle_index, run_pipeline, run_mode)
+            payload = run_once(
+                source_paths,
+                output_path,
+                raw_candidates_path,
+                status_path,
+                args.max_items,
+                cycle_index,
+                run_pipeline,
+                run_mode,
+                task_delay_range,
+                enable_deepseek,
+                args.deepseek_timeout_seconds,
+            )
             print(f"local collection completed: {len(payload['items'])} items -> {output_path}")
         except Exception as error:  # pragma: no cover - defensive status handling
             update_status(

@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CANDIDATE_SPOTS_PATH = PROJECT_ROOT / "data" / "normalized" / "candidate_spots.json"
 APPROVED_SPOTS_PATH = PROJECT_ROOT / "data" / "reviewed" / "approved_spots.json"
 REJECTED_SPOTS_PATH = PROJECT_ROOT / "data" / "reviewed" / "rejected_spots.json"
+LOCAL_VIDEO_ROOT = PROJECT_ROOT / "data" / "raw" / "douyin_videos"
 
 
 def get_candidate_spots() -> list[CandidateDict]:
@@ -145,11 +146,25 @@ def build_candidate_review_media(candidate: CandidateDict | None) -> dict[str, A
     ]
     return {
         "video_url": str(source.get("video_url") or source.get("videoUrl") or "").strip(),
+        "local_video_path": str(source.get("local_video_path") or source.get("localVideoPath") or "").strip(),
+        "local_video_href": _local_video_href(str(source.get("local_video_path") or source.get("localVideoPath") or "").strip()),
         "keyframes": keyframes,
         "video_analysis": video_analysis,
         "fixed_spot_info": fixed_spot_info,
         "review_hints": _candidate_review_hints(candidate_slug, fixed_spot_info, video_analysis),
     }
+
+
+def _local_video_href(value: str) -> str:
+    path = str(value or "").strip()
+    if not path:
+        return ""
+    try:
+        relative = (PROJECT_ROOT / path).resolve().relative_to(LOCAL_VIDEO_ROOT.resolve())
+    except ValueError:
+        normalized = path.replace("data/raw/douyin_videos/", "", 1).lstrip("/")
+        return f"/moto/spots/collect/videos/{normalized}" if normalized else ""
+    return f"/moto/spots/collect/videos/{relative.as_posix()}"
 
 
 def _decorate_candidate(candidate: CandidateDict) -> CandidateDict:
