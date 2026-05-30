@@ -81,8 +81,13 @@ Default local backend addresses in the Mini Program are:
 Recommended local flow:
 
 1. start Flask with `python app.py`
-2. open `miniprogram/` in WeChat DevTools
+2. open `miniprogram/` in WeChat DevTools, or open the repository root now that `project.config.json` points `miniprogramRoot` to `miniprogram/`
 3. keep the backend running while the Mini Program requests `/api/moto/*`
+
+If WeChat DevTools reports `app.json not found in root directory`, that means the wrong folder was imported. Use one of these two import roots:
+
+- `miniprogram/`
+- the repository root, which now contains `project.config.json` and redirects DevTools to `miniprogram/`
 
 For a real device build, replace `127.0.0.1` with a domain that is allowed by Mini Program request and web-view settings.
 
