@@ -19,6 +19,7 @@ from ...services import (
     get_custom_plan_context,
     get_home_context,
     get_moto_me_context,
+    get_route_waypoint_collection_context,
     render_liaoning_spot_image_svg,
     get_planner_form_context,
     get_liaoning_moto_spot_by_slug,
@@ -122,6 +123,11 @@ def moto_route_detail(slug: str) -> tuple[str, int] | str:
     if route is None:
         return render_template("404.html"), 404
     return render_template("planner/route_detail.html", **build_route_detail_context(route))
+
+
+@moto_bp.get("/moto/routes/collect")
+def moto_route_collect() -> str:
+    return render_template("planner/route_collect.html", **get_route_waypoint_collection_context(request.args.get("route")))
 
 
 @moto_bp.get("/moto/spots/liaoning/<slug>")

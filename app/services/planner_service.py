@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import json
 from typing import Any, Mapping
 from urllib.parse import quote
@@ -16,6 +17,7 @@ from .liaoning_spots import (
 )
 from .candidate_spots import build_candidate_review_media, candidate_to_collection_record, get_candidate_spot_by_slug, get_candidate_spots
 from .candidate_spots import get_reviewed_spots
+from .route_templates_config import load_route_templates
 
 
 RouteDict = dict[str, Any]
@@ -847,27 +849,23 @@ def build_moto_tabbar(active_tab: str) -> dict[str, Any]:
 
 
 def get_moto_me_context() -> dict[str, Any]:
-    spots = get_liaoning_moto_spots()
     route_templates = get_route_templates()
-    reviewed_spots = get_reviewed_spots()
-    approved_count = len(reviewed_spots["approved"])
-    rejected_count = len(reviewed_spots["rejected"])
 
     return {
         "page": {
             "title": "我的摩旅",
-            "description": "把常用入口、已沉淀的数据和当前采集状态放在一个页面里，适合小程序底部第三个 tab。",
+            "description": "把路线规划、直接导航和定制需求集中到一个页面里，更适合两 tab 的小程序结构。",
         },
         "profile": {
             "name": "摩旅计划",
-            "tagline": "路线规划 · 点位沉淀 · 采集联动",
-            "summary": "当前版本先打通路线、点位和个人工作台，后续可以继续接登录、收藏和真实行程记录。",
+            "tagline": "路线规划 · 直接导航 · 行程定制",
+            "summary": "当前版本聚焦路线选择和出发决策，先让小程序更像一个轻量的摩旅路线工具。",
         },
         "metrics": [
             {"label": "路线模板", "value": len(route_templates)},
-            {"label": "打卡点", "value": len(spots)},
-            {"label": "已批准", "value": approved_count},
-            {"label": "已拒绝", "value": rejected_count},
+            {"label": "时长分档", "value": 4},
+            {"label": "可直接导航", "value": len(route_templates)},
+            {"label": "近期推荐", "value": min(3, len(route_templates))},
         ],
         "sections": [
             {
@@ -879,14 +877,19 @@ def get_moto_me_context() -> dict[str, Any]:
                         "href": "/moto/planner",
                     },
                     {
-                        "label": "点位录入审核",
-                        "description": "处理候选点位，补全结构化字段。",
-                        "href": "/moto/spots/collect",
+                        "label": "查看路线库",
+                        "description": "按骑行时间快速切换路线，并直接跳转导航。",
+                        "href": "/moto/routes",
                     },
                     {
-                        "label": "采集监控",
-                        "description": "查看本地采集状态，启动或停止采集进程。",
-                        "href": "/moto/collector/monitor",
+                        "label": "提交定制需求",
+                        "description": "如果不想自己筛路线，可以直接提交定制行程。",
+                        "href": "/moto/custom",
+                    },
+                    {
+                        "label": "采集导航点",
+                        "description": "为路线补充经纬度、途径点顺序和来源备注。",
+                        "href": "/moto/routes/collect",
                     },
                 ],
             },
@@ -904,7 +907,8 @@ def get_moto_me_context() -> dict[str, Any]:
         ],
         "quick_actions": [
             {"label": "路线库", "href": "/moto/routes", "kind": "primary"},
-            {"label": "打卡点库", "href": "/moto/spots", "kind": "secondary"},
+            {"label": "定制需求", "href": "/moto/custom", "kind": "secondary"},
+            {"label": "采集导航点", "href": "/moto/routes/collect", "kind": "secondary"},
         ],
     }
 
@@ -1054,486 +1058,131 @@ def get_planner_form_context(route_slug: str | None = None, origin: str | None =
 
 
 def get_route_templates() -> list[RouteDict]:
-    return [
-        {
-            "slug": "jiangzhehu-2-day",
-            "title": "江浙沪 2 天轻松短途",
-            "region": "east",
-            "spot_slugs": [],
-            "days": 2,
-            "difficulty": "easy",
-            "scenery_type": ["scenic", "relaxed"],
-            "bike_types": ["150-250cc", "300-500cc", "adv-touring"],
-            "experience_levels": ["beginner", "intermediate"],
-            "best_season": "春季 / 秋季",
-            "distance_km": 320,
-            "budget_range": "1000-2000",
-            "summary": "适合周末出发，节奏轻，补给便利，适合城市周边摩旅。",
-            "days_plan": [
-                {
-                    "day": 1,
-                    "title": "杭州 -> 莫干山 -> 安吉",
-                    "ride_time": "建议骑行 4-5 小时，含 2 次休息",
-                    "distance": 170,
-                    "highlights": ["山景道路", "补给便利", "适合新手"],
-                    "note": "建议中午前进入山路，避免傍晚赶路。",
-                },
-                {
-                    "day": 2,
-                    "title": "安吉 -> 临安 -> 杭州",
-                    "ride_time": "建议骑行 4 小时",
-                    "distance": 150,
-                    "highlights": ["返程轻松", "风景平衡", "路况稳定"],
-                    "note": "返程前建议补油并检查胎压。",
-                },
-            ],
-            "pois": {
-                "fuel": [
-                    {"name": "安吉城区加油站", "meta": "Day 1 · 下午补给"},
-                    {"name": "临安北服务点", "meta": "Day 2 · 返程补给"},
-                ],
-                "repair": [
-                    {"name": "安吉机车维修点", "meta": "Day 1 · 基础检查"},
-                ],
-                "lodging": [
-                    {"name": "安吉骑手友好民宿", "meta": "Day 1 · 方便停车"},
-                ],
-                "viewpoint": [
-                    {"name": "莫干山观景路段", "meta": "Day 1 · 建议停留"},
-                ],
-                "emergency": [
-                    {"name": "安吉县医院急诊", "meta": "Day 1 · 紧急情况优先前往"},
-                ],
-            },
-        },
-        {
-            "slug": "wannan-3-day",
-            "title": "皖南 3 天入门山路线",
-            "region": "east",
-            "spot_slugs": [],
-            "days": 3,
-            "difficulty": "medium",
-            "scenery_type": ["mountain", "scenic"],
-            "bike_types": ["300-500cc", "500cc+", "adv-touring"],
-            "experience_levels": ["intermediate", "advanced"],
-            "best_season": "春季 / 秋季",
-            "distance_km": 560,
-            "budget_range": "1000-2000",
-            "summary": "弯道和风景兼顾，适合有短途经验的骑手。",
-            "days_plan": [
-                {
-                    "day": 1,
-                    "title": "杭州 -> 宁国",
-                    "ride_time": "建议骑行 5-6 小时，含 2 次休息",
-                    "distance": 190,
-                    "highlights": ["进山路段", "风景线", "补给充足"],
-                    "note": "建议傍晚前进入住宿点。",
-                },
-                {
-                    "day": 2,
-                    "title": "宁国 -> 泾县 -> 黄山脚下",
-                    "ride_time": "建议骑行 6 小时",
-                    "distance": 210,
-                    "highlights": ["弯道体验", "山景密集", "拍照点多"],
-                    "note": "连续山路不建议疲劳骑行。",
-                },
-                {
-                    "day": 3,
-                    "title": "黄山脚下 -> 临安 -> 杭州",
-                    "ride_time": "建议骑行 4-5 小时",
-                    "distance": 160,
-                    "highlights": ["返程轻松", "节奏回落", "补给稳定"],
-                    "note": "返程前检查刹车和胎压。",
-                },
-            ],
-            "pois": {
-                "fuel": [
-                    {"name": "宁国补给站", "meta": "Day 1 · 山路前补油"},
-                    {"name": "泾县服务区", "meta": "Day 2 · 中段补给"},
-                ],
-                "repair": [
-                    {"name": "宁国轮胎维修点", "meta": "Day 1 · 补胎和基础维护"},
-                ],
-                "lodging": [
-                    {"name": "宁国城区民宿", "meta": "Day 1 · 方便停车"},
-                    {"name": "黄山脚下客栈", "meta": "Day 2 · 适合早出发"},
-                ],
-                "viewpoint": [
-                    {"name": "皖南山景观景台", "meta": "Day 2 · 建议停留 20 分钟"},
-                ],
-                "emergency": [
-                    {"name": "宁国市人民医院", "meta": "Day 1 · 山路前应急保障"},
-                ],
-            },
-        },
-        {
-            "slug": "hainan-5-day",
-            "title": "环海南 5 天海岸线",
-            "region": "south",
-            "spot_slugs": [],
-            "days": 5,
-            "difficulty": "medium",
-            "scenery_type": ["coast", "scenic", "relaxed"],
-            "bike_types": ["150-250cc", "300-500cc", "adv-touring"],
-            "experience_levels": ["beginner", "intermediate", "advanced"],
-            "best_season": "冬季 / 春季",
-            "distance_km": 780,
-            "budget_range": "2000-4000",
-            "summary": "海景路线优先，适合冬春季节出行。",
-            "days_plan": [
-                {
-                    "day": 1,
-                    "title": "海口 -> 文昌",
-                    "ride_time": "建议骑行 4 小时",
-                    "distance": 150,
-                    "highlights": ["海边公路", "节奏轻松", "适合热身"],
-                    "note": "注意海风和补水。",
-                },
-                {
-                    "day": 2,
-                    "title": "文昌 -> 琼海",
-                    "ride_time": "建议骑行 4-5 小时",
-                    "distance": 170,
-                    "highlights": ["海景", "小众停靠点", "补给方便"],
-                    "note": "中午高温时段建议休息。",
-                },
-                {
-                    "day": 3,
-                    "title": "琼海 -> 陵水",
-                    "ride_time": "建议骑行 4-5 小时",
-                    "distance": 160,
-                    "highlights": ["海岸风景", "适合拍照", "路况平稳"],
-                    "note": "沿海天气变化快。",
-                },
-                {
-                    "day": 4,
-                    "title": "陵水 -> 三亚",
-                    "ride_time": "建议骑行 3-4 小时",
-                    "distance": 120,
-                    "highlights": ["轻松短日程", "海景优先", "适合休整"],
-                    "note": "建议下午早些到达休整。",
-                },
-                {
-                    "day": 5,
-                    "title": "三亚 -> 东方 / 海口方向",
-                    "ride_time": "建议骑行 5 小时",
-                    "distance": 180,
-                    "highlights": ["经典海岸线", "返程收尾", "风景完整"],
-                    "note": "根据返程方式调整节奏。",
-                },
-            ],
-            "pois": {
-                "fuel": [
-                    {"name": "文昌沿线加油点", "meta": "Day 1 · 海岸线补给"},
-                    {"name": "陵水城区加油站", "meta": "Day 3 · 下午补给"},
-                ],
-                "repair": [
-                    {"name": "三亚机车维修点", "meta": "Day 4 · 基础检修"},
-                ],
-                "lodging": [
-                    {"name": "琼海海边民宿", "meta": "Day 2 · 停车方便"},
-                    {"name": "三亚停车友好酒店", "meta": "Day 4 · 方便第二天返程"},
-                ],
-                "viewpoint": [
-                    {"name": "东海岸观景点", "meta": "Day 2 · 建议日落前停留"},
-                    {"name": "三亚海岸线", "meta": "Day 4 · 海边打卡"},
-                ],
-                "emergency": [
-                    {"name": "陵水应急服务站", "meta": "Day 3 · 海岸线应急补给"},
-                    {"name": "三亚中心医院", "meta": "Day 4 · 城市段紧急支援"},
-                ],
-            },
-        },
-        {
-            "slug": "liaoning-benhuan-3-day",
-            "title": "辽宁 3 天本溪到绿江边境风景线",
-            "region": "north",
-            "spot_slugs": [
-                "benhuan-highway",
-                "huanren-county",
-                "qingshangou",
-                "lujiang-village",
-                "dandong-yalu-river",
-            ],
-            "days": 3,
-            "difficulty": "medium",
-            "scenery_type": ["mountain", "scenic", "niche"],
-            "bike_types": ["150-250cc", "300-500cc", "500cc+", "adv-touring"],
-            "experience_levels": ["intermediate", "advanced"],
-            "best_season": "夏季 / 秋季",
-            "distance_km": 680,
-            "budget_range": "1000-2000",
-            "summary": "从沈阳出发，串起本桓公路、桓仁、青山沟、绿江村和丹东，适合 2-3 天的辽宁省内经典摩旅。",
-            "days_plan": [
-                {
-                    "day": 1,
-                    "title": "沈阳 -> 本溪 -> 本桓公路 -> 桓仁",
-                    "ride_time": "建议骑行 5-6 小时，含 2 次山路休息",
-                    "distance": 260,
-                    "highlights": ["本桓公路弯道", "本溪山景", "桓仁过夜补给"],
-                    "note": "建议上午从沈阳出发，中午前进入本溪山区，避免傍晚连续压弯。",
-                },
-                {
-                    "day": 2,
-                    "title": "桓仁 -> 青山沟 -> 宽甸",
-                    "ride_time": "建议骑行 4-5 小时，适合边走边拍",
-                    "distance": 180,
-                    "highlights": ["青山沟景区", "山水风景", "宽甸县城收尾"],
-                    "note": "青山沟适合拉长停留时间，下午进入宽甸补给和住宿更稳。",
-                },
-                {
-                    "day": 3,
-                    "title": "宽甸 -> 绿江村 -> 丹东",
-                    "ride_time": "建议骑行 5 小时，含 2 次观景停靠",
-                    "distance": 240,
-                    "highlights": ["绿江村江景", "边境氛围", "丹东鸭绿江收官"],
-                    "note": "绿江村早晚光线更适合出片，若当天返程较远，建议提早离开。",
-                },
-            ],
-            "pois": {
-                "fuel": [
-                    {"name": "本溪城区加油站", "meta": "Day 1 · 进山前补油"},
-                    {"name": "桓仁县城加油点", "meta": "Day 1 · 晚间补给"},
-                    {"name": "宽甸城区加油站", "meta": "Day 2 · 次日去绿江前补给"},
-                ],
-                "repair": [
-                    {"name": "本溪机车维修点", "meta": "Day 1 · 进山前基础检查"},
-                    {"name": "丹东城区维修点", "meta": "Day 3 · 收官后检查"},
-                ],
-                "lodging": [
-                    {"name": "桓仁骑手友好酒店", "meta": "Day 1 · 停车方便"},
-                    {"name": "宽甸城区民宿", "meta": "Day 2 · 次日出发绿江更顺路"},
-                ],
-                "viewpoint": [
-                    {"name": "本桓公路观景路段", "meta": "Day 1 · 建议停留 15 分钟"},
-                    {"name": "青山沟风景区", "meta": "Day 2 · 建议停留 1-2 小时"},
-                    {"name": "绿江村观景点", "meta": "Day 3 · 建议日落前停留"},
-                ],
-                "emergency": [
-                    {"name": "桓仁满族自治县中心医院", "meta": "Day 1 · 山路后段应急点"},
-                    {"name": "宽甸中心医院", "meta": "Day 2 · 边境县道应急点"},
-                ],
-            },
-            "detail_highlights": [
-                "本桓公路是辽宁机车圈辨识度很高的跑山路段，适合纯骑行内容拍摄。",
-                "青山沟和绿江村把山路摩旅接上了山水与边境风景，画面层次更完整。",
-                "全线补给点相对清晰，适合周末 2-3 天完成，不需要一次性拉太长距离。",
-            ],
-            "detail_for_whom": "适合辽宁及东北周边车友做周末中短途摩旅，也适合想兼顾跑山、打卡和拍内容的骑手。",
-            "detail_notes": [
-                "本桓公路和宽甸山区天气变化快，建议携带雨具和保暖层。",
-                "绿江村早晚温差更明显，计划拍日出或日落时要预留充足保暖装备。",
-                "边境与山区路段建议白天通过，新手尽量避免夜间骑行。",
-            ],
-            "checkpoints": [
-                {
-                    "name": "本桓公路",
-                    "summary": "辽宁经典跑山段，弯道连贯，林景和山体起伏都很适合骑行视频。",
-                    "timing": "Day 1 · 中午前后进入最佳",
-                    "image": "route-liaoning-benhuan.svg",
-                },
-                {
-                    "name": "桓仁",
-                    "summary": "更适合作为第一天补给和住宿节点，能把节奏从跑山自然过渡到休整。",
-                    "timing": "Day 1 · 晚间落脚",
-                    "image": "route-liaoning-huanren.svg",
-                },
-                {
-                    "name": "青山沟",
-                    "summary": "山水景区感更强，适合做人与车同框、景别切换和中途休闲拍摄。",
-                    "timing": "Day 2 · 白天停留 1-2 小时",
-                    "image": "route-liaoning-qingshangou.svg",
-                },
-                {
-                    "name": "绿江村",
-                    "summary": "这条线最容易出片的点位之一，江景、村落和光线氛围都很强。",
-                    "timing": "Day 3 · 早晚光线最佳",
-                    "image": "route-liaoning-lujiang.svg",
-                },
-                {
-                    "name": "丹东鸭绿江",
-                    "summary": "适合用城市沿江镜头给整条路线做收尾，也方便作为返程或住宿点。",
-                    "timing": "Day 3 · 下午收官",
-                    "image": "route-liaoning-dandong.svg",
-                },
-            ],
-        },
-        {
-            "slug": "liaoning-dalian-coast-2-day",
-            "title": "辽宁 2 天大连滨海轻骑线",
-            "region": "north",
-            "spot_slugs": [
-                "dalian-binhai-road",
-                "bangchuidao-roads",
-                "jinshitan",
-                "lvshun-coast-road",
-            ],
-            "days": 2,
-            "difficulty": "easy",
-            "scenery_type": ["coast", "scenic", "relaxed"],
-            "bike_types": ["125-150cc", "150-250cc", "300-500cc", "adv-touring"],
-            "experience_levels": ["beginner", "intermediate"],
-            "best_season": "春季 / 夏季 / 秋季",
-            "distance_km": 280,
-            "budget_range": "1000-2000",
-            "summary": "以大连滨海路为主轴，串联棒棰岛、金石滩和旅顺，适合周末轻松海边摩旅。",
-            "days_plan": [
-                {
-                    "day": 1,
-                    "title": "大连 -> 滨海路 -> 棒棰岛 -> 金石滩",
-                    "ride_time": "建议骑行 4-5 小时，含多次拍照停靠",
-                    "distance": 140,
-                    "highlights": ["海边弯道", "城市海景", "轻骑节奏"],
-                    "note": "建议避开热门时段，滨海路更适合上午和傍晚拍摄。",
-                },
-                {
-                    "day": 2,
-                    "title": "金石滩 -> 旅顺沿海 -> 大连",
-                    "ride_time": "建议骑行 4 小时",
-                    "distance": 140,
-                    "highlights": ["沿海公路", "海边停靠", "返程轻松"],
-                    "note": "沿海道路风力更明显，建议注意补水和防晒。",
-                },
-            ],
-            "pois": {
-                "fuel": [
-                    {"name": "大连沿海城区加油站", "meta": "Day 1 · 出发前补给"},
-                    {"name": "旅顺城区加油点", "meta": "Day 2 · 返程前补油"},
-                ],
-                "repair": [
-                    {"name": "大连机车维修点", "meta": "Day 1 · 出发前基础检查"},
-                ],
-                "lodging": [
-                    {"name": "金石滩海边酒店", "meta": "Day 1 · 停车方便"},
-                ],
-                "viewpoint": [
-                    {"name": "滨海路观景位", "meta": "Day 1 · 建议多次停留"},
-                    {"name": "旅顺海边停靠点", "meta": "Day 2 · 海边休整"},
-                ],
-                "emergency": [
-                    {"name": "大连市中心医院", "meta": "沿线最近城市医疗支援"},
-                ],
-            },
-        },
-        {
-            "slug": "liaoning-liaodong-2-day",
-            "title": "辽宁 2 天辽东边境风景线",
-            "region": "north",
-            "spot_slugs": [
-                "qingshangou",
-                "kuandian-county-roads",
-                "lujiang-village",
-                "dandong-yalu-river",
-            ],
-            "days": 2,
-            "difficulty": "medium",
-            "scenery_type": ["mountain", "scenic", "niche"],
-            "bike_types": ["150-250cc", "300-500cc", "500cc+", "adv-touring"],
-            "experience_levels": ["intermediate", "advanced"],
-            "best_season": "夏季 / 秋季",
-            "distance_km": 430,
-            "budget_range": "1000-2000",
-            "summary": "更聚焦辽东边境和江景，两天内覆盖青山沟、宽甸、绿江村和丹东。",
-            "days_plan": [
-                {
-                    "day": 1,
-                    "title": "沈阳 -> 青山沟 -> 宽甸",
-                    "ride_time": "建议骑行 5-6 小时，含景区停留",
-                    "distance": 220,
-                    "highlights": ["山水景区", "县道路段", "宽甸落脚"],
-                    "note": "这条线更适合已经有短途经验的骑手。",
-                },
-                {
-                    "day": 2,
-                    "title": "宽甸 -> 绿江村 -> 丹东",
-                    "ride_time": "建议骑行 5 小时",
-                    "distance": 210,
-                    "highlights": ["江景村落", "边境氛围", "沿江收官"],
-                    "note": "如果想拍日出或日落，需要提前预留机动时间。",
-                },
-            ],
-            "pois": {
-                "fuel": [
-                    {"name": "宽甸城区加油站", "meta": "Day 1 · 住宿前补给"},
-                    {"name": "丹东沿线加油点", "meta": "Day 2 · 返程前补油"},
-                ],
-                "repair": [
-                    {"name": "丹东机车维修点", "meta": "Day 2 · 收官后检查"},
-                ],
-                "lodging": [
-                    {"name": "宽甸城区骑手友好民宿", "meta": "Day 1 · 方便停车"},
-                ],
-                "viewpoint": [
-                    {"name": "青山沟观景点", "meta": "Day 1 · 白天停留"},
-                    {"name": "绿江村观景位", "meta": "Day 2 · 适合早晚拍摄"},
-                ],
-                "emergency": [
-                    {"name": "宽甸中心医院", "meta": "Day 1 · 山区应急支援"},
-                ],
-            },
-        },
-        {
-            "slug": "liaoning-red-beach-2-day",
-            "title": "辽宁 2 天红海滩海滨轻松线",
-            "region": "north",
-            "spot_slugs": [
-                "red-beach",
-                "panjin-wetland-roads",
-                "huludao-xingcheng-coast",
-                "juehua-island-departure",
-            ],
-            "days": 2,
-            "difficulty": "easy",
-            "scenery_type": ["coast", "scenic", "relaxed"],
-            "bike_types": ["125-150cc", "150-250cc", "300-500cc", "adv-touring"],
-            "experience_levels": ["beginner", "intermediate"],
-            "best_season": "秋季",
-            "distance_km": 360,
-            "budget_range": "1000-2000",
-            "summary": "适合想跑辽宁西南海边和秋季湿地景观的轻松两天线。",
-            "days_plan": [
-                {
-                    "day": 1,
-                    "title": "沈阳 -> 盘锦湿地周边 -> 红海滩",
-                    "ride_time": "建议骑行 4-5 小时",
-                    "distance": 180,
-                    "highlights": ["湿地公路", "秋季景观", "低强度节奏"],
-                    "note": "红海滩更看季节窗口，秋季出发体验最好。",
-                },
-                {
-                    "day": 2,
-                    "title": "盘锦 -> 兴城 -> 葫芦岛海滨",
-                    "ride_time": "建议骑行 4-5 小时",
-                    "distance": 180,
-                    "highlights": ["海边巡航", "城市轻骑", "返程友好"],
-                    "note": "整条线适合新手做海边和城市轻摩旅。",
-                },
-            ],
-            "pois": {
-                "fuel": [
-                    {"name": "盘锦沿线加油站", "meta": "Day 1 · 湿地段补给"},
-                    {"name": "兴城区加油点", "meta": "Day 2 · 海边返程前补油"},
-                ],
-                "repair": [
-                    {"name": "葫芦岛城区维修点", "meta": "Day 2 · 收官检查"},
-                ],
-                "lodging": [
-                    {"name": "盘锦城区酒店", "meta": "Day 1 · 次日转海边更顺路"},
-                ],
-                "viewpoint": [
-                    {"name": "红海滩景观区", "meta": "Day 1 · 秋季重点打卡"},
-                    {"name": "兴城海滨沿线", "meta": "Day 2 · 海边轻骑停靠"},
-                ],
-                "emergency": [
-                    {"name": "盘锦中心医院", "meta": "Day 1 · 城区医疗支援"},
-                ],
-            },
-        },
-    ]
+    return deepcopy(load_route_templates())
 
 
 def get_route_by_slug(slug: str) -> dict[str, Any] | None:
     return next((route for route in get_route_templates() if route["slug"] == slug), None)
+
+
+def get_route_waypoint_collection_schema() -> list[dict[str, Any]]:
+    return [
+        {
+            "name": "route_slug",
+            "label": "路线 slug",
+            "required": True,
+            "description": "和 route_templates.json 里的 slug 对齐，后续用于精确回写。",
+            "example": "jiangzhehu-2-day",
+        },
+        {
+            "name": "route_title",
+            "label": "路线标题",
+            "required": True,
+            "description": "保留采集时看到的路线名，方便人工核对。",
+            "example": "江浙沪 2 天轻松短途",
+        },
+        {
+            "name": "source.channel",
+            "label": "采集渠道",
+            "required": True,
+            "description": "例如手工整理、地图检索、轨迹导入、视频分析。",
+            "example": "manual-map-research",
+        },
+        {
+            "name": "source.reference_url",
+            "label": "来源链接",
+            "required": False,
+            "description": "记录高德、游记、轨迹或短视频链接，便于回溯。",
+            "example": "https://m.amap.com/...",
+        },
+        {
+            "name": "source.operator",
+            "label": "采集人",
+            "required": False,
+            "description": "标记本次补采由谁执行。",
+            "example": "Lifeng",
+        },
+        {
+            "name": "navigation.provider",
+            "label": "导航提供方",
+            "required": True,
+            "description": "当前默认是 amap，后面可扩展到其他地图。",
+            "example": "amap",
+        },
+        {
+            "name": "navigation.waypoints[]",
+            "label": "途径点数组",
+            "required": True,
+            "description": "按实际出发顺序写，至少 2 个点；有坐标就写 lng/lat，没有就先保留 name。",
+            "example": '{"name": "莫干山", "lng": 119.8795, "lat": 30.6140, "source": "manual"}',
+        },
+        {
+            "name": "collection_notes",
+            "label": "采集备注",
+            "required": False,
+            "description": "说明点位是否待复核、是否需要拆成 day waypoints、是否有争议。",
+            "example": "第 2 个服务点只有名称，等下次地图核对后补 lng/lat。",
+        },
+    ]
+
+
+def get_route_waypoint_collection_context(route_slug: str | None = None) -> dict[str, Any]:
+    route_templates = get_route_templates()
+    selected_route = get_route_by_slug(route_slug) if route_slug else (route_templates[0] if route_templates else None)
+    selected_card = _route_index_card(selected_route) if selected_route else None
+    selected_seed = _build_route_waypoint_collection_seed(selected_route) if selected_route else {}
+
+    return {
+        "page": {
+            "title": "路线坐标采集",
+            "description": "先把路线的途径点和经纬度采成结构化数据，后续可以直接回写 route_templates.json 或接采集流水线。",
+        },
+        "route_options": [
+            {
+                "slug": route["slug"],
+                "title": route["title"],
+                "href": f"/moto/routes/collect?route={route['slug']}",
+                "is_selected": selected_route is not None and route["slug"] == selected_route["slug"],
+                "is_demo": bool(route.get("is_navigation_state_demo")),
+            }
+            for route in route_templates
+        ],
+        "selected_route": selected_card,
+        "selected_route_seed": selected_seed,
+        "selected_route_seed_json": json.dumps(selected_seed, ensure_ascii=False, indent=2),
+        "schema": get_route_waypoint_collection_schema(),
+        "api": {
+            "schema_href": "/api/moto/routes/collect/schema",
+            "selected_schema_href": (
+                f"/api/moto/routes/collect/schema?route={selected_route['slug']}"
+                if selected_route
+                else "/api/moto/routes/collect/schema"
+            ),
+        },
+        "storage": {
+            "canonical_file": "app/services/route_templates.json",
+            "seed_example_file": "data/raw/route_waypoint_collection.example.json",
+            "validate_command": "python scripts/validate_route_templates.py",
+        },
+        "tips": [
+            "先保顺序，再补坐标。起点、终点和中间途径点都要按真实导航顺序排列。",
+            "如果暂时只有名称，不要编坐标；先保留 name，后续用部分坐标状态继续补采。",
+            "采集完成后优先跑独立校验脚本，再决定是否回写 route_templates.json。",
+        ],
+    }
+
+
+def get_route_waypoint_collection_api_payload(route_slug: str | None = None) -> dict[str, Any]:
+    context = get_route_waypoint_collection_context(route_slug)
+    return {
+        "page": context["page"],
+        "route_options": context["route_options"],
+        "selected_route": context["selected_route"],
+        "selected_route_seed": context["selected_route_seed"],
+        "schema": context["schema"],
+        "storage": context["storage"],
+        "tips": context["tips"],
+    }
 
 
 def get_custom_plan_context() -> dict[str, Any]:
@@ -1716,26 +1365,49 @@ def build_routes_index_context(route_templates: list[dict[str, Any]], filters: M
 
 
 def _route_index_card(route: Mapping[str, Any]) -> dict[str, Any]:
-    waypoints = _route_waypoints(route)
-    amap_export_href = _route_amap_export_href(waypoints)
+    navigation_waypoints = _route_navigation_waypoints(route)
+    waypoints = [point["name"] for point in navigation_waypoints]
+    waypoint_count = len(waypoints)
+    coordinate_waypoint_count = sum(1 for point in navigation_waypoints if point["has_coordinates"])
+    supports_coordinate_navigation = coordinate_waypoint_count > 0
+    navigation_mode = _route_navigation_mode(navigation_waypoints)
+    status_variant = _route_navigation_status_variant(navigation_mode)
+    amap_export_href = _route_amap_export_href(navigation_waypoints)
+    tags = [f"{route['days']} 天", route["best_season"], difficulty_label(route["difficulty"])]
+    if route.get("is_navigation_state_demo"):
+        tags.insert(0, "状态演示")
     return {
         "slug": route["slug"],
         "title": route["title"],
         "summary": route["summary"],
-        "tags": [f"{route['days']} 天", route["best_season"], difficulty_label(route["difficulty"])],
+        "tags": tags,
         "best_season": route["best_season"],
         "difficulty_label": difficulty_label(route["difficulty"]),
         "days": route["days"],
         "distance_km": route.get("distance_km", 0),
         "href": f"/moto/routes/{route['slug']}",
         "replan_href": f"/moto/planner?route={route['slug']}",
+        "collect_href": f"/moto/routes/collect?route={route['slug']}",
+        "is_navigation_state_demo": bool(route.get("is_navigation_state_demo")),
         "waypoints": waypoints,
-        "waypoint_count": len(waypoints),
+        "navigation_waypoints": navigation_waypoints,
+        "waypoint_count": waypoint_count,
         "amap_export": {
             "href": amap_export_href,
             "label": "导出到高德地图",
             "is_available": bool(amap_export_href),
             "waypoint_text": " -> ".join(waypoints),
+            "waypoints": navigation_waypoints,
+            "coordinate_waypoint_count": coordinate_waypoint_count,
+            "supports_coordinate_navigation": supports_coordinate_navigation,
+            "navigation_mode": navigation_mode,
+            "status_variant": status_variant,
+            "status_badge": _route_navigation_status_badge(status_variant),
+            "status_text": _route_navigation_status_text(
+                waypoint_count=waypoint_count,
+                coordinate_waypoint_count=coordinate_waypoint_count,
+                navigation_mode=navigation_mode,
+            ),
         },
         "days_plan": [
             {
@@ -1748,23 +1420,171 @@ def _route_index_card(route: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _route_waypoints(route: Mapping[str, Any]) -> list[str]:
-    names: list[str] = []
-    seen: set[str] = set()
+def _route_navigation_waypoints(route: Mapping[str, Any]) -> list[dict[str, Any]]:
+    navigation_config = route.get("navigation") if isinstance(route.get("navigation"), Mapping) else {}
+    raw_navigation_waypoints = (
+        navigation_config.get("waypoints", [])
+        or route.get("navigation_waypoints", [])
+        or route.get("waypoints", [])
+    )
+
+    if raw_navigation_waypoints:
+        normalized_points = [
+            point
+            for point in (_normalize_route_navigation_point(raw_point) for raw_point in raw_navigation_waypoints)
+            if point is not None
+        ]
+        if normalized_points:
+            return normalized_points
+
+    ordered_names: list[str] = []
+    points_by_name: dict[str, dict[str, Any]] = {}
+
+    for raw_point in raw_navigation_waypoints:
+        _merge_route_navigation_point(points_by_name, ordered_names, raw_point)
 
     for day in route.get("days_plan", []):
+        raw_day_waypoints = day.get("waypoints", [])
+        if raw_day_waypoints:
+            for raw_point in raw_day_waypoints:
+                _merge_route_navigation_point(points_by_name, ordered_names, raw_point)
+            continue
+
         title = str(day.get("title") or "")
         for raw_name in title.split("->"):
-            name = raw_name.strip()
-            if not name or name in seen:
-                continue
-            seen.add(name)
-            names.append(name)
+            _merge_route_navigation_point(points_by_name, ordered_names, raw_name.strip())
 
-    return names
+    return [points_by_name[name] for name in ordered_names]
 
 
-def _route_amap_export_href(waypoints: list[str]) -> str:
+def _merge_route_navigation_point(
+    points_by_name: dict[str, dict[str, Any]],
+    ordered_names: list[str],
+    raw_point: Any,
+) -> None:
+    point = _normalize_route_navigation_point(raw_point)
+    if point is None:
+        return
+
+    name = point["name"]
+    existing = points_by_name.get(name)
+    if existing is None:
+        points_by_name[name] = point
+        ordered_names.append(name)
+        return
+
+    if not existing["has_coordinates"] and point["has_coordinates"]:
+        existing["lat"] = point["lat"]
+        existing["lng"] = point["lng"]
+        existing["has_coordinates"] = True
+
+
+def _normalize_route_navigation_point(raw_point: Any) -> dict[str, Any] | None:
+    if isinstance(raw_point, str):
+        name = raw_point.strip()
+        if not name:
+            return None
+        return {"name": name, "lat": None, "lng": None, "has_coordinates": False}
+
+    if not isinstance(raw_point, Mapping):
+        return None
+
+    name = str(raw_point.get("name") or raw_point.get("title") or "").strip()
+    if not name:
+        return None
+
+    coordinates = raw_point.get("coordinates") if isinstance(raw_point.get("coordinates"), Mapping) else {}
+    lat = _route_coordinate_value(raw_point.get("lat"), coordinates.get("lat"), coordinates.get("latitude"), raw_point.get("latitude"))
+    lng = _route_coordinate_value(raw_point.get("lng"), coordinates.get("lng"), coordinates.get("lon"), coordinates.get("longitude"), raw_point.get("longitude"), raw_point.get("lon"))
+    has_coordinates = lat is not None and lng is not None
+    return {"name": name, "lat": lat, "lng": lng, "has_coordinates": has_coordinates}
+
+
+def _route_coordinate_value(*values: Any) -> float | None:
+    for value in values:
+        if value in {None, ""}:
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _route_navigation_mode(waypoints: list[Mapping[str, Any]]) -> str:
+    if not waypoints:
+        return "none"
+
+    coordinate_waypoint_count = sum(1 for point in waypoints if point.get("has_coordinates"))
+    if coordinate_waypoint_count == 0:
+        return "names"
+    if coordinate_waypoint_count == len(waypoints):
+        return "coordinates"
+    return "mixed"
+
+
+def _route_navigation_status_text(*, waypoint_count: int, coordinate_waypoint_count: int, navigation_mode: str) -> str:
+    if waypoint_count == 0:
+        return ""
+    if navigation_mode == "coordinates":
+        return f"{coordinate_waypoint_count}/{waypoint_count} 个点已带坐标，可直接高德逐点导航"
+    if navigation_mode == "mixed":
+        return f"{coordinate_waypoint_count}/{waypoint_count} 个点已带坐标，将混合坐标和地点名称导航"
+    return f"0/{waypoint_count} 个点带坐标，将按地点名称导航"
+
+
+def _route_navigation_status_variant(navigation_mode: str) -> str:
+    if navigation_mode == "coordinates":
+        return "complete"
+    if navigation_mode == "mixed":
+        return "partial"
+    return "names"
+
+
+def _route_navigation_status_badge(status_variant: str) -> str:
+    if status_variant == "complete":
+        return "坐标完整"
+    if status_variant == "partial":
+        return "部分坐标"
+    return "名称导航"
+
+
+def _build_route_waypoint_collection_seed(route: Mapping[str, Any] | None) -> dict[str, Any]:
+    if route is None:
+        return {}
+
+    route_card = _route_index_card(route)
+    return {
+        "route_slug": route["slug"],
+        "route_title": route["title"],
+        "collection_status": route_card["amap_export"]["status_variant"],
+        "collection_notes": "",
+        "source": {
+            "channel": "manual-map-research",
+            "reference_url": "",
+            "operator": "",
+        },
+        "navigation": {
+            "provider": "amap",
+            "waypoints": [
+                {
+                    "name": point["name"],
+                    "lng": point["lng"],
+                    "lat": point["lat"],
+                    "has_coordinates": point["has_coordinates"],
+                }
+                for point in route_card["navigation_waypoints"]
+            ],
+        },
+        "missing_coordinate_waypoints": [
+            point["name"]
+            for point in route_card["navigation_waypoints"]
+            if not point["has_coordinates"]
+        ],
+    }
+
+
+def _route_amap_export_href(waypoints: list[Mapping[str, Any]]) -> str:
     if len(waypoints) < 2:
         return ""
 
@@ -1774,22 +1594,29 @@ def _route_amap_export_href(waypoints: list[str]) -> str:
     params = [
         "jm=1",
         "sort=tfc",
-        f"saddr={quote(start)}",
-        f"daddr={quote(destination)}",
+        f"saddr={quote(_route_amap_point_value(start))}",
+        f"daddr={quote(_route_amap_point_value(destination))}",
     ]
     if via_points:
-        params.append(f"maddr={quote('|'.join(via_points))}")
+        params.append(f"maddr={quote('|'.join(_route_amap_point_value(point) for point in via_points), safe='|')}")
     params.extend(["src=mypage", "callnative=0", "innersrc=uriapi"])
     return f"https://m.amap.com/navigation/carmap/{'&'.join(params)}"
 
 
+def _route_amap_point_value(point: Mapping[str, Any]) -> str:
+    if point.get("has_coordinates") and point.get("lng") is not None and point.get("lat") is not None:
+        return f"{point['lng']},{point['lat']},{point['name']}"
+    return str(point.get("name") or "")
+
+
 def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
+    route_card = _route_index_card(route)
     return {
+        "page": {"title": route["title"], "eyebrow": "路线详情"},
         "route": {
-            "title": route["title"],
-            "summary": route["summary"],
-            "tags": [f"{route['days']} 天", route["difficulty"], route["best_season"]],
+            **route_card,
             "best_season": route["best_season"],
+            "difficulty": difficulty_label(route["difficulty"]),
         },
         "detail_sections": {
             "highlights": route.get(
@@ -1845,10 +1672,7 @@ def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
             {"label": "提交定制需求", "href": "/moto/custom"},
         ],
         "related_routes": [
-            {
-                "title": candidate["title"],
-                "href": f"/moto/routes/{candidate['slug']}",
-            }
+            _route_index_card(candidate)
             for candidate in get_route_templates()
             if candidate["slug"] != route["slug"]
         ][:2],

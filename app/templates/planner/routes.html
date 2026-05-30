@@ -21,6 +21,9 @@
           <span>{{ featured_summary.title }}</span>
           <strong>{{ featured_summary.description }}</strong>
         </div>
+        <div class="miniapp-actions miniapp-actions--compact">
+          <a class="miniapp-button miniapp-button--secondary" href="/moto/routes/collect">采集导航点</a>
+        </div>
         <div class="miniapp-route-filter-strip">
           <div>
             <p class="miniapp-section-header__eyebrow">按骑行天数选</p>
@@ -37,12 +40,26 @@
       <section class="miniapp-list">
         {% for route in routes %}
           <article class="miniapp-card miniapp-list-card miniapp-route-card-v2">
+            <div class="miniapp-route-roadbar">
+              <span class="miniapp-route-roadbar__label">ROADBOOK</span>
+              <span class="miniapp-route-roadbar__lane"></span>
+            </div>
             <div class="miniapp-list-card__header">
               <div>
                 <p class="miniapp-list-card__title"><a href="{{ route.href }}">{{ route.title }}</a></p>
                 <p class="miniapp-card__desc">{{ route.summary }}</p>
               </div>
               <div class="miniapp-route-meta-pill">{{ route.distance_km }} km</div>
+            </div>
+            <div class="miniapp-route-fact-row">
+              <div class="miniapp-route-fact-chip">
+                <span>时长</span>
+                <strong>{{ route.days }} 天</strong>
+              </div>
+              <div class="miniapp-route-fact-chip">
+                <span>途径点</span>
+                <strong>{{ route.waypoint_count }} 个</strong>
+              </div>
             </div>
             <ul class="miniapp-tag-row">
               {% for tag in route.tags %}
@@ -55,24 +72,34 @@
                   <p class="miniapp-section-header__eyebrow">每日经过</p>
                   <h2>{{ route.days }} 天路线拆分</h2>
                 </div>
-                <span class="miniapp-inline-badge">{{ route.waypoint_count }} 个途径点</span>
+                <span class="miniapp-inline-badge">沿途路书</span>
               </div>
               <div class="miniapp-route-stage-list">
                 {% for day in route.days_plan %}
                   <article class="miniapp-route-stage-item">
                     <span class="miniapp-route-stage-day">Day {{ day.day }}</span>
-                    <div>
-                      <p class="miniapp-route-stage-title">{{ day.title }}</p>
-                      <p class="miniapp-card__subtle">约 {{ day.distance }} km</p>
+                    <div class="miniapp-route-stage-track">
+                      <span class="miniapp-route-stage-marker"></span>
+                      <div>
+                        <p class="miniapp-route-stage-title">{{ day.title }}</p>
+                        <p class="miniapp-card__subtle">约 {{ day.distance }} km</p>
+                      </div>
                     </div>
                   </article>
                 {% endfor %}
               </div>
             </section>
             <section class="miniapp-route-map-card">
+              <span class="miniapp-route-map-card__lane"></span>
               <div>
                 <p class="miniapp-section-header__eyebrow">高德导出</p>
                 <p class="miniapp-route-waypoint-text">{{ route.amap_export.waypoint_text }}</p>
+                {% if route.amap_export.status_text %}
+                  <p class="miniapp-route-navigation-hint is-{{ route.amap_export.status_variant }}">
+                    <span class="miniapp-route-navigation-hint__badge">{{ route.amap_export.status_badge }}</span>
+                    <span>{{ route.amap_export.status_text }}</span>
+                  </p>
+                {% endif %}
               </div>
               <div class="miniapp-actions">
                 {% if route.amap_export.is_available %}
@@ -81,6 +108,7 @@
               </div>
             </section>
             <div class="miniapp-actions">
+              <a class="miniapp-button miniapp-button--ghost" href="{{ route.collect_href }}">补采坐标</a>
               <a class="miniapp-button miniapp-button--ghost" href="{{ route.href }}">详情</a>
               <a class="miniapp-button" href="{{ route.replan_href }}">继续规划</a>
             </div>

@@ -1,9 +1,10 @@
 page {
   min-height: 100%;
   background:
-    radial-gradient(circle at top left, rgba(233, 245, 239, 0.95), transparent 32%),
-    linear-gradient(180deg, #F6FAF7 0%, #EEF4F0 100%);
-  color: #1F2A22;
+    radial-gradient(circle at top left, rgba(215, 191, 161, 0.34), transparent 34%),
+    radial-gradient(circle at top right, rgba(255, 251, 244, 0.9), transparent 26%),
+    linear-gradient(180deg, #F9F3EA 0%, #EEE4D6 100%);
+  color: #4F4A46;
   font-size: 28rpx;
 }
 
@@ -27,7 +28,7 @@ page {
 
 .eyebrow {
   font-size: 22rpx;
-  color: #5D6E62;
+  color: #8A7A6B;
   letter-spacing: 0.12em;
 }
 
@@ -53,44 +54,44 @@ page {
 
 .topbar-action,
 .button-secondary {
-  background: rgba(255, 255, 255, 0.82);
-  color: #244C31;
-  border: 2rpx solid rgba(36, 76, 49, 0.1);
+  background: rgba(255, 250, 244, 0.9);
+  color: #5B534D;
+  border: 2rpx solid rgba(91, 83, 77, 0.12);
 }
 
 .button-primary {
-  background: #244C31;
-  color: #F8FFF9;
+  background: #4F4A46;
+  color: #FBF7F0;
   border: 0;
 }
 
 .button-ghost {
   background: transparent;
-  color: #244C31;
-  border: 2rpx solid rgba(36, 76, 49, 0.16);
+  color: #5B534D;
+  border: 2rpx solid rgba(91, 83, 77, 0.18);
 }
 
 .card {
   margin-bottom: 20rpx;
   padding: 28rpx;
   border-radius: 32rpx;
-  background: rgba(255, 255, 255, 0.92);
-  border: 2rpx solid rgba(31, 42, 34, 0.08);
-  box-shadow: 0 24rpx 60rpx rgba(60, 82, 67, 0.08);
+  background: rgba(255, 251, 245, 0.92);
+  border: 2rpx solid rgba(91, 83, 77, 0.1);
+  box-shadow: 0 24rpx 60rpx rgba(93, 83, 71, 0.1);
   box-sizing: border-box;
 }
 
 .card-title {
   font-size: 34rpx;
   font-weight: 700;
-  color: #162119;
+  color: #47413C;
 }
 
 .card-desc,
 .subtle,
 .empty-text,
 .error-text {
-  color: #617166;
+  color: #7B6F64;
   line-height: 1.6;
 }
 
@@ -98,18 +99,18 @@ page {
   margin-top: 20rpx;
   padding: 20rpx 24rpx;
   border-radius: 24rpx;
-  background: #F1F7F3;
+  background: #F2E8DC;
 }
 
 .inline-meta-label {
   font-size: 24rpx;
-  color: #6D7F73;
+  color: #907F70;
 }
 
 .inline-meta-value {
   margin-top: 8rpx;
   font-size: 28rpx;
-  color: #162119;
+  color: #47413C;
   font-weight: 600;
 }
 
@@ -124,8 +125,8 @@ page {
 .inline-badge {
   padding: 10rpx 20rpx;
   border-radius: 999rpx;
-  background: #F1F7F3;
-  color: #2F4735;
+  background: #F2E8DC;
+  color: #5E554E;
   font-size: 24rpx;
 }
 
@@ -148,15 +149,15 @@ page {
 .tag {
   padding: 10rpx 20rpx;
   border-radius: 999rpx;
-  background: #F1F5F2;
-  color: #36523C;
+  background: #EFE3D5;
+  color: #675D56;
   font-size: 24rpx;
 }
 
 .chip-active,
 .tag-accent {
-  background: #244C31;
-  color: #F8FFF9;
+  background: #4F4A46;
+  color: #FBF7F0;
 }
 
 .stats-grid {
@@ -168,7 +169,7 @@ page {
   min-width: 0;
   padding: 22rpx;
   border-radius: 24rpx;
-  background: #F1F7F3;
+  background: #F2E8DC;
   box-sizing: border-box;
 }
 
@@ -176,14 +177,14 @@ page {
   display: block;
   font-size: 40rpx;
   font-weight: 700;
-  color: #18211B;
+  color: #4A433E;
 }
 
 .stat-label {
   display: block;
   margin-top: 8rpx;
   font-size: 24rpx;
-  color: #66776B;
+  color: #8A7A6B;
 }
 
 .picker-field {
@@ -193,19 +194,19 @@ page {
   min-height: 88rpx;
   padding: 0 24rpx;
   border-radius: 24rpx;
-  background: #F8FBF8;
-  border: 2rpx solid rgba(31, 42, 34, 0.12);
+  background: #FBF7F0;
+  border: 2rpx solid rgba(91, 83, 77, 0.14);
   box-sizing: border-box;
 }
 
 .picker-label {
   font-size: 26rpx;
-  color: #627368;
+  color: #8B7C6D;
 }
 
 .picker-value {
   font-size: 28rpx;
-  color: #1F2A22;
+  color: #4F4A46;
 }
 
 .list-column {

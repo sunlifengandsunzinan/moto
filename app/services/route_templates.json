@@ -1,0 +1,1195 @@
+[
+  {
+    "slug": "jiangzhehu-2-day",
+    "title": "江浙沪 2 天轻松短途",
+    "region": "east",
+    "spot_slugs": [],
+    "days": 2,
+    "difficulty": "easy",
+    "scenery_type": [
+      "scenic",
+      "relaxed"
+    ],
+    "bike_types": [
+      "150-250cc",
+      "300-500cc",
+      "adv-touring"
+    ],
+    "experience_levels": [
+      "beginner",
+      "intermediate"
+    ],
+    "best_season": "春季 / 秋季",
+    "distance_km": 320,
+    "budget_range": "1000-2000",
+    "summary": "适合周末出发，节奏轻，补给便利，适合城市周边摩旅。",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "杭州",
+          "lng": 120.1551,
+          "lat": 30.2741
+        },
+        {
+          "name": "莫干山",
+          "lng": 119.8795,
+          "lat": 30.614
+        },
+        {
+          "name": "安吉",
+          "lng": 119.6803,
+          "lat": 30.638
+        },
+        {
+          "name": "临安",
+          "lng": 119.7248,
+          "lat": 30.2345
+        }
+      ]
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "杭州 -> 莫干山 -> 安吉",
+        "ride_time": "建议骑行 4-5 小时，含 2 次休息",
+        "distance": 170,
+        "highlights": [
+          "山景道路",
+          "补给便利",
+          "适合新手"
+        ],
+        "note": "建议中午前进入山路，避免傍晚赶路。"
+      },
+      {
+        "day": 2,
+        "title": "安吉 -> 临安 -> 杭州",
+        "ride_time": "建议骑行 4 小时",
+        "distance": 150,
+        "highlights": [
+          "返程轻松",
+          "风景平衡",
+          "路况稳定"
+        ],
+        "note": "返程前建议补油并检查胎压。"
+      }
+    ],
+    "pois": {
+      "fuel": [
+        {
+          "name": "安吉城区加油站",
+          "meta": "Day 1 · 下午补给"
+        },
+        {
+          "name": "临安北服务点",
+          "meta": "Day 2 · 返程补给"
+        }
+      ],
+      "repair": [
+        {
+          "name": "安吉机车维修点",
+          "meta": "Day 1 · 基础检查"
+        }
+      ],
+      "lodging": [
+        {
+          "name": "安吉骑手友好民宿",
+          "meta": "Day 1 · 方便停车"
+        }
+      ],
+      "viewpoint": [
+        {
+          "name": "莫干山观景路段",
+          "meta": "Day 1 · 建议停留"
+        }
+      ],
+      "emergency": [
+        {
+          "name": "安吉县医院急诊",
+          "meta": "Day 1 · 紧急情况优先前往"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "wannan-3-day",
+    "title": "皖南 3 天入门山路线",
+    "region": "east",
+    "spot_slugs": [],
+    "days": 3,
+    "difficulty": "medium",
+    "scenery_type": [
+      "mountain",
+      "scenic"
+    ],
+    "bike_types": [
+      "300-500cc",
+      "500cc+",
+      "adv-touring"
+    ],
+    "experience_levels": [
+      "intermediate",
+      "advanced"
+    ],
+    "best_season": "春季 / 秋季",
+    "distance_km": 560,
+    "budget_range": "1000-2000",
+    "summary": "弯道和风景兼顾，适合有短途经验的骑手。",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "杭州",
+          "lng": 120.1551,
+          "lat": 30.2741
+        },
+        {
+          "name": "宁国",
+          "lng": 118.983,
+          "lat": 30.6265
+        },
+        {
+          "name": "泾县",
+          "lng": 118.4196,
+          "lat": 30.6885
+        },
+        {
+          "name": "黄山脚下",
+          "lng": 118.1699,
+          "lat": 30.1312
+        },
+        {
+          "name": "临安",
+          "lng": 119.7248,
+          "lat": 30.2345
+        },
+        {
+          "name": "杭州",
+          "lng": 120.1551,
+          "lat": 30.2741
+        }
+      ]
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "杭州 -> 宁国",
+        "ride_time": "建议骑行 5-6 小时，含 2 次休息",
+        "distance": 190,
+        "highlights": [
+          "进山路段",
+          "风景线",
+          "补给充足"
+        ],
+        "note": "建议傍晚前进入住宿点。"
+      },
+      {
+        "day": 2,
+        "title": "宁国 -> 泾县 -> 黄山脚下",
+        "ride_time": "建议骑行 6 小时",
+        "distance": 210,
+        "highlights": [
+          "弯道体验",
+          "山景密集",
+          "拍照点多"
+        ],
+        "note": "连续山路不建议疲劳骑行。"
+      },
+      {
+        "day": 3,
+        "title": "黄山脚下 -> 临安 -> 杭州",
+        "ride_time": "建议骑行 4-5 小时",
+        "distance": 160,
+        "highlights": [
+          "返程轻松",
+          "节奏回落",
+          "补给稳定"
+        ],
+        "note": "返程前检查刹车和胎压。"
+      }
+    ],
+    "pois": {
+      "fuel": [
+        {
+          "name": "宁国补给站",
+          "meta": "Day 1 · 山路前补油"
+        },
+        {
+          "name": "泾县服务区",
+          "meta": "Day 2 · 中段补给"
+        }
+      ],
+      "repair": [
+        {
+          "name": "宁国轮胎维修点",
+          "meta": "Day 1 · 补胎和基础维护"
+        }
+      ],
+      "lodging": [
+        {
+          "name": "宁国城区民宿",
+          "meta": "Day 1 · 方便停车"
+        },
+        {
+          "name": "黄山脚下客栈",
+          "meta": "Day 2 · 适合早出发"
+        }
+      ],
+      "viewpoint": [
+        {
+          "name": "皖南山景观景台",
+          "meta": "Day 2 · 建议停留 20 分钟"
+        }
+      ],
+      "emergency": [
+        {
+          "name": "宁国市人民医院",
+          "meta": "Day 1 · 山路前应急保障"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "hainan-5-day",
+    "title": "环海南 5 天海岸线",
+    "region": "south",
+    "spot_slugs": [],
+    "days": 5,
+    "difficulty": "medium",
+    "scenery_type": [
+      "coast",
+      "scenic",
+      "relaxed"
+    ],
+    "bike_types": [
+      "150-250cc",
+      "300-500cc",
+      "adv-touring"
+    ],
+    "experience_levels": [
+      "beginner",
+      "intermediate",
+      "advanced"
+    ],
+    "best_season": "冬季 / 春季",
+    "distance_km": 780,
+    "budget_range": "2000-4000",
+    "summary": "海景路线优先，适合冬春季节出行。",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "海口",
+          "lng": 110.3312,
+          "lat": 20.031
+        },
+        {
+          "name": "文昌",
+          "lng": 110.7977,
+          "lat": 19.5439
+        },
+        {
+          "name": "琼海",
+          "lng": 110.4745,
+          "lat": 19.2584
+        },
+        {
+          "name": "陵水",
+          "lng": 110.0372,
+          "lat": 18.505
+        },
+        {
+          "name": "三亚",
+          "lng": 109.5121,
+          "lat": 18.2528
+        },
+        {
+          "name": "东方",
+          "lng": 108.6538,
+          "lat": 19.1019
+        },
+        {
+          "name": "海口",
+          "lng": 110.3312,
+          "lat": 20.031
+        }
+      ]
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "海口 -> 文昌",
+        "ride_time": "建议骑行 4 小时",
+        "distance": 150,
+        "highlights": [
+          "海边公路",
+          "节奏轻松",
+          "适合热身"
+        ],
+        "note": "注意海风和补水。"
+      },
+      {
+        "day": 2,
+        "title": "文昌 -> 琼海",
+        "ride_time": "建议骑行 4-5 小时",
+        "distance": 170,
+        "highlights": [
+          "海景",
+          "小众停靠点",
+          "补给方便"
+        ],
+        "note": "中午高温时段建议休息。"
+      },
+      {
+        "day": 3,
+        "title": "琼海 -> 陵水",
+        "ride_time": "建议骑行 4-5 小时",
+        "distance": 160,
+        "highlights": [
+          "海岸风景",
+          "适合拍照",
+          "路况平稳"
+        ],
+        "note": "沿海天气变化快。"
+      },
+      {
+        "day": 4,
+        "title": "陵水 -> 三亚",
+        "ride_time": "建议骑行 3-4 小时",
+        "distance": 120,
+        "highlights": [
+          "轻松短日程",
+          "海景优先",
+          "适合休整"
+        ],
+        "note": "建议下午早些到达休整。"
+      },
+      {
+        "day": 5,
+        "title": "三亚 -> 东方 / 海口方向",
+        "ride_time": "建议骑行 5 小时",
+        "distance": 180,
+        "highlights": [
+          "经典海岸线",
+          "返程收尾",
+          "风景完整"
+        ],
+        "note": "根据返程方式调整节奏。"
+      }
+    ],
+    "pois": {
+      "fuel": [
+        {
+          "name": "文昌沿线加油点",
+          "meta": "Day 1 · 海岸线补给"
+        },
+        {
+          "name": "陵水城区加油站",
+          "meta": "Day 3 · 下午补给"
+        }
+      ],
+      "repair": [
+        {
+          "name": "三亚机车维修点",
+          "meta": "Day 4 · 基础检修"
+        }
+      ],
+      "lodging": [
+        {
+          "name": "琼海海边民宿",
+          "meta": "Day 2 · 停车方便"
+        },
+        {
+          "name": "三亚停车友好酒店",
+          "meta": "Day 4 · 方便第二天返程"
+        }
+      ],
+      "viewpoint": [
+        {
+          "name": "东海岸观景点",
+          "meta": "Day 2 · 建议日落前停留"
+        },
+        {
+          "name": "三亚海岸线",
+          "meta": "Day 4 · 海边打卡"
+        }
+      ],
+      "emergency": [
+        {
+          "name": "陵水应急服务站",
+          "meta": "Day 3 · 海岸线应急补给"
+        },
+        {
+          "name": "三亚中心医院",
+          "meta": "Day 4 · 城市段紧急支援"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "liaoning-benhuan-3-day",
+    "title": "辽宁 3 天本溪到绿江边境风景线",
+    "region": "north",
+    "spot_slugs": [
+      "benhuan-highway",
+      "huanren-county",
+      "qingshangou",
+      "lujiang-village",
+      "dandong-yalu-river"
+    ],
+    "days": 3,
+    "difficulty": "medium",
+    "scenery_type": [
+      "mountain",
+      "scenic",
+      "niche"
+    ],
+    "bike_types": [
+      "150-250cc",
+      "300-500cc",
+      "500cc+",
+      "adv-touring"
+    ],
+    "experience_levels": [
+      "intermediate",
+      "advanced"
+    ],
+    "best_season": "夏季 / 秋季",
+    "distance_km": 680,
+    "budget_range": "1000-2000",
+    "summary": "从沈阳出发，串起本桓公路、桓仁、青山沟、绿江村和丹东，适合 2-3 天的辽宁省内经典摩旅。",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "沈阳",
+          "lng": 123.4315,
+          "lat": 41.8057
+        },
+        {
+          "name": "本溪",
+          "lng": 123.7652,
+          "lat": 41.2941
+        },
+        {
+          "name": "本桓公路",
+          "lng": 124.12,
+          "lat": 41.17
+        },
+        {
+          "name": "桓仁",
+          "lng": 125.3614,
+          "lat": 41.264
+        },
+        {
+          "name": "青山沟",
+          "lng": 124.861,
+          "lat": 40.857
+        },
+        {
+          "name": "宽甸",
+          "lng": 124.7825,
+          "lat": 40.7281
+        },
+        {
+          "name": "绿江村",
+          "lng": 125.734,
+          "lat": 40.132
+        },
+        {
+          "name": "丹东",
+          "lng": 124.383,
+          "lat": 40.1243
+        }
+      ]
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "沈阳 -> 本溪 -> 本桓公路 -> 桓仁",
+        "ride_time": "建议骑行 5-6 小时，含 2 次山路休息",
+        "distance": 260,
+        "highlights": [
+          "本桓公路弯道",
+          "本溪山景",
+          "桓仁过夜补给"
+        ],
+        "note": "建议上午从沈阳出发，中午前进入本溪山区，避免傍晚连续压弯。"
+      },
+      {
+        "day": 2,
+        "title": "桓仁 -> 青山沟 -> 宽甸",
+        "ride_time": "建议骑行 4-5 小时，适合边走边拍",
+        "distance": 180,
+        "highlights": [
+          "青山沟景区",
+          "山水风景",
+          "宽甸县城收尾"
+        ],
+        "note": "青山沟适合拉长停留时间，下午进入宽甸补给和住宿更稳。"
+      },
+      {
+        "day": 3,
+        "title": "宽甸 -> 绿江村 -> 丹东",
+        "ride_time": "建议骑行 5 小时，含 2 次观景停靠",
+        "distance": 240,
+        "highlights": [
+          "绿江村江景",
+          "边境氛围",
+          "丹东鸭绿江收官"
+        ],
+        "note": "绿江村早晚光线更适合出片，若当天返程较远，建议提早离开。"
+      }
+    ],
+    "pois": {
+      "fuel": [
+        {
+          "name": "本溪城区加油站",
+          "meta": "Day 1 · 进山前补油"
+        },
+        {
+          "name": "桓仁县城加油点",
+          "meta": "Day 1 · 晚间补给"
+        },
+        {
+          "name": "宽甸城区加油站",
+          "meta": "Day 2 · 次日去绿江前补给"
+        }
+      ],
+      "repair": [
+        {
+          "name": "本溪机车维修点",
+          "meta": "Day 1 · 进山前基础检查"
+        },
+        {
+          "name": "丹东城区维修点",
+          "meta": "Day 3 · 收官后检查"
+        }
+      ],
+      "lodging": [
+        {
+          "name": "桓仁骑手友好酒店",
+          "meta": "Day 1 · 停车方便"
+        },
+        {
+          "name": "宽甸城区民宿",
+          "meta": "Day 2 · 次日出发绿江更顺路"
+        }
+      ],
+      "viewpoint": [
+        {
+          "name": "本桓公路观景路段",
+          "meta": "Day 1 · 建议停留 15 分钟"
+        },
+        {
+          "name": "青山沟风景区",
+          "meta": "Day 2 · 建议停留 1-2 小时"
+        },
+        {
+          "name": "绿江村观景点",
+          "meta": "Day 3 · 建议日落前停留"
+        }
+      ],
+      "emergency": [
+        {
+          "name": "桓仁满族自治县中心医院",
+          "meta": "Day 1 · 山路后段应急点"
+        },
+        {
+          "name": "宽甸中心医院",
+          "meta": "Day 2 · 边境县道应急点"
+        }
+      ]
+    },
+    "detail_highlights": [
+      "本桓公路是辽宁机车圈辨识度很高的跑山路段，适合纯骑行内容拍摄。",
+      "青山沟和绿江村把山路摩旅接上了山水与边境风景，画面层次更完整。",
+      "全线补给点相对清晰，适合周末 2-3 天完成，不需要一次性拉太长距离。"
+    ],
+    "detail_for_whom": "适合辽宁及东北周边车友做周末中短途摩旅，也适合想兼顾跑山、打卡和拍内容的骑手。",
+    "detail_notes": [
+      "本桓公路和宽甸山区天气变化快，建议携带雨具和保暖层。",
+      "绿江村早晚温差更明显，计划拍日出或日落时要预留充足保暖装备。",
+      "边境与山区路段建议白天通过，新手尽量避免夜间骑行。"
+    ],
+    "checkpoints": [
+      {
+        "name": "本桓公路",
+        "summary": "辽宁经典跑山段，弯道连贯，林景和山体起伏都很适合骑行视频。",
+        "timing": "Day 1 · 中午前后进入最佳",
+        "image": "route-liaoning-benhuan.svg"
+      },
+      {
+        "name": "桓仁",
+        "summary": "更适合作为第一天补给和住宿节点，能把节奏从跑山自然过渡到休整。",
+        "timing": "Day 1 · 晚间落脚",
+        "image": "route-liaoning-huanren.svg"
+      },
+      {
+        "name": "青山沟",
+        "summary": "山水景区感更强，适合做人与车同框、景别切换和中途休闲拍摄。",
+        "timing": "Day 2 · 白天停留 1-2 小时",
+        "image": "route-liaoning-qingshangou.svg"
+      },
+      {
+        "name": "绿江村",
+        "summary": "这条线最容易出片的点位之一，江景、村落和光线氛围都很强。",
+        "timing": "Day 3 · 早晚光线最佳",
+        "image": "route-liaoning-lujiang.svg"
+      },
+      {
+        "name": "丹东鸭绿江",
+        "summary": "适合用城市沿江镜头给整条路线做收尾，也方便作为返程或住宿点。",
+        "timing": "Day 3 · 下午收官",
+        "image": "route-liaoning-dandong.svg"
+      }
+    ]
+  },
+  {
+    "slug": "liaoning-dalian-coast-2-day",
+    "title": "辽宁 2 天大连滨海轻骑线",
+    "region": "north",
+    "spot_slugs": [
+      "dalian-binhai-road",
+      "bangchuidao-roads",
+      "jinshitan",
+      "lvshun-coast-road"
+    ],
+    "days": 2,
+    "difficulty": "easy",
+    "scenery_type": [
+      "coast",
+      "scenic",
+      "relaxed"
+    ],
+    "bike_types": [
+      "125-150cc",
+      "150-250cc",
+      "300-500cc",
+      "adv-touring"
+    ],
+    "experience_levels": [
+      "beginner",
+      "intermediate"
+    ],
+    "best_season": "春季 / 夏季 / 秋季",
+    "distance_km": 280,
+    "budget_range": "1000-2000",
+    "summary": "以大连滨海路为主轴，串联棒棰岛、金石滩和旅顺，适合周末轻松海边摩旅。",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "大连",
+          "lng": 121.6147,
+          "lat": 38.914
+        },
+        {
+          "name": "滨海路",
+          "lng": 121.6806,
+          "lat": 38.8861
+        },
+        {
+          "name": "棒棰岛",
+          "lng": 121.698,
+          "lat": 38.88
+        },
+        {
+          "name": "金石滩",
+          "lng": 121.997,
+          "lat": 39.0875
+        },
+        {
+          "name": "旅顺沿海",
+          "lng": 121.145,
+          "lat": 38.801
+        }
+      ]
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "大连 -> 滨海路 -> 棒棰岛 -> 金石滩",
+        "ride_time": "建议骑行 4-5 小时，含多次拍照停靠",
+        "distance": 140,
+        "highlights": [
+          "海边弯道",
+          "城市海景",
+          "轻骑节奏"
+        ],
+        "note": "建议避开热门时段，滨海路更适合上午和傍晚拍摄。"
+      },
+      {
+        "day": 2,
+        "title": "金石滩 -> 旅顺沿海 -> 大连",
+        "ride_time": "建议骑行 4 小时",
+        "distance": 140,
+        "highlights": [
+          "沿海公路",
+          "海边停靠",
+          "返程轻松"
+        ],
+        "note": "沿海道路风力更明显，建议注意补水和防晒。"
+      }
+    ],
+    "pois": {
+      "fuel": [
+        {
+          "name": "大连沿海城区加油站",
+          "meta": "Day 1 · 出发前补给"
+        },
+        {
+          "name": "旅顺城区加油点",
+          "meta": "Day 2 · 返程前补油"
+        }
+      ],
+      "repair": [
+        {
+          "name": "大连机车维修点",
+          "meta": "Day 1 · 出发前基础检查"
+        }
+      ],
+      "lodging": [
+        {
+          "name": "金石滩海边酒店",
+          "meta": "Day 1 · 停车方便"
+        }
+      ],
+      "viewpoint": [
+        {
+          "name": "滨海路观景位",
+          "meta": "Day 1 · 建议多次停留"
+        },
+        {
+          "name": "旅顺海边停靠点",
+          "meta": "Day 2 · 海边休整"
+        }
+      ],
+      "emergency": [
+        {
+          "name": "大连市中心医院",
+          "meta": "沿线最近城市医疗支援"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "liaoning-liaodong-2-day",
+    "title": "辽宁 2 天辽东边境风景线",
+    "region": "north",
+    "spot_slugs": [
+      "qingshangou",
+      "kuandian-county-roads",
+      "lujiang-village",
+      "dandong-yalu-river"
+    ],
+    "days": 2,
+    "difficulty": "medium",
+    "scenery_type": [
+      "mountain",
+      "scenic",
+      "niche"
+    ],
+    "bike_types": [
+      "150-250cc",
+      "300-500cc",
+      "500cc+",
+      "adv-touring"
+    ],
+    "experience_levels": [
+      "intermediate",
+      "advanced"
+    ],
+    "best_season": "夏季 / 秋季",
+    "distance_km": 430,
+    "budget_range": "1000-2000",
+    "summary": "更聚焦辽东边境和江景，两天内覆盖青山沟、宽甸、绿江村和丹东。",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "沈阳",
+          "lng": 123.4315,
+          "lat": 41.8057
+        },
+        {
+          "name": "青山沟",
+          "lng": 124.861,
+          "lat": 40.857
+        },
+        {
+          "name": "宽甸",
+          "lng": 124.7825,
+          "lat": 40.7281
+        },
+        {
+          "name": "绿江村",
+          "lng": 125.734,
+          "lat": 40.132
+        },
+        {
+          "name": "丹东",
+          "lng": 124.383,
+          "lat": 40.1243
+        }
+      ]
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "沈阳 -> 青山沟 -> 宽甸",
+        "ride_time": "建议骑行 5-6 小时，含景区停留",
+        "distance": 220,
+        "highlights": [
+          "山水景区",
+          "县道路段",
+          "宽甸落脚"
+        ],
+        "note": "这条线更适合已经有短途经验的骑手。"
+      },
+      {
+        "day": 2,
+        "title": "宽甸 -> 绿江村 -> 丹东",
+        "ride_time": "建议骑行 5 小时",
+        "distance": 210,
+        "highlights": [
+          "江景村落",
+          "边境氛围",
+          "沿江收官"
+        ],
+        "note": "如果想拍日出或日落，需要提前预留机动时间。"
+      }
+    ],
+    "pois": {
+      "fuel": [
+        {
+          "name": "宽甸城区加油站",
+          "meta": "Day 1 · 住宿前补给"
+        },
+        {
+          "name": "丹东沿线加油点",
+          "meta": "Day 2 · 返程前补油"
+        }
+      ],
+      "repair": [
+        {
+          "name": "丹东机车维修点",
+          "meta": "Day 2 · 收官后检查"
+        }
+      ],
+      "lodging": [
+        {
+          "name": "宽甸城区骑手友好民宿",
+          "meta": "Day 1 · 方便停车"
+        }
+      ],
+      "viewpoint": [
+        {
+          "name": "青山沟观景点",
+          "meta": "Day 1 · 白天停留"
+        },
+        {
+          "name": "绿江村观景位",
+          "meta": "Day 2 · 适合早晚拍摄"
+        }
+      ],
+      "emergency": [
+        {
+          "name": "宽甸中心医院",
+          "meta": "Day 1 · 山区应急支援"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "liaoning-red-beach-2-day",
+    "title": "辽宁 2 天红海滩海滨轻松线",
+    "region": "north",
+    "spot_slugs": [
+      "red-beach",
+      "panjin-wetland-roads",
+      "huludao-xingcheng-coast",
+      "juehua-island-departure"
+    ],
+    "days": 2,
+    "difficulty": "easy",
+    "scenery_type": [
+      "coast",
+      "scenic",
+      "relaxed"
+    ],
+    "bike_types": [
+      "125-150cc",
+      "150-250cc",
+      "300-500cc",
+      "adv-touring"
+    ],
+    "experience_levels": [
+      "beginner",
+      "intermediate"
+    ],
+    "best_season": "秋季",
+    "distance_km": 360,
+    "budget_range": "1000-2000",
+    "summary": "适合想跑辽宁西南海边和秋季湿地景观的轻松两天线。",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "沈阳",
+          "lng": 123.4315,
+          "lat": 41.8057
+        },
+        {
+          "name": "盘锦湿地周边",
+          "lng": 121.9482,
+          "lat": 41.0304
+        },
+        {
+          "name": "红海滩",
+          "lng": 121.9926,
+          "lat": 40.828
+        },
+        {
+          "name": "兴城",
+          "lng": 120.7283,
+          "lat": 40.6197
+        },
+        {
+          "name": "葫芦岛海滨",
+          "lng": 120.8369,
+          "lat": 40.711
+        }
+      ]
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "沈阳 -> 盘锦湿地周边 -> 红海滩",
+        "ride_time": "建议骑行 4-5 小时",
+        "distance": 180,
+        "highlights": [
+          "湿地公路",
+          "秋季景观",
+          "低强度节奏"
+        ],
+        "note": "红海滩更看季节窗口，秋季出发体验最好。"
+      },
+      {
+        "day": 2,
+        "title": "盘锦 -> 兴城 -> 葫芦岛海滨",
+        "ride_time": "建议骑行 4-5 小时",
+        "distance": 180,
+        "highlights": [
+          "海边巡航",
+          "城市轻骑",
+          "返程友好"
+        ],
+        "note": "整条线适合新手做海边和城市轻摩旅。"
+      }
+    ],
+    "pois": {
+      "fuel": [
+        {
+          "name": "盘锦沿线加油站",
+          "meta": "Day 1 · 湿地段补给"
+        },
+        {
+          "name": "兴城区加油点",
+          "meta": "Day 2 · 海边返程前补油"
+        }
+      ],
+      "repair": [
+        {
+          "name": "葫芦岛城区维修点",
+          "meta": "Day 2 · 收官检查"
+        }
+      ],
+      "lodging": [
+        {
+          "name": "盘锦城区酒店",
+          "meta": "Day 1 · 次日转海边更顺路"
+        }
+      ],
+      "viewpoint": [
+        {
+          "name": "红海滩景观区",
+          "meta": "Day 1 · 秋季重点打卡"
+        },
+        {
+          "name": "兴城海滨沿线",
+          "meta": "Day 2 · 海边轻骑停靠"
+        }
+      ],
+      "emergency": [
+        {
+          "name": "盘锦中心医院",
+          "meta": "Day 1 · 城区医疗支援"
+        }
+      ]
+    }
+  },
+  {
+    "slug": "navigation-demo-partial-2-day",
+    "title": "导航状态演示 · 部分坐标 2 天线",
+    "region": "east",
+    "spot_slugs": [],
+    "days": 2,
+    "difficulty": "easy",
+    "scenery_type": [
+      "scenic",
+      "relaxed"
+    ],
+    "bike_types": [
+      "150-250cc",
+      "300-500cc",
+      "adv-touring"
+    ],
+    "experience_levels": [
+      "beginner",
+      "intermediate"
+    ],
+    "best_season": "全年演示",
+    "distance_km": 210,
+    "budget_range": "演示专用",
+    "summary": "专门用来预览“部分坐标”状态，部分途径点只有名称，方便后续补采。",
+    "is_navigation_state_demo": true,
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "杭州",
+          "lng": 120.1551,
+          "lat": 30.2741
+        },
+        {
+          "name": "桐庐服务点"
+        },
+        {
+          "name": "千岛湖北岸",
+          "lng": 119.0348,
+          "lat": 29.6098
+        },
+        {
+          "name": "淳安县城"
+        }
+      ]
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "杭州 -> 桐庐服务点",
+        "ride_time": "建议骑行 3-4 小时",
+        "distance": 95,
+        "highlights": [
+          "首段已确认坐标",
+          "中途待补服务点",
+          "适合演示补采流程"
+        ],
+        "note": "先确认起点和中段服务点顺序，后续再补第 2 个点位坐标。"
+      },
+      {
+        "day": 2,
+        "title": "桐庐服务点 -> 千岛湖北岸 -> 淳安县城",
+        "ride_time": "建议骑行 4 小时",
+        "distance": 115,
+        "highlights": [
+          "混合导航状态",
+          "可以直接预览部分坐标 UI",
+          "适合做采集演示"
+        ],
+        "note": "把终点先保留为名称导航，补采后可切换为完整坐标。"
+      }
+    ],
+    "pois": {
+      "fuel": [
+        {
+          "name": "桐庐城区补给点",
+          "meta": "Day 1 · 待补地图坐标"
+        }
+      ],
+      "repair": [],
+      "lodging": [
+        {
+          "name": "千岛湖北岸住宿点",
+          "meta": "Day 2 · 可作为过夜参考"
+        }
+      ],
+      "viewpoint": [
+        {
+          "name": "千岛湖北岸观景台",
+          "meta": "Day 2 · 已确认大致位置"
+        }
+      ],
+      "emergency": []
+    }
+  },
+  {
+    "slug": "navigation-demo-names-1-day",
+    "title": "导航状态演示 · 名称导航 1 天游",
+    "region": "east",
+    "spot_slugs": [],
+    "days": 1,
+    "difficulty": "easy",
+    "scenery_type": [
+      "scenic",
+      "relaxed"
+    ],
+    "bike_types": [
+      "125-150cc",
+      "150-250cc",
+      "300-500cc"
+    ],
+    "experience_levels": [
+      "beginner"
+    ],
+    "best_season": "全年演示",
+    "distance_km": 120,
+    "budget_range": "演示专用",
+    "summary": "专门用来预览“名称导航”状态，全部途径点先只有名称，适合做首轮采集。",
+    "is_navigation_state_demo": true,
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "绍兴"
+        },
+        {
+          "name": "兰亭"
+        },
+        {
+          "name": "东湖"
+        },
+        {
+          "name": "安昌古镇"
+        }
+      ]
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "绍兴 -> 兰亭 -> 东湖 -> 安昌古镇",
+        "ride_time": "建议骑行 3 小时",
+        "distance": 120,
+        "highlights": [
+          "全部名称导航",
+          "适合首轮点位梳理",
+          "便于后续逐个补坐标"
+        ],
+        "note": "这一条专门保留名称导航状态，便于验证未补坐标时的前端提示。"
+      }
+    ],
+    "pois": {
+      "fuel": [],
+      "repair": [],
+      "lodging": [],
+      "viewpoint": [
+        {
+          "name": "安昌古镇收尾点",
+          "meta": "Day 1 · 后续可补正式坐标"
+        }
+      ],
+      "emergency": []
+    }
+  }
+]

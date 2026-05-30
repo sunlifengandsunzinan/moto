@@ -6,23 +6,6 @@
     </view>
   </view>
 
-  <view class="card list-card">
-    <text class="list-card-title">{{profile.name}}</text>
-    <text class="subtle">{{profile.tagline}}</text>
-    <text class="card-desc">{{profile.summary}}</text>
-    <view class="actions-row">
-      <button
-        wx:for="{{quickActions}}"
-        wx:key="href"
-        class="{{item.kind === 'primary' ? 'button-primary' : 'button-secondary'}}"
-        data-href="{{item.href}}"
-        bindtap="handleOpenHref"
-      >
-        {{item.label}}
-      </button>
-    </view>
-  </view>
-
   <view wx:if="{{loading}}" class="card loading">
     <text class="subtle">正在加载工作台...</text>
   </view>
@@ -32,23 +15,59 @@
   </view>
 
   <block wx:else>
-    <view class="stats-grid">
-      <view wx:for="{{metrics}}" wx:key="label" class="stat-item">
-        <text class="stat-value">{{item.value}}</text>
-        <text class="stat-label">{{item.label}}</text>
+    <view class="card me-hero-card">
+      <view class="me-hero-card__top">
+        <view class="me-hero-avatar">骑</view>
+        <view class="me-hero-copy">
+          <text class="me-hero-name">{{profile.name}}</text>
+          <text class="me-hero-tagline">{{profile.tagline}}</text>
+        </view>
+      </view>
+      <text class="card-desc">{{profile.summary}}</text>
+      <view class="chip-row me-hero-chip-row">
+        <text wx:for="{{metrics}}" wx:key="label" class="chip">{{item.label}} {{item.value}}</text>
       </view>
     </view>
 
-    <view wx:for="{{sections}}" wx:key="title" class="card">
+    <view class="me-action-grid">
+      <view
+        wx:for="{{quickActions}}"
+        wx:key="href"
+        class="card me-action-card"
+        data-href="{{item.href}}"
+        bindtap="handleOpenHref"
+      >
+        <text class="me-action-card__eyebrow">快捷入口</text>
+        <text class="me-action-card__title">{{item.label}}</text>
+        <text class="subtle">{{item.kind === 'primary' ? '优先入口' : '备选入口'}}</text>
+      </view>
+    </view>
+
+    <view class="card me-summary-card">
       <view class="section-header">
         <view>
-          <text class="eyebrow">工作台</text>
+          <text class="eyebrow">路线概览</text>
+          <text class="card-title">当前小程序焦点</text>
+        </view>
+      </view>
+      <view class="stats-grid me-stats-grid">
+        <view wx:for="{{metrics}}" wx:key="label" class="stat-item me-stat-item">
+          <text class="stat-value">{{item.value}}</text>
+          <text class="stat-label">{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:for="{{sections}}" wx:key="title" class="card me-section-card">
+      <view class="section-header">
+        <view>
+          <text class="eyebrow">我的路线</text>
           <text class="card-title">{{item.title}}</text>
         </view>
       </view>
 
-      <view wx:for="{{item.items}}" wx:key="href" class="entry-row" data-href="{{item.href}}" bindtap="handleOpenHref">
-        <view>
+      <view wx:for="{{item.items}}" wx:key="href" class="me-entry-card" data-href="{{item.href}}" bindtap="handleOpenHref">
+        <view class="me-entry-card__main">
           <text class="entry-title">{{item.label}}</text>
           <view><text class="subtle">{{item.description}}</text></view>
         </view>

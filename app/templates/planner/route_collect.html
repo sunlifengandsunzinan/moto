@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}路线坐标采集{% endblock %}
+
+{% block body_class %}miniapp-body{% endblock %}
+
+{% block content %}
+  <main class="miniapp-shell">
+    <section class="miniapp-page route-collection-page">
+      <header class="miniapp-topbar">
+        <div>
+          <p class="miniapp-topbar__eyebrow">采集入口</p>
+          <h1>{{ page.title }}</h1>
+        </div>
+        <a class="miniapp-topbar__action" href="/moto/routes">返回路线</a>
+      </header>
+
+      <section class="miniapp-card miniapp-card--hero">
+        <p class="miniapp-card__desc">{{ page.description }}</p>
+        <div class="miniapp-actions miniapp-actions--compact">
+          <a class="miniapp-button" href="{{ api.selected_schema_href }}" target="_blank" rel="noreferrer">查看 API Schema</a>
+          {% if selected_route %}
+            <a class="miniapp-button miniapp-button--secondary" href="{{ selected_route.href }}">查看当前路线</a>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="miniapp-card">
+        <div class="miniapp-section-header">
+          <div>
+            <p class="miniapp-section-header__eyebrow">选择路线</p>
+            <h2>先选要补采的路线</h2>
+          </div>
+        </div>
+        <div class="miniapp-chip-row miniapp-route-chip-row">
+          {% for route in route_options %}
+            <a class="miniapp-chip{% if route.is_selected %} is-active{% endif %}" href="{{ route.href }}">{{ route.title }}{% if route.is_demo %} · 演示{% endif %}</a>
+          {% endfor %}
+        </div>
+      </section>
+
+      {% if selected_route %}
+        <section class="miniapp-card miniapp-route-collection-card">
+          <div class="miniapp-section-header">
+            <div>
+              <p class="miniapp-section-header__eyebrow">当前目标</p>
+              <h2>{{ selected_route.title }}</h2>
+            </div>
+            <span class="miniapp-inline-badge">{{ selected_route.waypoint_count }} 个途径点</span>
+          </div>
+          <p class="miniapp-card__desc">{{ selected_route.summary }}</p>
+          <p class="miniapp-route-navigation-hint is-{{ selected_route.amap_export.status_variant }}">
+            <span class="miniapp-route-navigation-hint__badge">{{ selected_route.amap_export.status_badge }}</span>
+            <span>{{ selected_route.amap_export.status_text }}</span>
+          </p>
+          <div class="miniapp-route-collection-waypoints">
+            {% for point in selected_route.navigation_waypoints %}
+              <article class="miniapp-route-collection-waypoint">
+                <strong>{{ loop.index }}. {{ point.name }}</strong>
+                <span>{{ '已带坐标' if point.has_coordinates else '待补坐标' }}</span>
+                <small>
+                  {% if point.has_coordinates %}
+                    {{ point.lng }}, {{ point.lat }}
+                  {% else %}
+                    先保留名称，后续补 lng / lat
+                  {% endif %}
+                </small>
+              </article>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="miniapp-card miniapp-route-collection-grid">
+        <div>
+          <div class="miniapp-section-header">
+            <div>
+              <p class="miniapp-section-header__eyebrow">采集字段</p>
+              <h2>后续录入时要保留什么</h2>
+            </div>
+          </div>
+          <div class="miniapp-route-collection-schema-list">
+            {% for field in schema %}
+              <article class="miniapp-route-collection-schema-item">
+                <strong>{{ field.label }}{% if field.required %} · 必填{% endif %}</strong>
+                <p>{{ field.description }}</p>
+                <small>{{ field.name }} · 例：{{ field.example }}</small>
+              </article>
+            {% endfor %}
+          </div>
+        </div>
+        <div>
+          <div class="miniapp-section-header">
+            <div>
+              <p class="miniapp-section-header__eyebrow">示例结构</p>
+              <h2>建议先采成这份 JSON</h2>
+            </div>
+          </div>
+          <pre class="miniapp-code-block">{{ selected_route_seed_json }}</pre>
+        </div>
+      </section>
+
+      <section class="miniapp-card">
+        <div class="miniapp-section-header">
+          <div>
+            <p class="miniapp-section-header__eyebrow">落地位置</p>
+            <h2>后续接采集脚本时的入口</h2>
+          </div>
+        </div>
+        <div class="miniapp-route-collection-targets">
+          <article class="miniapp-route-collection-target">
+            <strong>正式数据源</strong>
+            <p>{{ storage.canonical_file }}</p>
+          </article>
+          <article class="miniapp-route-collection-target">
+            <strong>采集示例文件</strong>
+            <p>{{ storage.seed_example_file }}</p>
+          </article>
+          <article class="miniapp-route-collection-target">
+            <strong>独立校验命令</strong>
+            <p>{{ storage.validate_command }}</p>
+          </article>
+        </div>
+        <ul class="miniapp-route-detail-list">
+          {% for tip in tips %}
+            <li>{{ tip }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+    </section>
+  </main>
+{% endblock %}

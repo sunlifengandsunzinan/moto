@@ -104,6 +104,90 @@ The main page and feature entrypoints are:
 
 If you are exploring the product manually, the usual order is `/moto` -> `/moto/planner` or `/moto/spots` -> `/moto/spots/collect`.
 
+## Route Navigation Waypoints
+
+Route templates now support a dedicated navigation config layer for Amap export and direct navigation.
+
+The canonical route data source now lives in [app/services/route_templates.json](app/services/route_templates.json). The Python module [app/services/route_templates_config.py](app/services/route_templates_config.py) is only a thin JSON loader.
+
+Recommended route-level field:
+
+```json
+"navigation": {
+	"provider": "amap",
+	"waypoints": [
+		{"name": "杭州", "lng": 120.1551, "lat": 30.2741},
+		{"name": "莫干山", "lng": 119.8795, "lat": 30.6140},
+		{"name": "安吉", "lng": 119.6803, "lat": 30.6380}
+	]
+}
+```
+
+Legacy `navigation_waypoints` is still accepted for backward compatibility, but new route data should prefer `navigation.waypoints`.
+
+You can also put waypoints on each day item if a route needs day-scoped control:
+
+```json
+"days_plan": [
+	{
+		"day": 1,
+		"title": "杭州 -> 莫干山 -> 安吉",
+		"waypoints": [
+			{"name": "杭州", "lng": 120.1551, "lat": 30.2741},
+			{"name": "莫干山", "lng": 119.8795, "lat": 30.6140},
+			{"name": "安吉", "lng": 119.6803, "lat": 30.6380}
+		]
+	}
+]
+```
+
+Supported waypoint input keys are:
+
+- `name`: required, used for display and fallback navigation text
+- `lat` / `lng`: preferred coordinate keys
+- `latitude` / `longitude`: accepted aliases
+- `coordinates.lat` / `coordinates.lng`: accepted nested form
+
+Recommended template split:
+
+- `days_plan`: user-facing ride story, daily distance, highlights, notes
+- `navigation.waypoints`: navigation-only ordered waypoint chain for direct Amap export
+
+This keeps display copy and navigation maintenance separate. If the displayed day title changes, you do not need to rebuild the Amap chain by parsing text.
+
+The route export payload at `/api/moto/routes` now includes:
+
+- `navigation_waypoints`: normalized waypoint list on each route card
+- `amap_export.waypoints`: the same normalized waypoint list for frontend navigation use
+- `amap_export.navigation_mode`: `none`, `names`, `mixed`, or `coordinates`
+- `amap_export.status_text`: human-readable navigation readiness text such as `5/5 个点已带坐标，可直接高德逐点导航`
+- `amap_export.supports_coordinate_navigation`: whether any waypoint already has coordinates
+- `amap_export.coordinate_waypoint_count`: number of waypoints that already have coordinates
+
+Two demo routes are kept in the same JSON source so you can preview all three navigation states in the UI:
+
+- `navigation-demo-partial-2-day`: partial coordinates, mixed navigation
+- `navigation-demo-names-1-day`: names only, fallback navigation
+
+Behavior:
+
+- if no coordinates are present, Amap export falls back to name-based navigation
+- if some coordinates are present, export uses mixed mode and keeps the rest as names
+- if all waypoints have coordinates, the direct-navigation link is emitted with coordinate-aware Amap parameters, including middle waypoints
+
+## Route Waypoint Collection Entry
+
+Reserved collection entrypoints for future route-coordinate and waypoint gathering:
+
+- `GET /moto/routes/collect`: web collection entry for choosing a route and seeing the current waypoint seed
+- `GET /api/moto/routes/collect/schema`: JSON schema and selected route seed payload for future Mini Program or tooling integration
+
+Current storage-related anchors:
+
+- canonical route source: `app/services/route_templates.json`
+- collection example seed: `data/raw/route_waypoint_collection.example.json`
+- standalone validation command: `python scripts/validate_route_templates.py`
+
 ## Data Directory Overview
 
 The `data/` directory is split by collection stage so raw automation output does not directly overwrite approved public spot data.

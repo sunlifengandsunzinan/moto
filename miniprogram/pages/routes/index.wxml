@@ -13,18 +13,21 @@
       <text class="inline-meta-label">{{featuredSummary.title}}</text>
       <text class="inline-meta-value">{{featuredSummary.description}}</text>
     </view>
+    <view class="actions-row actions-row--compact">
+      <button class="button-secondary" data-href="/moto/routes/collect" bindtap="handleOpenRoute">采集导航点</button>
+    </view>
     <view class="route-filter-strip">
       <view>
-        <text class="eyebrow">按骑行天数选</text>
-        <view><text class="card-title">先挑节奏，再看经过点</text></view>
+        <text class="eyebrow">骑行时间</text>
+        <view><text class="card-title">按计划时长选路线</text></view>
       </view>
       <view class="chip-row">
         <text
-          wx:for="{{dayQuickFilters}}"
-          wx:key="value"
+          wx:for="{{durationFilters}}"
+          wx:key="key"
           class="chip {{item.is_active ? 'chip-active' : ''}}"
-          data-days="{{item.value}}"
-          bindtap="handleDaysFilter"
+          data-filter-key="{{item.key}}"
+          bindtap="handleDurationFilter"
         >{{item.label}}</text>
       </view>
     </view>
@@ -39,49 +42,72 @@
   </view>
 
   <view wx:else class="list-column">
-    <view wx:for="{{routes}}" wx:key="slug" class="card list-card route-card-v2">
+    <view wx:for="{{routes}}" wx:for-item="route" wx:key="slug" class="card list-card route-card-v2">
+      <view class="route-roadbar">
+        <text class="route-roadbar__label">ROADBOOK</text>
+        <view class="route-roadbar__lane"></view>
+      </view>
       <view class="list-card-header">
         <view>
-          <text class="list-card-title">{{item.title}}</text>
+          <text class="list-card-title">{{route.title}}</text>
           <view>
-            <text class="card-desc">{{item.summary}}</text>
+            <text class="card-desc">{{route.summary}}</text>
           </view>
         </view>
-        <view class="route-meta-pill">{{item.distance_km}} km</view>
+        <view class="route-meta-pill">{{route.distance_km}} km</view>
+      </view>
+      <view class="route-fact-row">
+        <view class="route-fact-chip">
+          <text class="route-fact-chip__label">时长</text>
+          <text class="route-fact-chip__value">{{route.days}} 天</text>
+        </view>
+        <view class="route-fact-chip">
+          <text class="route-fact-chip__label">途径点</text>
+          <text class="route-fact-chip__value">{{route.waypoint_count}} 个</text>
+        </view>
       </view>
       <view class="tag-row">
-        <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
+        <text wx:for="{{route.tags}}" wx:key="*this" class="tag">{{item}}</text>
       </view>
       <view class="route-stage-block">
         <view class="section-header">
           <view>
             <text class="eyebrow">每日经过</text>
-            <view><text class="card-title">{{item.days}} 天路线拆分</text></view>
+            <view><text class="card-title">{{route.days}} 天路线拆分</text></view>
           </view>
-          <text class="inline-badge">{{item.waypoint_count}} 个途径点</text>
+          <text class="inline-badge">沿途路书</text>
         </view>
-        <view class="list-column">
-          <view wx:for="{{item.days_plan}}" wx:key="day" class="route-stage-item">
-            <text class="route-stage-day">Day {{item.day}}</text>
-            <view>
-              <text class="route-stage-title">{{item.title}}</text>
-              <view><text class="subtle">约 {{item.distance}} km</text></view>
+        <view class="list-column route-stage-list">
+          <view wx:for="{{route.days_plan}}" wx:for-item="day" wx:key="day" class="route-stage-item">
+            <text class="route-stage-day">Day {{day.day}}</text>
+            <view class="route-stage-track">
+              <view class="route-stage-marker"></view>
+              <view>
+                <text class="route-stage-title">{{day.title}}</text>
+                <view><text class="subtle">约 {{day.distance}} km</text></view>
+              </view>
             </view>
           </view>
         </view>
       </view>
       <view class="route-map-card">
+        <view class="route-map-card__lane"></view>
         <view>
-          <text class="eyebrow">高德导出</text>
-          <view><text class="subtle">{{item.amap_export.waypoint_text}}</text></view>
+          <text class="eyebrow">直接导航</text>
+          <view><text class="subtle">{{route.amap_export.waypoint_text}}</text></view>
+          <view wx:if="{{route.amap_export.status_text}}" class="route-navigation-hint route-navigation-hint--{{route.amap_export.status_variant}}">
+            <text class="route-navigation-hint__badge">{{route.amap_export.status_badge}}</text>
+            <text class="route-navigation-hint__text">{{route.amap_export.status_text}}</text>
+          </view>
         </view>
         <view class="actions-row">
-          <button wx:if="{{item.amap_export.is_available}}" class="button-secondary" data-href="{{item.amap_export.href}}" bindtap="handleOpenAmap">{{item.amap_export.label}}</button>
+          <button wx:if="{{route.amap_export.is_available}}" class="button-primary" data-href="{{route.amap_export.href}}" bindtap="handleDirectNavigate">直接导航</button>
         </view>
       </view>
       <view class="actions-row">
-        <button class="button-ghost" data-href="{{item.href}}" bindtap="handleOpenRoute">详情</button>
-        <button class="button-primary" bindtap="handleOpenPlanner">继续规划</button>
+        <button class="button-ghost" data-href="{{route.collect_href}}" bindtap="handleOpenRoute">补采坐标</button>
+        <button class="button-ghost" data-href="{{route.href}}" bindtap="handleOpenRoute">详情</button>
+        <button class="button-secondary" bindtap="handleOpenPlanner">继续规划</button>
       </view>
     </view>
 
