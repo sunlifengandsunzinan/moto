@@ -27,8 +27,6 @@ Page({
   data: {
     loading: true,
     error: "",
-    page: {},
-    featuredSummary: {},
     allRoutes: [],
     routes: [],
     selectedDuration: "1-2-days",
@@ -54,8 +52,6 @@ Page({
         const allRoutes = payload.routes || [];
         this.setData({
           loading: false,
-          page: payload.page,
-          featuredSummary: payload.featured_summary,
           allRoutes,
         });
         this.applyDurationFilter(this.data.selectedDuration, allRoutes);
@@ -88,12 +84,6 @@ Page({
   handleDurationFilter(event) {
     const filterKey = event.currentTarget.dataset.filterKey || "1-2-days";
     this.applyDurationFilter(filterKey);
-  },
-
-  handleOpenPlanner() {
-    wx.navigateTo({
-      url: `/pages/webview/index?url=${encodeURIComponent(buildWebUrl("/moto/planner"))}`,
-    });
   },
 
   handleOpenRoute(event) {
