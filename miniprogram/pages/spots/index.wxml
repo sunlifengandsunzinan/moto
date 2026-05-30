@@ -1,0 +1,127 @@
+<view class="page-shell">
+  <view class="topbar">
+    <view class="topbar-copy">
+      <text class="eyebrow">打卡点</text>
+      <text class="page-title">{{page.title || '辽宁摩旅点位库'}}</text>
+    </view>
+    <button class="topbar-action" bindtap="handleOpenPlanner">去规划</button>
+  </view>
+
+  <view class="card">
+    <text class="card-desc">{{page.description}}</text>
+    <view class="stats-grid">
+      <view class="stat-item">
+        <text class="stat-value">{{stats.total || 0}}</text>
+        <text class="stat-label">总点位</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-value">{{stats.visible || 0}}</text>
+        <text class="stat-label">当前展示</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-value">{{stats.regions || 0}}</text>
+        <text class="stat-label">覆盖区域</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-value">{{stats.filters || 0}}</text>
+        <text class="stat-label">已筛选</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-header">
+      <view>
+        <text class="eyebrow">快速筛选</text>
+        <text class="card-title">先收窄，再进详情</text>
+      </view>
+      <text class="inline-badge">{{stats.visible || 0}} / {{stats.total || 0}}</text>
+    </view>
+
+    <view wx:for="{{quickGroups}}" wx:key="title" class="list-card">
+      <text class="card-title">{{item.title}}</text>
+      <view class="chip-row">
+        <text
+          wx:for="{{item.items}}"
+          wx:key="href"
+          data-href="{{item.href}}"
+          bindtap="handleQuickFilter"
+          class="chip {{item.is_active ? 'chip-active' : ''}}"
+        >
+          {{item.label}}
+        </text>
+      </view>
+    </view>
+
+    <view wx:if="{{hasActiveFilters}}" class="tag-row">
+      <text wx:for="{{activeFilters}}" wx:key="label" class="tag">{{item.label}} · {{item.value}}</text>
+    </view>
+
+    <view class="filter-grid">
+      <picker range="{{regionOptions}}" range-key="label" value="{{regionIndex}}" bindchange="handleRegionChange">
+        <view class="picker-field">
+          <text class="picker-label">区域</text>
+          <text class="picker-value">{{regionOptions[regionIndex].label || '全部区域'}}</text>
+        </view>
+      </picker>
+
+      <picker range="{{routeTypeOptions}}" range-key="label" value="{{routeTypeIndex}}" bindchange="handleRouteTypeChange">
+        <view class="picker-field">
+          <text class="picker-label">线路类型</text>
+          <text class="picker-value">{{routeTypeOptions[routeTypeIndex].label || '全部类型'}}</text>
+        </view>
+      </picker>
+
+      <picker range="{{supportOptions}}" range-key="label" value="{{supportIndex}}" bindchange="handleSupportChange">
+        <view class="picker-field">
+          <text class="picker-label">支撑能力</text>
+          <text class="picker-value">{{supportOptions[supportIndex].label || '全部支撑'}}</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="actions-row">
+      <button class="button-secondary" bindtap="handleReset">重置</button>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="card loading">
+    <text class="subtle">正在加载点位数据...</text>
+  </view>
+
+  <view wx:elif="{{error}}" class="card error">
+    <text class="error-text">{{error}}</text>
+  </view>
+
+  <view wx:else class="list-column">
+    <view wx:for="{{spots}}" wx:key="href" class="card spot-card">
+      <image class="spot-image" mode="aspectFill" src="{{item.image_url}}"></image>
+      <view class="spot-card-body list-card">
+        <view class="list-card-header">
+          <view>
+            <text class="list-card-title">{{item.name}}</text>
+            <view><text class="subtle">{{item.region}} · {{item.city}}</text></view>
+          </view>
+        </view>
+        <text class="card-desc">{{item.summary}}</text>
+
+        <view wx:if="{{item.summary_tags.length}}" class="tag-row">
+          <text wx:for="{{item.summary_tags}}" wx:key="*this" class="tag">{{item}}</text>
+        </view>
+
+        <view wx:if="{{item.spot_markers.length}}" class="tag-row">
+          <text wx:for="{{item.spot_markers}}" wx:key="*this" class="tag tag-accent">{{item}}</text>
+        </view>
+
+        <view class="actions-row">
+          <button class="button-ghost" data-href="{{item.href}}" bindtap="handleOpenSpot">详情</button>
+          <button class="button-primary" data-origin="{{item.city}}" bindtap="handleOpenPlanner">从这里出发</button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{!spots.length}}" class="card empty">
+      <text class="empty-text">当前筛选下还没有命中的点位。</text>
+    </view>
+  </view>
+</view>

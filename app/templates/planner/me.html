@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}我的摩旅{% endblock %}
+
+{% block body_class %}miniapp-body{% endblock %}
+
+{% block content %}
+  <main class="miniapp-shell">
+    <section class="miniapp-page miniapp-page--with-tabbar">
+      <header class="miniapp-topbar">
+        <div>
+          <p class="miniapp-topbar__eyebrow">我的</p>
+          <h1>{{ page.title }}</h1>
+        </div>
+      </header>
+
+      <section class="miniapp-card miniapp-profile-card">
+        <p class="miniapp-profile-card__name">{{ profile.name }}</p>
+        <p class="miniapp-profile-card__tagline">{{ profile.tagline }}</p>
+        <p class="miniapp-card__desc">{{ profile.summary }}</p>
+        <div class="miniapp-quick-actions">
+          {% for action in quick_actions %}
+            <a class="miniapp-button{% if action.kind != 'primary' %} miniapp-button--secondary{% endif %}" href="{{ action.href }}">{{ action.label }}</a>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="miniapp-stat-grid miniapp-stat-grid--cards">
+        {% for metric in metrics %}
+          <article class="miniapp-card miniapp-metric-card">
+            <strong>{{ metric.value }}</strong>
+            <span>{{ metric.label }}</span>
+          </article>
+        {% endfor %}
+      </section>
+
+      {% for section in sections %}
+        <section class="miniapp-card">
+          <div class="miniapp-section-header">
+            <div>
+              <p class="miniapp-section-header__eyebrow">工作台</p>
+              <h2>{{ section.title }}</h2>
+            </div>
+          </div>
+          <div class="miniapp-list">
+            {% for item in section["items"] %}
+              <a class="miniapp-entry-row" href="{{ item.href }}">
+                <div>
+                  <p class="miniapp-entry-row__title">{{ item.label }}</p>
+                  <p class="miniapp-card__subtle">{{ item.description }}</p>
+                </div>
+                <span class="miniapp-entry-row__arrow">进入</span>
+              </a>
+            {% endfor %}
+          </div>
+        </section>
+      {% endfor %}
+
+      <nav class="miniapp-tabbar" aria-label="底部导航">
+        {% for item in tabbar["items"] %}
+          <a class="miniapp-tabbar__item{% if item.is_active %} is-active{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
+        {% endfor %}
+      </nav>
+    </section>
+  </main>
+{% endblock %}

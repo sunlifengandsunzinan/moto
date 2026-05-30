@@ -42,6 +42,85 @@ def test_status_api_returns_runtime_details(client):
     }
 
 
+def test_moto_root_redirects_to_routes_tab(client):
+    response = client.get("/moto")
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/moto/routes")
+
+
+def test_moto_routes_page_renders_miniapp_tabbar(client):
+    response = client.get("/moto/routes")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "热门摩旅路线库" in html
+    assert "底部导航" in html
+    assert ">路线<" in html
+    assert ">打卡点<" in html
+    assert ">我的<" in html
+    assert "is-active\" href=\"/moto/routes\"" in html
+
+
+def test_moto_routes_page_supports_day_selection_and_amap_export(client):
+    response = client.get("/moto/routes?days=2")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "按骑行天数选" in html
+    assert "2 天路线拆分" in html
+    assert "导出到高德地图" in html
+    assert "m.amap.com/navigation/carmap/" in html
+
+
+def test_moto_me_page_renders_workspace_summary(client):
+    response = client.get("/moto/me")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "我的摩旅" in html
+    assert "路线模板" in html
+    assert "点位录入审核" in html
+    assert "采集监控" in html
+    assert "is-active\" href=\"/moto/me\"" in html
+
+
+def test_moto_routes_and_spots_api_return_miniapp_payloads(client):
+    routes_response = client.get("/api/moto/routes")
+    spots_response = client.get("/api/moto/spots")
+
+    assert routes_response.status_code == 200
+    assert spots_response.status_code == 200
+
+    routes_payload = routes_response.get_json()
+    spots_payload = spots_response.get_json()
+
+    assert "page" in routes_payload
+    assert "routes" in routes_payload
+    assert "featured_summary" in routes_payload
+    assert "filters" in routes_payload
+    assert "amap_export" in routes_payload["routes"][0]
+    assert "day_quick_filters" in routes_payload["filters"]
+
+    assert "page" in spots_payload
+    assert "spots" in spots_payload
+    assert "stats" in spots_payload
+    assert "filters" in spots_payload
+
+
+def test_moto_me_api_returns_workspace_sections(client):
+    response = client.get("/api/moto/me")
+
+    assert response.status_code == 200
+
+    payload = response.get_json()
+
+    assert payload["page"]["title"] == "我的摩旅"
+    assert len(payload["metrics"]) >= 4
+    assert any(item["label"] == "点位录入审核" for item in payload["sections"][0]["items"])
+    assert any(item["label"] == "采集监控" for item in payload["sections"][0]["items"])
+
+
             "spot_markers": ["checkin-point", "coffee-stop"],
 def test_planner_form_exposes_more_routes_and_spots(client):
     from pathlib import Path

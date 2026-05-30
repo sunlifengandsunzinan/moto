@@ -1,0 +1,59 @@
+<view class="page-shell">
+  <view class="topbar">
+    <view class="topbar-copy">
+      <text class="eyebrow">我的</text>
+      <text class="page-title">{{page.title || '我的摩旅'}}</text>
+    </view>
+  </view>
+
+  <view class="card list-card">
+    <text class="list-card-title">{{profile.name}}</text>
+    <text class="subtle">{{profile.tagline}}</text>
+    <text class="card-desc">{{profile.summary}}</text>
+    <view class="actions-row">
+      <button
+        wx:for="{{quickActions}}"
+        wx:key="href"
+        class="{{item.kind === 'primary' ? 'button-primary' : 'button-secondary'}}"
+        data-href="{{item.href}}"
+        bindtap="handleOpenHref"
+      >
+        {{item.label}}
+      </button>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="card loading">
+    <text class="subtle">正在加载工作台...</text>
+  </view>
+
+  <view wx:elif="{{error}}" class="card error">
+    <text class="error-text">{{error}}</text>
+  </view>
+
+  <block wx:else>
+    <view class="stats-grid">
+      <view wx:for="{{metrics}}" wx:key="label" class="stat-item">
+        <text class="stat-value">{{item.value}}</text>
+        <text class="stat-label">{{item.label}}</text>
+      </view>
+    </view>
+
+    <view wx:for="{{sections}}" wx:key="title" class="card">
+      <view class="section-header">
+        <view>
+          <text class="eyebrow">工作台</text>
+          <text class="card-title">{{item.title}}</text>
+        </view>
+      </view>
+
+      <view wx:for="{{item.items}}" wx:key="href" class="entry-row" data-href="{{item.href}}" bindtap="handleOpenHref">
+        <view>
+          <text class="entry-title">{{item.label}}</text>
+          <view><text class="subtle">{{item.description}}</text></view>
+        </view>
+        <text class="entry-arrow">进入</text>
+      </view>
+    </view>
+  </block>
+</view>

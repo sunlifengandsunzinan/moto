@@ -1,0 +1,92 @@
+<view class="page-shell">
+  <view class="topbar">
+    <view class="topbar-copy">
+      <text class="eyebrow">路线</text>
+      <text class="page-title">{{page.title || '热门摩旅路线库'}}</text>
+    </view>
+    <button class="topbar-action" bindtap="handleOpenPlanner">去规划</button>
+  </view>
+
+  <view class="card">
+    <text class="card-desc">{{page.description}}</text>
+    <view class="inline-meta">
+      <text class="inline-meta-label">{{featuredSummary.title}}</text>
+      <text class="inline-meta-value">{{featuredSummary.description}}</text>
+    </view>
+    <view class="route-filter-strip">
+      <view>
+        <text class="eyebrow">按骑行天数选</text>
+        <view><text class="card-title">先挑节奏，再看经过点</text></view>
+      </view>
+      <view class="chip-row">
+        <text
+          wx:for="{{dayQuickFilters}}"
+          wx:key="value"
+          class="chip {{item.is_active ? 'chip-active' : ''}}"
+          data-days="{{item.value}}"
+          bindtap="handleDaysFilter"
+        >{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="card loading">
+    <text class="subtle">正在加载路线数据...</text>
+  </view>
+
+  <view wx:elif="{{error}}" class="card error">
+    <text class="error-text">{{error}}</text>
+  </view>
+
+  <view wx:else class="list-column">
+    <view wx:for="{{routes}}" wx:key="slug" class="card list-card route-card-v2">
+      <view class="list-card-header">
+        <view>
+          <text class="list-card-title">{{item.title}}</text>
+          <view>
+            <text class="card-desc">{{item.summary}}</text>
+          </view>
+        </view>
+        <view class="route-meta-pill">{{item.distance_km}} km</view>
+      </view>
+      <view class="tag-row">
+        <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
+      </view>
+      <view class="route-stage-block">
+        <view class="section-header">
+          <view>
+            <text class="eyebrow">每日经过</text>
+            <view><text class="card-title">{{item.days}} 天路线拆分</text></view>
+          </view>
+          <text class="inline-badge">{{item.waypoint_count}} 个途径点</text>
+        </view>
+        <view class="list-column">
+          <view wx:for="{{item.days_plan}}" wx:key="day" class="route-stage-item">
+            <text class="route-stage-day">Day {{item.day}}</text>
+            <view>
+              <text class="route-stage-title">{{item.title}}</text>
+              <view><text class="subtle">约 {{item.distance}} km</text></view>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="route-map-card">
+        <view>
+          <text class="eyebrow">高德导出</text>
+          <view><text class="subtle">{{item.amap_export.waypoint_text}}</text></view>
+        </view>
+        <view class="actions-row">
+          <button wx:if="{{item.amap_export.is_available}}" class="button-secondary" data-href="{{item.amap_export.href}}" bindtap="handleOpenAmap">{{item.amap_export.label}}</button>
+        </view>
+      </view>
+      <view class="actions-row">
+        <button class="button-ghost" data-href="{{item.href}}" bindtap="handleOpenRoute">详情</button>
+        <button class="button-primary" bindtap="handleOpenPlanner">继续规划</button>
+      </view>
+    </view>
+
+    <view wx:if="{{!routes.length}}" class="card empty">
+      <text class="empty-text">当前还没有匹配路线。</text>
+    </view>
+  </view>
+</view>

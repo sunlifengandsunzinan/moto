@@ -2,49 +2,105 @@
 
 {% block title %}热门摩旅路线{% endblock %}
 
-{% block content %}
-  <main class="planner-shell planner-shell--narrow">
-    <section class="panel">
-      <p class="eyebrow">路线库</p>
-      <h1>{{ page.title }}</h1>
-      <p class="subtitle">{{ page.description }}</p>
-      <form action="{{ filters.action }}" method="get" class="planner-inline-form">
-        {% for item in filters.fields %}
-          <label>
-            <span>{{ item.label }}</span>
-            <select name="{{ item.name }}">
-              {% for option in item.options %}
-                <option value="{{ option.value }}" {% if option.value == item.value %}selected{% endif %}>{{ option.label }}</option>
-              {% endfor %}
-            </select>
-          </label>
-        {% endfor %}
-        <button class="button-secondary" type="submit">筛选</button>
-      </form>
-    </section>
+{% block body_class %}miniapp-body{% endblock %}
 
-    <section class="planner-grid planner-grid--three">
-      {% for route in routes %}
-        <article class="panel planner-route-card">
-          <h2><a href="{{ route.href }}">{{ route.title }}</a></h2>
-          <p>{{ route.summary }}</p>
-          <ul class="planner-chip-list">
-            {% for tag in route.tags %}
-              <li>{{ tag }}</li>
-            {% endfor %}
-          </ul>
-          <div class="planner-actions">
-            <a class="button-secondary" href="{{ route.href }}">查看详情</a>
-            <a class="button-primary" href="{{ route.replan_href }}">按此重生成</a>
+{% block content %}
+  <main class="miniapp-shell">
+    <section class="miniapp-page miniapp-page--with-tabbar">
+      <header class="miniapp-topbar">
+        <div>
+          <p class="miniapp-topbar__eyebrow">路线</p>
+          <h1>{{ page.title }}</h1>
+        </div>
+        <a class="miniapp-topbar__action" href="/moto/planner">去规划</a>
+      </header>
+
+      <section class="miniapp-card miniapp-card--hero">
+        <p class="miniapp-card__desc">{{ page.description }}</p>
+        <div class="miniapp-inline-meta">
+          <span>{{ featured_summary.title }}</span>
+          <strong>{{ featured_summary.description }}</strong>
+        </div>
+        <div class="miniapp-route-filter-strip">
+          <div>
+            <p class="miniapp-section-header__eyebrow">按骑行天数选</p>
+            <h2>先挑节奏，再看经过点</h2>
           </div>
-        </article>
-      {% else %}
-        <article class="panel">
-          <h2>{{ empty_state.title }}</h2>
-          <p>{{ empty_state.description }}</p>
-          <a class="button-primary" href="{{ empty_state.action.href }}">{{ empty_state.action.label }}</a>
-        </article>
-      {% endfor %}
+          <div class="miniapp-chip-row miniapp-route-chip-row">
+            {% for item in filters.day_quick_filters %}
+              <a class="miniapp-chip{% if item.is_active %} is-active{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+
+      <section class="miniapp-list">
+        {% for route in routes %}
+          <article class="miniapp-card miniapp-list-card miniapp-route-card-v2">
+            <div class="miniapp-list-card__header">
+              <div>
+                <p class="miniapp-list-card__title"><a href="{{ route.href }}">{{ route.title }}</a></p>
+                <p class="miniapp-card__desc">{{ route.summary }}</p>
+              </div>
+              <div class="miniapp-route-meta-pill">{{ route.distance_km }} km</div>
+            </div>
+            <ul class="miniapp-tag-row">
+              {% for tag in route.tags %}
+                <li>{{ tag }}</li>
+              {% endfor %}
+            </ul>
+            <section class="miniapp-route-stage-block">
+              <div class="miniapp-section-header">
+                <div>
+                  <p class="miniapp-section-header__eyebrow">每日经过</p>
+                  <h2>{{ route.days }} 天路线拆分</h2>
+                </div>
+                <span class="miniapp-inline-badge">{{ route.waypoint_count }} 个途径点</span>
+              </div>
+              <div class="miniapp-route-stage-list">
+                {% for day in route.days_plan %}
+                  <article class="miniapp-route-stage-item">
+                    <span class="miniapp-route-stage-day">Day {{ day.day }}</span>
+                    <div>
+                      <p class="miniapp-route-stage-title">{{ day.title }}</p>
+                      <p class="miniapp-card__subtle">约 {{ day.distance }} km</p>
+                    </div>
+                  </article>
+                {% endfor %}
+              </div>
+            </section>
+            <section class="miniapp-route-map-card">
+              <div>
+                <p class="miniapp-section-header__eyebrow">高德导出</p>
+                <p class="miniapp-route-waypoint-text">{{ route.amap_export.waypoint_text }}</p>
+              </div>
+              <div class="miniapp-actions">
+                {% if route.amap_export.is_available %}
+                  <a class="miniapp-button miniapp-button--secondary" href="{{ route.amap_export.href }}" target="_blank" rel="noreferrer">{{ route.amap_export.label }}</a>
+                {% endif %}
+              </div>
+            </section>
+            <div class="miniapp-actions">
+              <a class="miniapp-button miniapp-button--ghost" href="{{ route.href }}">详情</a>
+              <a class="miniapp-button" href="{{ route.replan_href }}">继续规划</a>
+            </div>
+          </article>
+        {% else %}
+          <article class="miniapp-card miniapp-list-card">
+            <p class="miniapp-list-card__title">{{ empty_state.title }}</p>
+            <p class="miniapp-card__desc">{{ empty_state.description }}</p>
+            <div class="miniapp-actions">
+              <a class="miniapp-button" href="{{ empty_state.action.href }}">{{ empty_state.action.label }}</a>
+            </div>
+          </article>
+        {% endfor %}
+      </section>
+
+      <nav class="miniapp-tabbar" aria-label="底部导航">
+        {% for item in tabbar["items"] %}
+          <a class="miniapp-tabbar__item{% if item.is_active %} is-active{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
+        {% endfor %}
+      </nav>
     </section>
   </main>
 {% endblock %}

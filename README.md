@@ -10,6 +10,7 @@ Current capabilities include:
 
 - route planning for Liaoning motorcycle trips, with route templates, trip preferences, must-visit spots, and custom planning entrypoints
 - a Liaoning spot library covering scenic checkpoints, motorcycle stations, supply stops, and support nodes
+- a WeChat Mini Program frontend scaffold for the three main tabs: routes, spots, and me
 - structured spot detail pages with generated image galleries, route-fit recommendations, and source metadata display
 - a schema-driven spot collection page for manual entry, candidate review, and approval into the formal library
 - a pending-review workflow that separates raw collection results from approved public data
@@ -60,13 +61,37 @@ Useful endpoints during development:
 - `GET /`: landing page
 - `GET /status`: runtime status page
 - `GET /api/status`: runtime status JSON
+- `GET /api/moto/routes`: route-list payload for the Mini Program routes tab
+- `GET /api/moto/spots`: spot-list payload for the Mini Program spots tab
+- `GET /api/moto/me`: workspace payload for the Mini Program me tab
+
+## WeChat Mini Program
+
+The repository now includes a real Mini Program frontend under `miniprogram/`.
+
+- app root: `miniprogram/`
+- tabs: `pages/routes/index`, `pages/spots/index`, `pages/me/index`
+- detail bridge: `pages/webview/index`
+
+Default local backend addresses in the Mini Program are:
+
+- API: `http://127.0.0.1:6001/api`
+- web-view pages: `http://127.0.0.1:6001`
+
+Recommended local flow:
+
+1. start Flask with `python app.py`
+2. open `miniprogram/` in WeChat DevTools
+3. keep the backend running while the Mini Program requests `/api/moto/*`
+
+For a real device build, replace `127.0.0.1` with a domain that is allowed by Mini Program request and web-view settings.
 
 ## Page Entry Overview
 
 The main page and feature entrypoints are:
 
 - `GET /`: basic Flask landing page used for runtime verification
-- `GET /moto`: motorcycle travel home page, with route, planner, spot-library, and collection entry links
+- `GET /moto`: redirects to `/moto/routes` for the tab-first Moto entry
 - `GET /moto/planner`: interactive route planner with route template, must-visit spot, trip-day, distance, and riding-preference inputs
 - `POST /moto/planner/result`: planner result page for the submitted trip conditions
 - `GET /moto/routes`: route template index for browsing preset Liaoning ride plans

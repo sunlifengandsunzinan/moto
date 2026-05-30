@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from typing import Any, Mapping
+from urllib.parse import quote
 
 from .liaoning_spots import (
     ROUTE_TYPE_LABELS,
@@ -828,6 +829,86 @@ def get_home_context() -> dict[str, Any]:
     }
 
 
+def build_moto_tabbar(active_tab: str) -> dict[str, Any]:
+    items = [
+        {"key": "routes", "label": "路线", "href": "/moto/routes"},
+        {"key": "spots", "label": "打卡点", "href": "/moto/spots"},
+        {"key": "me", "label": "我的", "href": "/moto/me"},
+    ]
+    return {
+        "items": [
+            {
+                **item,
+                "is_active": item["key"] == active_tab,
+            }
+            for item in items
+        ]
+    }
+
+
+def get_moto_me_context() -> dict[str, Any]:
+    spots = get_liaoning_moto_spots()
+    route_templates = get_route_templates()
+    reviewed_spots = get_reviewed_spots()
+    approved_count = len(reviewed_spots["approved"])
+    rejected_count = len(reviewed_spots["rejected"])
+
+    return {
+        "page": {
+            "title": "我的摩旅",
+            "description": "把常用入口、已沉淀的数据和当前采集状态放在一个页面里，适合小程序底部第三个 tab。",
+        },
+        "profile": {
+            "name": "摩旅计划",
+            "tagline": "路线规划 · 点位沉淀 · 采集联动",
+            "summary": "当前版本先打通路线、点位和个人工作台，后续可以继续接登录、收藏和真实行程记录。",
+        },
+        "metrics": [
+            {"label": "路线模板", "value": len(route_templates)},
+            {"label": "打卡点", "value": len(spots)},
+            {"label": "已批准", "value": approved_count},
+            {"label": "已拒绝", "value": rejected_count},
+        ],
+        "sections": [
+            {
+                "title": "常用功能",
+                "items": [
+                    {
+                        "label": "开始路线规划",
+                        "description": "按天数、车型和偏好生成基础行程。",
+                        "href": "/moto/planner",
+                    },
+                    {
+                        "label": "点位录入审核",
+                        "description": "处理候选点位，补全结构化字段。",
+                        "href": "/moto/spots/collect",
+                    },
+                    {
+                        "label": "采集监控",
+                        "description": "查看本地采集状态，启动或停止采集进程。",
+                        "href": "/moto/collector/monitor",
+                    },
+                ],
+            },
+            {
+                "title": "最近可继续",
+                "items": [
+                    {
+                        "label": route["title"],
+                        "description": route["summary"],
+                        "href": f"/moto/routes/{route['slug']}",
+                    }
+                    for route in route_templates[:3]
+                ],
+            },
+        ],
+        "quick_actions": [
+            {"label": "路线库", "href": "/moto/routes", "kind": "primary"},
+            {"label": "打卡点库", "href": "/moto/spots", "kind": "secondary"},
+        ],
+    }
+
+
 def get_planner_form_context(route_slug: str | None = None, origin: str | None = None) -> dict[str, Any]:
     context = {
         "page_intro": {
@@ -1574,39 +1655,57 @@ def build_plan_result(form_data: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def build_routes_index_context(route_templates: list[dict[str, Any]], filters: Mapping[str, Any]) -> dict[str, Any]:
+    selected_days = str(filters.get("days") or "").strip()
+    day_options = [
+        {"label": "全部", "value": ""},
+        *[
+            {"label": f"{days} 天", "value": str(days)}
+            for days in sorted({int(route["days"]) for route in route_templates})
+        ],
+    ]
+    filtered_routes = [
+        route for route in route_templates
+        if not selected_days or str(route["days"]) == selected_days
+    ]
+
     return {
         "page": {
             "title": "热门摩旅路线库",
-            "description": "按地区、天数和难度，找到更适合你的路线模板。",
+            "description": "先按骑行天数收窄路线，再决定继续规划还是直接导出到高德地图。",
+        },
+        "featured_summary": {
+            "title": "路线列表",
+            "description": (
+                f"当前筛出 {len(filtered_routes)} 条路线"
+                if selected_days
+                else f"当前共整理 {len(route_templates)} 条可直接继续规划的路线模板。"
+            ),
         },
         "filters": {
             "action": "/moto/routes",
+            "selected_days": selected_days,
             "fields": [
                 {
                     "name": "days",
                     "label": "天数",
                     "type": "select",
-                    "value": str(filters.get("days") or ""),
-                    "options": [
-                        {"label": "全部天数", "value": ""},
-                        {"label": "2 天", "value": "2"},
-                        {"label": "3 天", "value": "3"},
-                        {"label": "5 天", "value": "5"},
-                    ],
+                    "value": selected_days,
+                    "options": day_options,
                 }
+            ],
+            "day_quick_filters": [
+                {
+                    "label": option["label"],
+                    "value": option["value"],
+                    "href": "/moto/routes" if not option["value"] else f"/moto/routes?days={option['value']}",
+                    "is_active": option["value"] == selected_days,
+                }
+                for option in day_options
             ],
         },
         "routes": [
-            {
-                "slug": route["slug"],
-                "title": route["title"],
-                "summary": route["summary"],
-                "tags": [f"{route['days']} 天", route["best_season"], route["difficulty"]],
-                "best_season": route["best_season"],
-                "href": f"/moto/routes/{route['slug']}",
-                "replan_href": f"/moto/planner?route={route['slug']}",
-            }
-            for route in route_templates
+            _route_index_card(route)
+            for route in filtered_routes
         ],
         "empty_state": {
             "title": "暂时没有匹配路线",
@@ -1614,6 +1713,74 @@ def build_routes_index_context(route_templates: list[dict[str, Any]], filters: M
             "action": {"label": "开始规划", "href": "/moto/planner"},
         },
     }
+
+
+def _route_index_card(route: Mapping[str, Any]) -> dict[str, Any]:
+    waypoints = _route_waypoints(route)
+    amap_export_href = _route_amap_export_href(waypoints)
+    return {
+        "slug": route["slug"],
+        "title": route["title"],
+        "summary": route["summary"],
+        "tags": [f"{route['days']} 天", route["best_season"], difficulty_label(route["difficulty"])],
+        "best_season": route["best_season"],
+        "difficulty_label": difficulty_label(route["difficulty"]),
+        "days": route["days"],
+        "distance_km": route.get("distance_km", 0),
+        "href": f"/moto/routes/{route['slug']}",
+        "replan_href": f"/moto/planner?route={route['slug']}",
+        "waypoints": waypoints,
+        "waypoint_count": len(waypoints),
+        "amap_export": {
+            "href": amap_export_href,
+            "label": "导出到高德地图",
+            "is_available": bool(amap_export_href),
+            "waypoint_text": " -> ".join(waypoints),
+        },
+        "days_plan": [
+            {
+                "day": day["day"],
+                "title": day["title"],
+                "distance": day["distance"],
+            }
+            for day in route.get("days_plan", [])
+        ],
+    }
+
+
+def _route_waypoints(route: Mapping[str, Any]) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+
+    for day in route.get("days_plan", []):
+        title = str(day.get("title") or "")
+        for raw_name in title.split("->"):
+            name = raw_name.strip()
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            names.append(name)
+
+    return names
+
+
+def _route_amap_export_href(waypoints: list[str]) -> str:
+    if len(waypoints) < 2:
+        return ""
+
+    start = waypoints[0]
+    destination = waypoints[-1]
+    via_points = waypoints[1:-1]
+    params = [
+        "jm=1",
+        "sort=tfc",
+        f"saddr={quote(start)}",
+        f"daddr={quote(destination)}",
+    ]
+    if via_points:
+        params.append(f"maddr={quote('|'.join(via_points))}")
+    params.extend(["src=mypage", "callnative=0", "innersrc=uriapi"])
+    return f"https://m.amap.com/navigation/carmap/{'&'.join(params)}"
 
 
 def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:

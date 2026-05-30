@@ -1,0 +1,54 @@
+.route-filter-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-top: 20rpx;
+}
+
+.route-card-v2 {
+  gap: 18rpx;
+}
+
+.route-meta-pill {
+  flex-shrink: 0;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: #EEF5EF;
+  color: #244C31;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.route-stage-block,
+.route-map-card {
+  padding: 20rpx;
+  border-radius: 24rpx;
+  background: #F7FAF7;
+  border: 2rpx solid rgba(36, 76, 49, 0.08);
+}
+
+.route-stage-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16rpx;
+  align-items: start;
+}
+
+.route-stage-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100rpx;
+  min-height: 56rpx;
+  padding: 0 16rpx;
+  border-radius: 999rpx;
+  background: #244C31;
+  color: #F8FFF9;
+  font-size: 24rpx;
+}
+
+.route-stage-title {
+  color: #203225;
+  line-height: 1.5;
+  font-size: 28rpx;
+}

@@ -1,0 +1,282 @@
+page {
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(233, 245, 239, 0.95), transparent 32%),
+    linear-gradient(180deg, #F6FAF7 0%, #EEF4F0 100%);
+  color: #1F2A22;
+  font-size: 28rpx;
+}
+
+.page-shell {
+  padding: 24rpx 24rpx 40rpx;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.topbar-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.eyebrow {
+  font-size: 22rpx;
+  color: #5D6E62;
+  letter-spacing: 0.12em;
+}
+
+.page-title {
+  font-size: 52rpx;
+  line-height: 1.18;
+  font-weight: 700;
+}
+
+.topbar-action,
+.button-primary,
+.button-secondary,
+.button-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 84rpx;
+  padding: 0 28rpx;
+  border-radius: 28rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.topbar-action,
+.button-secondary {
+  background: rgba(255, 255, 255, 0.82);
+  color: #244C31;
+  border: 2rpx solid rgba(36, 76, 49, 0.1);
+}
+
+.button-primary {
+  background: #244C31;
+  color: #F8FFF9;
+  border: 0;
+}
+
+.button-ghost {
+  background: transparent;
+  color: #244C31;
+  border: 2rpx solid rgba(36, 76, 49, 0.16);
+}
+
+.card {
+  margin-bottom: 20rpx;
+  padding: 28rpx;
+  border-radius: 32rpx;
+  background: rgba(255, 255, 255, 0.92);
+  border: 2rpx solid rgba(31, 42, 34, 0.08);
+  box-shadow: 0 24rpx 60rpx rgba(60, 82, 67, 0.08);
+  box-sizing: border-box;
+}
+
+.card-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #162119;
+}
+
+.card-desc,
+.subtle,
+.empty-text,
+.error-text {
+  color: #617166;
+  line-height: 1.6;
+}
+
+.inline-meta {
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 24rpx;
+  background: #F1F7F3;
+}
+
+.inline-meta-label {
+  font-size: 24rpx;
+  color: #6D7F73;
+}
+
+.inline-meta-value {
+  margin-top: 8rpx;
+  font-size: 28rpx;
+  color: #162119;
+  font-weight: 600;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.inline-badge {
+  padding: 10rpx 20rpx;
+  border-radius: 999rpx;
+  background: #F1F7F3;
+  color: #2F4735;
+  font-size: 24rpx;
+}
+
+.actions-row,
+.chip-row,
+.tag-row,
+.stats-grid,
+.filter-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.chip-row,
+.tag-row {
+  margin-top: 18rpx;
+}
+
+.chip,
+.tag {
+  padding: 10rpx 20rpx;
+  border-radius: 999rpx;
+  background: #F1F5F2;
+  color: #36523C;
+  font-size: 24rpx;
+}
+
+.chip-active,
+.tag-accent {
+  background: #244C31;
+  color: #F8FFF9;
+}
+
+.stats-grid {
+  margin-top: 20rpx;
+}
+
+.stat-item {
+  flex: 1 1 calc(50% - 16rpx);
+  min-width: 0;
+  padding: 22rpx;
+  border-radius: 24rpx;
+  background: #F1F7F3;
+  box-sizing: border-box;
+}
+
+.stat-value {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #18211B;
+}
+
+.stat-label {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #66776B;
+}
+
+.picker-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 88rpx;
+  padding: 0 24rpx;
+  border-radius: 24rpx;
+  background: #F8FBF8;
+  border: 2rpx solid rgba(31, 42, 34, 0.12);
+  box-sizing: border-box;
+}
+
+.picker-label {
+  font-size: 26rpx;
+  color: #627368;
+}
+
+.picker-value {
+  font-size: 28rpx;
+  color: #1F2A22;
+}
+
+.list-column {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.list-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.list-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.list-card-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #162119;
+}
+
+.spot-image {
+  width: 100%;
+  height: 340rpx;
+  border-radius: 28rpx 28rpx 0 0;
+  display: block;
+}
+
+.spot-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.spot-card-body {
+  padding: 24rpx;
+}
+
+.entry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 24rpx 0;
+  border-top: 2rpx solid rgba(31, 42, 34, 0.08);
+}
+
+.entry-row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.entry-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #162119;
+}
+
+.entry-arrow {
+  font-size: 24rpx;
+  color: #6A7A6E;
+}
+
+.loading,
+.empty,
+.error {
+  padding: 48rpx 24rpx;
+  text-align: center;
+}

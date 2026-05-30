@@ -1,0 +1,37 @@
+{
+  "pages": [
+    "pages/routes/index",
+    "pages/spots/index",
+    "pages/me/index",
+    "pages/webview/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "摩旅计划",
+    "navigationBarBackgroundColor": "#F6FAF7",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F6FAF7",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#6A7A6E",
+    "selectedColor": "#1E4A2C",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/routes/index",
+        "text": "路线"
+      },
+      {
+        "pagePath": "pages/spots/index",
+        "text": "打卡点"
+      },
+      {
+        "pagePath": "pages/me/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
+}

@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}小程序预览{% endblock %}
+
+{% block body_class %}miniapp-body{% endblock %}
+
+{% block content %}
+  <main class="miniapp-shell">
+    <section class="miniapp-page miniapp-page--with-tabbar miniapp-preview-page" data-mini-preview>
+      <header class="miniapp-topbar">
+        <div>
+          <p class="miniapp-topbar__eyebrow">预览</p>
+          <h1>小程序前端预览</h1>
+        </div>
+        <div class="miniapp-inline-badge" data-preview-status>正在加载</div>
+      </header>
+
+      <section class="miniapp-card miniapp-card--hero">
+        <p class="miniapp-card__desc">浏览器里先模拟小程序的三页切换，数据直接来自 Flask 的 JSON 接口。</p>
+        <div class="miniapp-quick-actions miniapp-preview-switches">
+          <button class="miniapp-button" type="button" data-preview-tab="routes">路线</button>
+          <button class="miniapp-button miniapp-button--secondary" type="button" data-preview-tab="spots">打卡点</button>
+          <button class="miniapp-button miniapp-button--secondary" type="button" data-preview-tab="me">我的</button>
+        </div>
+      </section>
+
+      <section data-preview-content></section>
+
+      <nav class="miniapp-tabbar" aria-label="底部导航">
+        <button class="miniapp-tabbar__item is-active" type="button" data-preview-tab="routes">路线</button>
+        <button class="miniapp-tabbar__item" type="button" data-preview-tab="spots">打卡点</button>
+        <button class="miniapp-tabbar__item" type="button" data-preview-tab="me">我的</button>
+      </nav>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const content = document.querySelector('[data-preview-content]');
+      const status = document.querySelector('[data-preview-status]');
+      const shell = document.querySelector('[data-mini-preview]');
+      const tabButtons = shell.querySelectorAll('[data-preview-tab]');
+      const endpointByTab = {
+        routes: '/api/moto/routes',
+        spots: '/api/moto/spots',
+        me: '/api/moto/me',
+      };
+      let activeTab = 'routes';
+      let activeDays = '';
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function renderTags(items = [], accent = false) {
+        if (!items.length) return '';
+        return `
+          <ul class="miniapp-tag-row miniapp-tag-row--compact${accent ? ' miniapp-tag-row--accent' : ''}">
+            ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
+          </ul>
+        `;
+      }
+
+      function renderRoutes(payload) {
+        const routes = payload.routes || [];
+        return `
+          <section class="miniapp-card miniapp-card--hero">
+            <p class="miniapp-card__desc">${escapeHtml(payload.page?.description)}</p>
+            <div class="miniapp-inline-meta">
+              <span>${escapeHtml(payload.featured_summary?.title)}</span>
+              <strong>${escapeHtml(payload.featured_summary?.description)}</strong>
+            </div>
+            <div class="miniapp-route-filter-strip">
+              <div>
+                <p class="miniapp-section-header__eyebrow">按骑行天数选</p>
+                <h2>先挑节奏，再看经过点</h2>
+              </div>
+              <div class="miniapp-chip-row miniapp-route-chip-row">
+                ${(payload.filters?.day_quick_filters || []).map((item) => `
+                  <button class="miniapp-chip ${item.is_active ? 'is-active' : ''}" type="button" data-route-days="${escapeHtml(item.value)}">${escapeHtml(item.label)}</button>
+                `).join('')}
+              </div>
+            </div>
+          </section>
+          <section class="miniapp-list">
+            ${routes.map((route) => `
+              <article class="miniapp-card miniapp-list-card miniapp-route-card-v2">
+                <div class="miniapp-list-card__header">
+                  <div>
+                    <p class="miniapp-list-card__title">${escapeHtml(route.title)}</p>
+                    <p class="miniapp-card__desc">${escapeHtml(route.summary)}</p>
+                  </div>
+                  <div class="miniapp-route-meta-pill">${escapeHtml(route.distance_km)} km</div>
+                </div>
+                ${renderTags(route.tags)}
+                <section class="miniapp-route-stage-block">
+                  <div class="miniapp-section-header">
+                    <div>
+                      <p class="miniapp-section-header__eyebrow">每日经过</p>
+                      <h2>${escapeHtml(route.days)} 天路线拆分</h2>
+                    </div>
+                    <span class="miniapp-inline-badge">${escapeHtml(route.waypoint_count)} 个途径点</span>
+                  </div>
+                  <div class="miniapp-route-stage-list">
+                    ${(route.days_plan || []).map((day) => `
+                      <article class="miniapp-route-stage-item">
+                        <span class="miniapp-route-stage-day">Day ${escapeHtml(day.day)}</span>
+                        <div>
+                          <p class="miniapp-route-stage-title">${escapeHtml(day.title)}</p>
+                          <p class="miniapp-card__subtle">约 ${escapeHtml(day.distance)} km</p>
+                        </div>
+                      </article>
+                    `).join('')}
+                  </div>
+                </section>
+                <section class="miniapp-route-map-card">
+                  <div>
+                    <p class="miniapp-section-header__eyebrow">高德导出</p>
+                    <p class="miniapp-route-waypoint-text">${escapeHtml(route.amap_export?.waypoint_text || '')}</p>
+                  </div>
+                  <div class="miniapp-actions">
+                    ${route.amap_export?.is_available ? `<a class="miniapp-button miniapp-button--secondary" href="${escapeHtml(route.amap_export.href)}" target="_blank" rel="noreferrer">${escapeHtml(route.amap_export.label)}</a>` : ''}
+                  </div>
+                </section>
+                <div class="miniapp-actions">
+                  <a class="miniapp-button miniapp-button--ghost" href="${escapeHtml(route.href)}" target="_blank" rel="noreferrer">详情</a>
+                  <a class="miniapp-button" href="${escapeHtml(route.replan_href)}" target="_blank" rel="noreferrer">继续规划</a>
+                </div>
+              </article>
+            `).join('') || `
+              <article class="miniapp-card miniapp-list-card">
+                <p class="miniapp-list-card__title">暂无路线</p>
+              </article>
+            `}
+          </section>
+        `;
+      }
+
+      function renderSpots(payload) {
+        const spots = payload.spots || [];
+        const stats = payload.stats || {};
+        return `
+          <section class="miniapp-card miniapp-card--hero">
+            <p class="miniapp-card__desc">${escapeHtml(payload.page?.description)}</p>
+            <div class="miniapp-stat-grid">
+              <div><strong>${escapeHtml(stats.total || 0)}</strong><span>总点位</span></div>
+              <div><strong>${escapeHtml(stats.visible || 0)}</strong><span>当前展示</span></div>
+              <div><strong>${escapeHtml(stats.regions || 0)}</strong><span>覆盖区域</span></div>
+              <div><strong>${escapeHtml(stats.filters || 0)}</strong><span>已筛选</span></div>
+            </div>
+          </section>
+          <section class="miniapp-list miniapp-list--cards">
+            ${spots.map((spot) => `
+              <article class="miniapp-card miniapp-spot-card">
+                <img class="miniapp-spot-card__image" src="${escapeHtml(spot.image_url)}" alt="${escapeHtml(spot.name)}">
+                <div class="miniapp-spot-card__body">
+                  <p class="miniapp-list-card__title">${escapeHtml(spot.name)}</p>
+                  <p class="miniapp-card__subtle">${escapeHtml(spot.region)} · ${escapeHtml(spot.city)}</p>
+                  <p class="miniapp-card__desc">${escapeHtml(spot.summary)}</p>
+                  ${renderTags(spot.summary_tags)}
+                  ${renderTags(spot.spot_markers, true)}
+                  <div class="miniapp-actions">
+                    <a class="miniapp-button miniapp-button--ghost" href="${escapeHtml(spot.href)}" target="_blank" rel="noreferrer">详情</a>
+                    <a class="miniapp-button" href="/moto/planner?origin=${encodeURIComponent(spot.city || '')}" target="_blank" rel="noreferrer">从这里出发</a>
+                  </div>
+                </div>
+              </article>
+            `).join('') || `
+              <article class="miniapp-card miniapp-list-card">
+                <p class="miniapp-list-card__title">暂无点位</p>
+              </article>
+            `}
+          </section>
+        `;
+      }
+
+      function renderMe(payload) {
+        const metrics = payload.metrics || [];
+        const sections = payload.sections || [];
+        return `
+          <section class="miniapp-card miniapp-profile-card">
+            <p class="miniapp-profile-card__name">${escapeHtml(payload.profile?.name)}</p>
+            <p class="miniapp-profile-card__tagline">${escapeHtml(payload.profile?.tagline)}</p>
+            <p class="miniapp-card__desc">${escapeHtml(payload.profile?.summary)}</p>
+          </section>
+          <section class="miniapp-stat-grid miniapp-stat-grid--cards">
+            ${metrics.map((metric) => `
+              <article class="miniapp-card miniapp-metric-card">
+                <strong>${escapeHtml(metric.value)}</strong>
+                <span>${escapeHtml(metric.label)}</span>
+              </article>
+            `).join('')}
+          </section>
+          ${sections.map((section) => `
+            <section class="miniapp-card">
+              <div class="miniapp-section-header">
+                <div>
+                  <p class="miniapp-section-header__eyebrow">工作台</p>
+                  <h2>${escapeHtml(section.title)}</h2>
+                </div>
+              </div>
+              <div class="miniapp-list">
+                ${(section.items || []).map((item) => `
+                  <a class="miniapp-entry-row" href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer">
+                    <div>
+                      <p class="miniapp-entry-row__title">${escapeHtml(item.label)}</p>
+                      <p class="miniapp-card__subtle">${escapeHtml(item.description)}</p>
+                    </div>
+                    <span class="miniapp-entry-row__arrow">进入</span>
+                  </a>
+                `).join('')}
+              </div>
+            </section>
+          `).join('')}
+        `;
+      }
+
+      function setActiveButtons() {
+        tabButtons.forEach((button) => {
+          const active = button.dataset.previewTab === activeTab;
+          button.classList.toggle('is-active', active);
+          if (button.classList.contains('miniapp-button')) {
+            button.classList.toggle('miniapp-button--secondary', !active);
+          }
+        });
+      }
+
+      async function loadTab(tab, extraQuery = {}) {
+        activeTab = tab;
+        setActiveButtons();
+        status.textContent = '加载中';
+        content.innerHTML = '<section class="miniapp-card"><p class="miniapp-card__desc">正在拉取数据...</p></section>';
+
+        try {
+          const query = new URLSearchParams(extraQuery).toString();
+          const endpoint = query ? `${endpointByTab[tab]}?${query}` : endpointByTab[tab];
+          const response = await fetch(endpoint);
+          const payload = await response.json();
+
+          if (!response.ok) {
+            throw new Error('接口加载失败');
+          }
+
+          status.textContent = tab === 'routes' ? '路线' : tab === 'spots' ? '打卡点' : '我的';
+          if (tab === 'routes') content.innerHTML = renderRoutes(payload);
+          if (tab === 'spots') content.innerHTML = renderSpots(payload);
+          if (tab === 'me') content.innerHTML = renderMe(payload);
+          if (tab === 'routes') {
+            content.querySelectorAll('[data-route-days]').forEach((button) => {
+              button.addEventListener('click', () => {
+                activeDays = button.dataset.routeDays || '';
+                loadTab('routes', activeDays ? { days: activeDays } : {});
+              });
+            });
+          }
+        } catch (error) {
+          status.textContent = '异常';
+          content.innerHTML = `<section class="miniapp-card"><p class="miniapp-card__desc">${escapeHtml(error.message || '预览加载失败')}</p></section>`;
+        }
+      }
+
+      tabButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          activeDays = '';
+          loadTab(button.dataset.previewTab);
+        });
+      });
+
+      loadTab(activeTab);
+    })();
+  </script>
+{% endblock %}

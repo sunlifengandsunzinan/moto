@@ -2,167 +2,142 @@
 
 {% block title %}辽宁摩旅点位库{% endblock %}
 
+{% block body_class %}miniapp-body{% endblock %}
+
 {% block content %}
-  <main class="planner-shell planner-library-shell">
-    <section class="panel planner-library-hero">
-      <nav class="planner-nav">
-        <a class="planner-brand" href="{{ url_for('moto.moto_home') }}">摩旅计划</a>
-        <div class="planner-nav__links">
-          <a href="/moto/planner">路线规划</a>
-          <a href="/moto/routes">热门路线</a>
-          <a href="/moto/spots">点位库</a>
-          <a href="/moto/spots/collect">录入点位</a>
-        </div>
-      </nav>
-      <div class="planner-library-hero__content">
-        <div class="planner-library-hero__intro">
-          <p class="eyebrow">点位库</p>
+  <main class="miniapp-shell">
+    <section class="miniapp-page miniapp-page--with-tabbar">
+      <header class="miniapp-topbar">
+        <div>
+          <p class="miniapp-topbar__eyebrow">打卡点</p>
           <h1>{{ page.title }}</h1>
-          <p class="subtitle">{{ page.description }}</p>
-          <p class="planner-library-hero__hint">按区域或补给场景快速缩小列表，适合手机里先刷一遍，再进入详情或路线规划。</p>
         </div>
-        <div class="planner-actions planner-library-hero__actions">
+        <a class="miniapp-topbar__action" href="/moto/spots/collect">录入</a>
+      </header>
+
+      <section class="miniapp-card miniapp-card--hero">
+        <p class="miniapp-card__desc">{{ page.description }}</p>
+        <div class="miniapp-stat-grid">
+          <div><strong>{{ stats.total }}</strong><span>总点位</span></div>
+          <div><strong>{{ stats.visible }}</strong><span>当前展示</span></div>
+          <div><strong>{{ stats.regions }}</strong><span>覆盖区域</span></div>
+          <div><strong>{{ stats.filters }}</strong><span>已筛选</span></div>
+        </div>
+        <div class="miniapp-quick-actions">
           {% for action in entry_actions %}
-            <a class="{{ 'button-primary' if action.kind == 'primary' else 'button-secondary' }}" href="{{ action.href }}">{{ action.label }}</a>
+            <a class="miniapp-button{% if action.kind != 'primary' %} miniapp-button--secondary{% endif %}" href="{{ action.href }}">{{ action.label }}</a>
           {% endfor %}
         </div>
-      </div>
-      <ul class="planner-library-stats">
-        <li>
-          <strong>{{ stats.total }}</strong>
-          <span>总点位</span>
-        </li>
-        <li>
-          <strong>{{ stats.visible }}</strong>
-          <span>当前展示</span>
-        </li>
-        <li>
-          <strong>{{ stats.regions }}</strong>
-          <span>覆盖区域</span>
-        </li>
-        <li>
-          <strong>{{ stats.filters }}</strong>
-          <span>生效筛选</span>
-        </li>
-      </ul>
-    </section>
+      </section>
 
-    <section class="panel planner-library-toolbar">
-      <div class="planner-library-toolbar__header">
-        <div class="planner-section-heading">
-          <p class="eyebrow">快速筛选</p>
-          <h2>先点常用条件，再决定要不要展开全部筛选</h2>
-        </div>
-        <div class="planner-status-strip planner-library-toolbar__status">
-          当前展示 {{ stats.visible }} / {{ stats.total }} 个点位
-        </div>
-      </div>
-      <div class="planner-library-quick-groups">
-        {% for group in filters.quick_groups %}
-          <div class="planner-library-quick-group">
-            <span>{{ group.title }}</span>
-            <div class="planner-library-quick-group__chips">
-              {% for item in group["items"] %}
-                <a class="planner-library-quick-chip{% if item.is_active %} is-active{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
-              {% endfor %}
-            </div>
+      <section class="miniapp-card">
+        <div class="miniapp-section-header">
+          <div>
+            <p class="miniapp-section-header__eyebrow">快速筛选</p>
+            <h2>先收窄，再进详情</h2>
           </div>
-        {% endfor %}
-      </div>
-      {% if filters.has_active_filters %}
-        <div class="planner-library-active-filters">
-          <ul class="planner-chip-list">
-            {% for item in filters.active_filters %}
-              <li>{{ item.label }} · {{ item.value }}</li>
-            {% endfor %}
-          </ul>
-          <a class="button-secondary" href="{{ filters.reset_href }}">清空筛选</a>
+          <span class="miniapp-inline-badge">{{ stats.visible }} / {{ stats.total }}</span>
         </div>
-      {% endif %}
-      <form action="{{ filters.action }}" method="get" class="planner-inline-form planner-library-form">
-        {% for item in filters.fields %}
-          <label>
-            <span>{{ item.label }}</span>
-            <select name="{{ item.name }}">
-              {% for option in item.options %}
-                <option value="{{ option.value }}" {% if option.value == item.value %}selected{% endif %}>{{ option.label }}</option>
+        <div class="miniapp-chip-groups">
+          {% for group in filters.quick_groups %}
+            <section class="miniapp-chip-group">
+              <h3>{{ group.title }}</h3>
+              <div class="miniapp-chip-row">
+                {% for item in group["items"] %}
+                  <a class="miniapp-chip{% if item.is_active %} is-active{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
+                {% endfor %}
+              </div>
+            </section>
+          {% endfor %}
+        </div>
+        {% if filters.has_active_filters %}
+          <div class="miniapp-active-filters">
+            <ul class="miniapp-tag-row miniapp-tag-row--compact">
+              {% for item in filters.active_filters %}
+                <li>{{ item.label }} · {{ item.value }}</li>
               {% endfor %}
-            </select>
-          </label>
-        {% endfor %}
-        <div class="planner-actions planner-library-form__actions">
-          <button class="button-primary" type="submit">更新列表</button>
-          {% if filters.has_active_filters %}
-            <a class="button-secondary" href="{{ filters.reset_href }}">重置</a>
-          {% endif %}
-        </div>
-      </form>
-    </section>
+            </ul>
+            <a class="miniapp-button miniapp-button--ghost" href="{{ filters.reset_href }}">清空</a>
+          </div>
+        {% endif %}
+        <form action="{{ filters.action }}" method="get" class="miniapp-filter-row miniapp-filter-row--stack">
+          {% for item in filters.fields %}
+            <label class="miniapp-select-field">
+              <span>{{ item.label }}</span>
+              <select name="{{ item.name }}">
+                {% for option in item.options %}
+                  <option value="{{ option.value }}" {% if option.value == item.value %}selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+          {% endfor %}
+          <div class="miniapp-actions">
+            <button class="miniapp-button" type="submit">更新列表</button>
+            {% if filters.has_active_filters %}
+              <a class="miniapp-button miniapp-button--secondary" href="{{ filters.reset_href }}">重置</a>
+            {% endif %}
+          </div>
+        </form>
+      </section>
 
-    <section class="planner-grid planner-grid--three planner-library-list">
-      {% for spot in spots %}
-        <article class="panel planner-route-card planner-library-card">
-          <a class="planner-library-card__main" href="{{ spot.href }}">
-            <div class="planner-library-card__media">
-              <img class="planner-checkpoint-card__image planner-library-card__image" src="{{ spot.image_url }}" alt="{{ spot.name }}">
-              <div class="planner-library-card__location">{{ spot.region }} · {{ spot.city }}</div>
-            </div>
-            <div class="planner-library-card__body">
+      <section class="miniapp-list miniapp-list--cards">
+        {% for spot in spots %}
+          <article class="miniapp-card miniapp-spot-card">
+            <a class="miniapp-spot-card__media-link" href="{{ spot.href }}">
+              <img class="miniapp-spot-card__image" src="{{ spot.image_url }}" alt="{{ spot.name }}">
+            </a>
+            <div class="miniapp-spot-card__body">
+              <div class="miniapp-spot-card__headline">
+                <div>
+                  <p class="miniapp-list-card__title"><a href="{{ spot.href }}">{{ spot.name }}</a></p>
+                  <p class="miniapp-card__subtle">{{ spot.region }} · {{ spot.city }}</p>
+                </div>
+              </div>
+              <p class="miniapp-card__desc">{{ spot.summary }}</p>
               {% if spot.summary_tags %}
-                <ul class="planner-chip-list planner-library-chip-list planner-library-chip-list--summary">
+                <ul class="miniapp-tag-row miniapp-tag-row--compact">
                   {% for item in spot.summary_tags %}
                     <li>{{ item }}</li>
                   {% endfor %}
                 </ul>
               {% endif %}
-              <div class="planner-library-card__header">
-                <h2>{{ spot.name }}</h2>
-                <p>{{ spot.summary }}</p>
-              </div>
               {% if spot.spot_markers %}
-                <ul class="planner-chip-list planner-library-chip-list planner-library-chip-list--accent">
+                <ul class="miniapp-tag-row miniapp-tag-row--compact miniapp-tag-row--accent">
                   {% for marker in spot.spot_markers %}
                     <li>{{ marker }}</li>
                   {% endfor %}
                 </ul>
               {% endif %}
-              <ul class="planner-chip-list planner-library-chip-list">
+              <ul class="miniapp-tag-row miniapp-tag-row--compact">
                 {% for item in spot.quick_meta %}
                   <li>{{ item }}</li>
                 {% endfor %}
               </ul>
-              {% if spot.support_labels %}
-                <ul class="planner-chip-list planner-library-chip-list planner-library-chip-list--soft">
-                  {% for support in spot.support_labels %}
-                    <li>{{ support }}</li>
-                  {% endfor %}
-                </ul>
-              {% endif %}
-              {% if spot.video_chips %}
-                <ul class="planner-chip-list planner-library-chip-list planner-library-chip-list--soft">
-                  {% for item in spot.video_chips %}
-                    <li>{{ item }}</li>
-                  {% endfor %}
-                </ul>
-              {% endif %}
               {% if spot.video_summary %}
-                <p class="planner-library-card__video-summary">{{ spot.video_summary }}</p>
+                <p class="miniapp-card__subtle">{{ spot.video_summary }}</p>
               {% endif %}
-              <p class="planner-library-card__tap-hint">点开可看图片、来源和适合接入的路线模板。</p>
+              <div class="miniapp-actions">
+                <a class="miniapp-button miniapp-button--ghost" href="{{ spot.href }}">详情</a>
+                <a class="miniapp-button" href="/moto/planner?origin={{ spot.city }}">从这里出发</a>
+              </div>
             </div>
-          </a>
-          <div class="planner-actions planner-library-card__footer">
-            <a class="button-primary" href="{{ spot.href }}">查看详情</a>
-            <a class="button-secondary" href="/moto/planner?origin={{ spot.city }}">从这里出发</a>
-          </div>
-        </article>
-      {% else %}
-        <article class="panel">
-          <h2>{{ empty_state.title }}</h2>
-          <p>{{ empty_state.description }}</p>
-          <a class="button-primary" href="{{ empty_state.action.href }}">{{ empty_state.action.label }}</a>
-        </article>
-      {% endfor %}
+          </article>
+        {% else %}
+          <article class="miniapp-card miniapp-list-card">
+            <p class="miniapp-list-card__title">{{ empty_state.title }}</p>
+            <p class="miniapp-card__desc">{{ empty_state.description }}</p>
+            <div class="miniapp-actions">
+              <a class="miniapp-button" href="{{ empty_state.action.href }}">{{ empty_state.action.label }}</a>
+            </div>
+          </article>
+        {% endfor %}
+      </section>
+
+      <nav class="miniapp-tabbar" aria-label="底部导航">
+        {% for item in tabbar["items"] %}
+          <a class="miniapp-tabbar__item{% if item.is_active %} is-active{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
+        {% endfor %}
+      </nav>
     </section>
   </main>
 {% endblock %}

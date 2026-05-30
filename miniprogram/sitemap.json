@@ -1,0 +1,9 @@
+{
+  "desc": "moto miniapp sitemap",
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
+}

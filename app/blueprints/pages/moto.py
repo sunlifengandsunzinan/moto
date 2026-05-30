@@ -3,6 +3,7 @@ from pathlib import Path
 from flask import Blueprint, Response, jsonify, redirect, render_template, request, send_file, url_for
 
 from ...services import (
+    build_moto_tabbar,
     build_liaoning_spot_detail_context,
     get_collection_monitor_context,
     start_local_collector,
@@ -17,6 +18,7 @@ from ...services import (
     delete_reviewed_spots,
     get_custom_plan_context,
     get_home_context,
+    get_moto_me_context,
     render_liaoning_spot_image_svg,
     get_planner_form_context,
     get_liaoning_moto_spot_by_slug,
@@ -35,7 +37,7 @@ LOCAL_VIDEO_ROOT = Path(__file__).resolve().parents[3] / "data" / "raw" / "douyi
 
 @moto_bp.get("/moto")
 def moto_home() -> str:
-    return render_template("planner/home.html", **get_home_context())
+    return redirect(url_for("moto.moto_routes"))
 
 
 @moto_bp.get("/moto/collector/monitor")
@@ -110,6 +112,7 @@ def moto_planner_result() -> str:
 @moto_bp.get("/moto/routes")
 def moto_routes() -> str:
     context = build_routes_index_context(get_route_templates(), request.args)
+    context["tabbar"] = build_moto_tabbar("routes")
     return render_template("planner/routes.html", **context)
 
 
@@ -142,7 +145,21 @@ def moto_liaoning_spot_image(slug: str, variant: str) -> Response | tuple[str, i
 
 @moto_bp.get("/moto/spots")
 def moto_spots() -> str:
-    return render_template("planner/spots.html", **get_spots_index_context(request.args))
+    context = get_spots_index_context(request.args)
+    context["tabbar"] = build_moto_tabbar("spots")
+    return render_template("planner/spots.html", **context)
+
+
+@moto_bp.get("/moto/me")
+def moto_me() -> str:
+    context = get_moto_me_context()
+    context["tabbar"] = build_moto_tabbar("me")
+    return render_template("planner/me.html", **context)
+
+
+@moto_bp.get("/moto/mini-preview")
+def moto_mini_preview() -> str:
+    return render_template("planner/mini_preview.html")
 
 
 @moto_bp.route("/moto/spots/collect", methods=["GET", "POST"])
