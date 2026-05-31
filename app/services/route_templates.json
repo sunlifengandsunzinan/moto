@@ -1191,5 +1191,80 @@
       ],
       "emergency": []
     }
+  },
+  {
+    "slug": "shenyang-south-gpx-test-2-day",
+    "title": "GPX 测试 · 沈阳南骑行路线分享",
+    "region": "northeast",
+    "spot_slugs": [],
+    "days": 2,
+    "difficulty": "easy",
+    "scenery_type": [
+      "scenic",
+      "relaxed"
+    ],
+    "bike_types": [
+      "150-250cc",
+      "300-500cc",
+      "adv-touring"
+    ],
+    "experience_levels": [
+      "beginner",
+      "intermediate"
+    ],
+    "best_season": "全年测试",
+    "distance_km": 520,
+    "budget_range": "测试专用",
+    "summary": "来自抖音视频 GPX 提取的测试路线，用于验证小程序路线页里的“直接导航”按钮可按 GPX 轨迹点打开高德地图。",
+    "gpx_file": "沈阳南骑行路线分享，灯塔粮仓文创园和广佑寺！骑行vlog_摩托车_踏板摩托车_摩旅_沈阳摩托车.gpx",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "沈阳"
+        },
+        {
+          "name": "南芬音乐公路"
+        }
+      ]
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "人参谷 -> 沈阳 -> 辽阳 -> 海城",
+        "ride_time": "建议骑行 4-5 小时",
+        "distance": 240,
+        "highlights": [
+          "GPX 轨迹首段",
+          "抖音提取测试",
+          "适合验证导航链路"
+        ],
+        "note": "第 1 天按 GPX 提取顺序保留前半段轨迹点，用于验证起点到中段导航。"
+      },
+      {
+        "day": 2,
+        "title": "海城 -> 大连 -> 旅顺 -> 吉林 -> 南芬音乐公路",
+        "ride_time": "建议骑行 5-6 小时",
+        "distance": 280,
+        "highlights": [
+          "GPX 轨迹尾段",
+          "途径点较多",
+          "验证高德多点导航"
+        ],
+        "note": "第 2 天继续使用 GPX 提取点位，重点验证高德对多途径点路线的打开效果。"
+      }
+    ],
+    "pois": {
+      "fuel": [],
+      "repair": [],
+      "lodging": [],
+      "viewpoint": [
+        {
+          "name": "南芬音乐公路",
+          "meta": "GPX 提取终点 · 用于路线验证"
+        }
+      ],
+      "emergency": []
+    }
   }
 ]

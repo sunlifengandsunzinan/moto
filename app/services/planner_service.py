@@ -18,6 +18,7 @@ from .liaoning_spots import (
 )
 from .candidate_spots import build_candidate_review_media, candidate_to_collection_record, get_candidate_spot_by_slug, get_candidate_spots
 from .candidate_spots import get_reviewed_spots
+from . import gpx_service
 from .route_templates_config import load_route_templates
 
 
@@ -1423,6 +1424,12 @@ def _route_index_card(route: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _route_navigation_waypoints(route: Mapping[str, Any]) -> list[dict[str, Any]]:
+    gpx_file = str(route.get("gpx_file") or "").strip()
+    if gpx_file:
+        gpx_waypoints = gpx_service.get_gpx_waypoints(gpx_file)
+        if len(gpx_waypoints) >= 2:
+            return gpx_waypoints
+
     navigation_config = route.get("navigation") if isinstance(route.get("navigation"), Mapping) else {}
     raw_navigation_waypoints = (
         navigation_config.get("waypoints", [])

@@ -1,38 +1,16 @@
-<view class="page-shell">
-  <view class="topbar">
-    <view class="topbar-copy">
-      <text class="eyebrow">路线</text>
-      <text class="page-title">{{page.title}}</text>
-    </view>
-    <button class="button-secondary route-topbar-action" bindtap="handleOpenPlanner">去规划</button>
-  </view>
-
-  <view class="card route-hero-card">
-    <text class="card-desc">{{page.description}}</text>
-    <view class="inline-meta">
-      <text class="inline-meta-label">{{featuredSummary.title}}</text>
-      <text class="inline-meta-value">{{featuredSummary.description}}</text>
-    </view>
-    <view class="actions-row actions-row--compact">
-      <button class="button-secondary route-hero-action" data-href="/moto/routes/collect" bindtap="handleOpenCollect">采集导航点</button>
-    </view>
-    <view class="route-filter-panel">
-      <view>
-        <text class="eyebrow">按骑行天数选</text>
-        <text class="route-panel-title">先挑节奏，再看经过点</text>
+<view class="page-shell route-page-shell">
+  <view class="route-filter-shell">
+    <scroll-view class="route-filter-strip" scroll-x enable-flex show-scrollbar="false">
+      <view class="route-filter-tabs">
+        <text
+          wx:for="{{durationFilters}}"
+          wx:key="key"
+          class="chip route-filter-tab {{item.is_active ? 'chip-active route-filter-tab--active' : ''}}"
+          data-filter-key="{{item.key}}"
+          bindtap="handleDurationFilter"
+        >{{item.label}}</text>
       </view>
-      <scroll-view class="route-filter-strip" scroll-x enable-flex show-scrollbar="false">
-        <view class="route-filter-tabs chip-row">
-          <text
-            wx:for="{{durationFilters}}"
-            wx:key="key"
-            class="chip route-filter-tab {{item.is_active ? 'chip-active route-filter-tab--active' : ''}}"
-            data-filter-key="{{item.key}}"
-            bindtap="handleDurationFilter"
-          >{{item.label}}</text>
-        </view>
-      </scroll-view>
-    </view>
+    </scroll-view>
   </view>
 
   <view wx:if="{{loading}}" class="card loading">
@@ -59,34 +37,19 @@
       <view class="list-card-header">
         <view>
           <text class="list-card-title">{{route.title}}</text>
-          <view>
-            <text class="card-desc route-summary">{{route.summary}}</text>
-          </view>
         </view>
         <view class="route-meta-pill">
           <text>{{route.distance_km}} km</text>
         </view>
       </view>
-      <view class="route-fact-row">
-        <view class="route-fact-chip">
-          <text class="route-fact-chip__label">时长</text>
-          <text class="route-fact-chip__value">{{route.days}} 天</text>
-        </view>
-        <view class="route-fact-chip">
-          <text class="route-fact-chip__label">途径点</text>
-          <text class="route-fact-chip__value">{{route.waypoint_count}} 个</text>
-        </view>
-      </view>
-      <view class="tag-row route-tag-row">
-        <text wx:for="{{route.tags}}" wx:key="*this" class="tag">{{item}}</text>
+      <view class="route-meta-line">
+        <text class="route-meta-line__item">{{route.days}} 天</text>
+        <text class="route-meta-line__divider">·</text>
+        <text class="route-meta-line__item">{{route.waypoint_count}} 个途径点</text>
       </view>
       <view class="route-stage-block">
-        <view class="section-header">
-          <view>
-            <text class="eyebrow">每日经过</text>
-            <text class="route-panel-title">{{route.days}} 天路线拆分</text>
-          </view>
-          <text class="inline-badge">沿途路书</text>
+        <view class="route-stage-head">
+          <text class="route-stage-heading">{{route.days}} 天路线拆分</text>
         </view>
         <view class="list-column route-stage-list">
           <view wx:for="{{route.days_plan}}" wx:key="day" class="route-stage-item">
@@ -101,33 +64,14 @@
           </view>
         </view>
       </view>
-      <view class="route-map-card">
-        <view class="route-map-card__lane"></view>
-        <view class="route-map-card__body">
-          <text class="eyebrow">高德导出</text>
-          <view><text class="route-waypoint-text">{{route.amap_export.waypoint_text}}</text></view>
-          <view wx:if="{{route.amap_export.status_text}}" class="route-navigation-hint route-navigation-hint--{{route.amap_export.status_variant}}">
-            <text class="route-navigation-hint__badge">{{route.amap_export.status_badge}}</text>
-            <text class="route-navigation-hint__text">{{route.amap_export.status_text}}</text>
-          </view>
-        </view>
-        <view class="actions-row route-map-actions">
-          <button wx:if="{{route.amap_export.is_available}}" class="button-secondary route-inline-button" data-href="{{route.amap_export.href}}" catchtap="handleDirectNavigate">{{route.amap_export.label || '直接导航'}}</button>
-        </view>
-      </view>
-      <view class="actions-row route-card-actions">
-        <button class="button-ghost route-inline-button" data-href="{{route.collect_href}}" catchtap="handleOpenCollect">补采坐标</button>
-        <button class="button-ghost route-inline-button" data-slug="{{route.slug}}" catchtap="handleOpenRoute">详情</button>
-        <button class="button-primary route-inline-button" data-href="{{route.replan_href}}" catchtap="handleOpenReplan">继续规划</button>
+      <view wx:if="{{route.amap_export.is_available}}" class="route-card-footer">
+        <button class="button-secondary route-direct-button" data-href="{{route.amap_export.href}}" catchtap="handleDirectNavigate">直接导航</button>
       </view>
     </view>
 
     <view wx:if="{{!routes.length}}" class="card empty">
       <text class="card-title">{{emptyState.title}}</text>
       <view><text class="card-desc">{{emptyState.description}}</text></view>
-      <view class="actions-row actions-row--compact">
-        <button class="button-primary route-inline-button" data-href="{{emptyState.action.href}}" bindtap="handleEmptyAction">{{emptyState.action.label}}</button>
-      </view>
     </view>
   </view>
 </view>

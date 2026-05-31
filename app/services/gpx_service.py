@@ -13,6 +13,7 @@ import sqlite3
 import subprocess
 import sys
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 GPX_DIR = PROJECT_ROOT / "data" / "gpx"
@@ -59,6 +60,47 @@ def get_gpx_content(filename: str) -> str | None:
     if not fpath.exists() or not fpath.suffix == ".gpx":
         return None
     return fpath.read_text(encoding="utf-8")
+
+
+def get_gpx_waypoints(filename: str, max_points: int = 16) -> list[dict]:
+    """从 GPX 文件提取可用于高德导航的途经点。"""
+    content = get_gpx_content(filename)
+    if not content:
+        return []
+
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return []
+
+    namespace = {"gpx": "http://www.topografix.com/GPX/1/1"}
+    waypoints: list[dict] = []
+
+    for track_point in root.findall(".//gpx:trkpt", namespace):
+        lat = track_point.attrib.get("lat")
+        lng = track_point.attrib.get("lon")
+        name_node = track_point.find("gpx:name", namespace)
+        name = (name_node.text or "").strip() if name_node is not None else ""
+        if not name or lat in {None, ""} or lng in {None, ""}:
+            continue
+
+        try:
+            waypoint = {
+                "name": name,
+                "lat": float(lat),
+                "lng": float(lng),
+                "has_coordinates": True,
+            }
+        except ValueError:
+            continue
+
+        if not waypoints or any(existing["name"] != waypoint["name"] or existing["lat"] != waypoint["lat"] or existing["lng"] != waypoint["lng"] for existing in [waypoints[-1]]):
+            waypoints.append(waypoint)
+
+        if len(waypoints) >= max_points:
+            break
+
+    return waypoints
 
 
 def run_gpx_process_url(video_url: str) -> dict:

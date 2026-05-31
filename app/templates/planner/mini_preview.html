@@ -147,30 +147,16 @@
       function renderRoutes(payload) {
         const routes = (payload.routes || []).filter((route) => matchesDuration(Number(route.days || 0), activeDuration));
         return `
-          <section class="miniapp-card miniapp-card--hero">
-            <p class="miniapp-card__desc">${escapeHtml(payload.page?.description)}</p>
-            <div class="miniapp-inline-meta">
-              <span>${escapeHtml(payload.featured_summary?.title)}</span>
-              <strong>${escapeHtml(payload.featured_summary?.description)}</strong>
-            </div>
-            <div class="miniapp-actions miniapp-actions--compact">
-              <a class="miniapp-button miniapp-button--secondary" href="/moto/routes/collect" target="_blank" rel="noreferrer">采集导航点</a>
-            </div>
-            <div class="miniapp-route-filter-strip">
-              <div>
-                <p class="miniapp-section-header__eyebrow">骑行时间</p>
-                <h2>按计划时长选路线</h2>
-              </div>
-              <div class="miniapp-chip-row miniapp-route-chip-row">
-                ${durationFilters.map((item) => `
-                  <button class="miniapp-chip ${item.key === activeDuration ? 'is-active' : ''}" type="button" data-route-duration="${escapeHtml(item.key)}">${escapeHtml(item.label)}</button>
-                `).join('')}
-              </div>
+          <section class="miniapp-route-filter-strip">
+            <div class="miniapp-chip-row miniapp-route-chip-row">
+              ${durationFilters.map((item) => `
+                <button class="miniapp-chip ${item.key === activeDuration ? 'is-active' : ''}" type="button" data-route-duration="${escapeHtml(item.key)}">${escapeHtml(item.label)}</button>
+              `).join('')}
             </div>
           </section>
           <section class="miniapp-list">
             ${routes.map((route) => `
-              <article class="miniapp-card miniapp-list-card miniapp-route-card-v2">
+              <article class="miniapp-card miniapp-list-card miniapp-route-card-v2" data-preview-route="${escapeHtml(route.slug)}">
                 <div class="miniapp-route-roadbar">
                   <span class="miniapp-route-roadbar__label">ROADBOOK</span>
                   <span class="miniapp-route-roadbar__lane"></span>
@@ -178,28 +164,15 @@
                 <div class="miniapp-list-card__header">
                   <div>
                     <p class="miniapp-list-card__title">${escapeHtml(route.title)}</p>
-                    <p class="miniapp-card__desc">${escapeHtml(route.summary)}</p>
                   </div>
                   <div class="miniapp-route-meta-pill">${escapeHtml(route.distance_km)} km</div>
                 </div>
-                <div class="miniapp-route-fact-row">
-                  <div class="miniapp-route-fact-chip">
-                    <span>时长</span>
-                    <strong>${escapeHtml(route.days)} 天</strong>
-                  </div>
-                  <div class="miniapp-route-fact-chip">
-                    <span>途径点</span>
-                    <strong>${escapeHtml(route.waypoint_count)} 个</strong>
-                  </div>
-                </div>
-                ${renderTags(route.tags)}
+                <p class="miniapp-card__subtle">${escapeHtml(route.days)} 天 · ${escapeHtml(route.waypoint_count)} 个途径点</p>
                 <section class="miniapp-route-stage-block">
                   <div class="miniapp-section-header">
                     <div>
-                      <p class="miniapp-section-header__eyebrow">每日经过</p>
-                      <h2>${escapeHtml(route.days)} 天路线拆分</h2>
+                      <p class="miniapp-card__subtle">${escapeHtml(route.days)} 天路线拆分</p>
                     </div>
-                    <span class="miniapp-inline-badge">沿途路书</span>
                   </div>
                   <div class="miniapp-route-stage-list">
                     ${(route.days_plan || []).map((day) => `
@@ -216,22 +189,11 @@
                     `).join('')}
                   </div>
                 </section>
-                <section class="miniapp-route-map-card">
-                  <span class="miniapp-route-map-card__lane"></span>
-                  <div>
-                    <p class="miniapp-section-header__eyebrow">直接导航</p>
-                    <p class="miniapp-route-waypoint-text">${escapeHtml(route.amap_export?.waypoint_text || '')}</p>
-                    ${route.amap_export?.status_text ? `<p class="miniapp-route-navigation-hint is-${escapeHtml(route.amap_export.status_variant || 'names')}"><span class="miniapp-route-navigation-hint__badge">${escapeHtml(route.amap_export.status_badge || '')}</span><span>${escapeHtml(route.amap_export.status_text)}</span></p>` : ''}
+                ${route.amap_export?.is_available ? `
+                  <div class="miniapp-actions miniapp-actions--compact">
+                    <button class="miniapp-button miniapp-button--secondary" type="button" data-direct-nav="${escapeHtml(route.amap_export.href)}">直接导航</button>
                   </div>
-                  <div class="miniapp-actions">
-                    ${route.amap_export?.is_available ? `<a class="miniapp-button" href="${escapeHtml(route.amap_export.href)}" target="_blank" rel="noreferrer">直接导航</a>` : ''}
-                  </div>
-                </section>
-                <div class="miniapp-actions">
-                  <a class="miniapp-button miniapp-button--ghost" href="${escapeHtml(route.collect_href)}" target="_blank" rel="noreferrer">补采坐标</a>
-                  <button class="miniapp-button miniapp-button--ghost" type="button" data-preview-route="${escapeHtml(route.slug)}">详情</button>
-                  <a class="miniapp-button miniapp-button--secondary" href="${escapeHtml(route.replan_href)}" target="_blank" rel="noreferrer">继续规划</a>
-                </div>
+                ` : ''}
               </article>
             `).join('') || `
               <article class="miniapp-card miniapp-list-card">
@@ -329,6 +291,15 @@
         content.querySelectorAll('[data-preview-route]').forEach((button) => {
           button.addEventListener('click', () => {
             loadRouteDetail(button.dataset.previewRoute || '');
+          });
+        });
+        content.querySelectorAll('[data-direct-nav]').forEach((button) => {
+          button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const href = button.dataset.directNav || '';
+            if (href) {
+              window.open(href, '_blank', 'noopener,noreferrer');
+            }
           });
         });
         content.querySelectorAll('[data-preview-back-to-routes]').forEach((button) => {
