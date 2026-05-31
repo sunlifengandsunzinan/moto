@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>沈阳南骑行路线分享，灯塔粮仓文创园和广佑寺！#骑行vlog #摩托车 #踏板摩托车 #摩旅 #沈阳摩托车</name>
+    <desc>来源: https://www.douyin.com/video/7623558717351848811</desc>
+    <trkseg>
+      <trkpt lat="41.15" lon="123.28">
+        <name>人参谷</name>
+        <desc>人参谷 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.8057" lon="123.4315">
+        <name>沈阳</name>
+        <desc>沈阳 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.2719" lon="123.2399">
+        <name>辽阳</name>
+        <desc>辽阳 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.852" lon="122.685">
+        <name>海城</name>
+        <desc>海城 (精确)</desc>
+      </trkpt>
+      <trkpt lat="38.914" lon="121.615">
+        <name>大连</name>
+        <desc>大连 (精确)</desc>
+      </trkpt>
+      <trkpt lat="38.8" lon="121.268">
+        <name>旅顺</name>
+        <desc>旅顺 (精确)</desc>
+      </trkpt>
+      <trkpt lat="43.85" lon="126.55">
+        <name>吉林</name>
+        <desc>吉林 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.1142" lon="123.7536">
+        <name>公路</name>
+        <desc>公路 (近似→南芬音乐公路)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

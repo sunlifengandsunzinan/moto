@@ -1,7 +1,5 @@
 {
   "pages": [
-    "routes",
-    "me",
     "pages/routes/index",
     "pages/me/index",
     "pages/spots/index",

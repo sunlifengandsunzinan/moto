@@ -14,6 +14,8 @@ from .collector_monitor import (
 	start_local_collector,
 	stop_local_collector,
 )
+from . import gpx_service as gpx_service
+
 from .liaoning_spots import (
 	build_liaoning_spot_detail_context,
 	build_liaoning_spot_image_gallery,

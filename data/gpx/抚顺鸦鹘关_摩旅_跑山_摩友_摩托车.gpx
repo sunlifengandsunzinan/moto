@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>抚顺鸦鹘关 #摩旅 #跑山 #摩友 #摩托车</name>
+    <desc>来源: https://www.douyin.com/video/7644781382501585353</desc>
+    <trkseg>
+      <trkpt lat="41.1078" lon="123.7594">
+        <name>背阴汀铁路断桥</name>
+        <desc>背阴汀铁路断桥 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.1142" lon="123.7536">
+        <name>南芬音乐公路</name>
+        <desc>南芬音乐公路 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.1128" lon="123.7558">
+        <name>英雄纪念广场</name>
+        <desc>英雄纪念广场 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.0922" lon="123.7611">
+        <name>山有溪露营地</name>
+        <desc>山有溪露营地 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.0389" lon="123.6917">
+        <name>下马塘街道</name>
+        <desc>下马塘街道 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.8583" lon="124.1667">
+        <name>大伙房水库</name>
+        <desc>大伙房水库 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.15" lon="123.28">
+        <name>人参谷</name>
+        <desc>人参谷 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.3256" lon="123.7686">
+        <name>本溪市</name>
+        <desc>本溪市 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.12" lon="123.78">
+        <name>南芬区</name>
+        <desc>南芬区 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.09" lon="123.77">
+        <name>南天门</name>
+        <desc>南天门 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.425" lon="124.068">
+        <name>凤凰山</name>
+        <desc>凤凰山 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.8057" lon="123.4315">
+        <name>沈阳</name>
+        <desc>沈阳 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.2719" lon="123.2399">
+        <name>辽阳</name>
+        <desc>辽阳 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.882" lon="123.957">
+        <name>抚顺</name>
+        <desc>抚顺 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.84" lon="124.13">
+        <name>社河</name>
+        <desc>社河 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.129" lon="124.383">
+        <name>丹东</name>
+        <desc>丹东 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

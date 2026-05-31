@@ -1,5 +1,5 @@
-const DEFAULT_API_BASE_URL = "http://192.168.0.119:6001/api";
-const DEFAULT_WEB_BASE_URL = "http://192.168.0.119:6001";
+const DEFAULT_API_BASE_URL = "http://192.168.0.119:6002/api";
+const DEFAULT_WEB_BASE_URL = "http://192.168.0.119:6002";
 
 function replaceLocalhostHost(value) {
   return String(value || "").replace(/\/\/(127\.0\.0\.1|localhost)(?=[:/]|$)/i, "//192.168.0.119");

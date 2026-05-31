@@ -28,6 +28,7 @@ from ...services import (
     get_spot_collection_context,
     get_route_templates,
     review_candidate_spot,
+    gpx_service,
 )
 
 
@@ -267,3 +268,20 @@ def moto_custom() -> str:
             },
         )
     return render_template("planner/custom.html", **get_custom_plan_context())
+
+
+# ──────────────────────────────────────────────
+# GPX 路线提取管理页面
+# ──────────────────────────────────────────────
+
+@moto_bp.get("/moto/gpx")
+def moto_gpx():
+    """GPX 管理页面"""
+    videos = gpx_service.get_processed_videos(50)
+    files = gpx_service.get_gpx_files()
+    stats = gpx_service.get_gpx_stats()
+    return render_template(
+        "planner/gpx.html",
+        videos=videos, files=files, stats=stats,
+        page={"title": "路线提取 (GPX)", "description": "从抖音视频自动提取路线并生成 GPX"},
+    )

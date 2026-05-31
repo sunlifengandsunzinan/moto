@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>辽阳天主堂 #摩旅 #辽阳 #教堂 #小南教堂</name>
+    <desc>来源: https://www.douyin.com/video/7609159086262186227</desc>
+    <trkseg>
+      <trkpt lat="41.2719" lon="123.2399">
+        <name>辽阳</name>
+        <desc>辽阳 (精确)</desc>
+      </trkpt>
+      <trkpt lat="43.85" lon="126.55">
+        <name>吉林</name>
+        <desc>吉林 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
