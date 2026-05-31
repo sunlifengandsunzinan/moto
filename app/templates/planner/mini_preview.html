@@ -88,10 +88,15 @@
         return amapExport.screenshot_url || amapExport.screenshot_href || '';
       }
 
+      function routeGpxDownloadUrl(route = {}) {
+        return route.gpx?.download_href || '';
+      }
+
       function renderRouteDetail(payload) {
         const route = payload.route || {};
         const dailyPlan = payload.detail_sections?.daily_plan || [];
         const screenshotUrl = routeScreenshotUrl(route.amap_export || {});
+        const gpx = route.gpx || {};
         return `
           <section class="miniapp-card miniapp-card--hero miniapp-route-detail-hero">
             <div class="miniapp-actions miniapp-actions--compact">
@@ -116,6 +121,28 @@
               <p class="miniapp-card__desc">当前没有可展示的路线截图。</p>
             `}
           </section>
+          ${gpx.is_available ? `
+            <section class="miniapp-card miniapp-route-detail-schedule">
+              <div class="miniapp-section-header">
+                <div>
+                  <p class="miniapp-section-header__eyebrow">GPX 同步</p>
+                  <h2>提取轨迹</h2>
+                </div>
+                <span class="miniapp-route-detail-meta">GPX</span>
+              </div>
+              <p class="miniapp-list-card__title">${escapeHtml(gpx.source_title || '')}</p>
+              ${gpx.meta_text ? `<p class="miniapp-card__subtle">${escapeHtml(gpx.meta_text)}</p>` : ''}
+              <div class="miniapp-tag-row miniapp-tag-row--compact miniapp-route-gpx-strip-list">
+                ${(gpx.facts || []).map((fact) => `
+                  <span class="miniapp-route-gpx-strip-item"><strong>${escapeHtml(fact.label)}</strong>${escapeHtml(fact.value)}</span>
+                `).join('')}
+              </div>
+              <div class="miniapp-actions miniapp-actions--compact">
+                ${route.amap_export?.is_available ? `<button class="miniapp-button miniapp-button--secondary" type="button" data-direct-nav="${escapeHtml(route.amap_export.href)}">直接导航</button>` : ''}
+                <a class="miniapp-button miniapp-button--secondary" href="${escapeHtml(routeGpxDownloadUrl(route))}" target="_blank" rel="noreferrer">GPX 文件下载</a>
+              </div>
+            </section>
+          ` : ''}
           <section class="miniapp-card miniapp-route-detail-schedule">
             <div class="miniapp-section-header">
               <div>
@@ -168,6 +195,13 @@
                   <div class="miniapp-route-meta-pill">${escapeHtml(route.distance_km)} km</div>
                 </div>
                 <p class="miniapp-card__subtle">${escapeHtml(route.days)} 天 · ${escapeHtml(route.waypoint_count)} 个途径点</p>
+                ${route.gpx?.is_available ? `
+                  <div class="miniapp-inline-meta">
+                    <span>GPX</span>
+                    <strong>${escapeHtml(route.gpx.source_title || '')}</strong>
+                  </div>
+                  ${route.gpx.meta_text ? `<p class="miniapp-card__subtle">${escapeHtml(route.gpx.meta_text)}</p>` : ''}
+                ` : ''}
                 <section class="miniapp-route-stage-block">
                   <div class="miniapp-section-header">
                     <div>
@@ -189,9 +223,10 @@
                     `).join('')}
                   </div>
                 </section>
-                ${route.amap_export?.is_available ? `
+                ${route.amap_export?.is_available || route.gpx?.is_available ? `
                   <div class="miniapp-actions miniapp-actions--compact">
-                    <button class="miniapp-button miniapp-button--secondary" type="button" data-direct-nav="${escapeHtml(route.amap_export.href)}">直接导航</button>
+                    ${route.amap_export?.is_available ? `<button class="miniapp-button miniapp-button--secondary" type="button" data-direct-nav="${escapeHtml(route.amap_export.href)}">直接导航</button>` : ''}
+                    ${route.gpx?.is_available ? `<a class="miniapp-button miniapp-button--secondary" href="${escapeHtml(routeGpxDownloadUrl(route))}" target="_blank" rel="noreferrer">GPX 文件下载</a>` : ''}
                   </div>
                 ` : ''}
               </article>

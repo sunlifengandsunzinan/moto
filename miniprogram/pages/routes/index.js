@@ -1,4 +1,6 @@
 const { request, buildWebUrl } = require("../../utils/request");
+const { downloadRemoteFile } = require("../../utils/file-download");
+const { mergeRoutesWithFavorites, toggleFavoriteRoute } = require("../../utils/favorites");
 const { routesPageFallback } = require("../../mock/routes");
 
 const DURATION_FILTERS = [
@@ -48,6 +50,14 @@ Page({
     this.fetchData();
   },
 
+  onShow() {
+    if (this.data.allRoutes.length) {
+      const allRoutes = mergeRoutesWithFavorites(this.data.allRoutes);
+      this.setData({ allRoutes });
+      this.applyDurationFilter(this.data.selectedDuration, allRoutes);
+    }
+  },
+
   onPullDownRefresh() {
     this.fetchData(true);
   },
@@ -57,7 +67,7 @@ Page({
 
     request({ path: "/moto/routes" })
       .then((payload) => {
-        const allRoutes = Array.isArray(payload.routes) ? payload.routes : [];
+        const allRoutes = mergeRoutesWithFavorites(Array.isArray(payload.routes) ? payload.routes : []);
         this.setData({
           loading: false,
           page: payload.page || this.data.page,
@@ -68,7 +78,7 @@ Page({
         this.applyDurationFilter(this.data.selectedDuration, allRoutes);
       })
       .catch((_error) => {
-        const allRoutes = Array.isArray(routesPageFallback.routes) ? routesPageFallback.routes : [];
+        const allRoutes = mergeRoutesWithFavorites(Array.isArray(routesPageFallback.routes) ? routesPageFallback.routes : []);
         this.setData({
           loading: false,
           error: "",
@@ -128,6 +138,48 @@ Page({
 
   handleDirectNavigate(event) {
     this.openInWebView(event.currentTarget.dataset.href);
+  },
+
+  handleDownloadGpx(event) {
+    const rawHref = event.currentTarget.dataset.href;
+    const filename = event.currentTarget.dataset.filename || "route.gpx";
+    if (!rawHref) {
+      wx.showToast({ title: "当前路线没有 GPX 文件", icon: "none" });
+      return;
+    }
+
+    downloadRemoteFile({
+      url: buildWebUrl(rawHref),
+      filename,
+      loadingText: "正在下载 GPX",
+    }).catch((error) => {
+      wx.showToast({
+        title: error?.message || "GPX 下载失败",
+        icon: "none",
+        duration: 2200,
+      });
+    });
+  },
+
+  handleToggleFavorite(event) {
+    const slug = event.currentTarget.dataset.slug;
+    const route = (this.data.allRoutes || []).find((item) => item.slug === slug);
+    if (!route) {
+      return;
+    }
+
+    const result = toggleFavoriteRoute(route);
+    const allRoutes = (this.data.allRoutes || []).map((item) => (
+      item.slug === slug ? { ...item, is_favorite: result.isFavorite } : item
+    ));
+
+    this.setData({ allRoutes });
+    this.applyDurationFilter(this.data.selectedDuration, allRoutes);
+    wx.showToast({
+      title: result.isFavorite ? "已加入收藏" : "已取消收藏",
+      icon: "none",
+      duration: 1600,
+    });
   },
 
   handleOpenCollect(event) {

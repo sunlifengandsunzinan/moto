@@ -138,6 +138,8 @@
 .route-card-footer {
   display: flex;
   justify-content: flex-end;
+  gap: 16rpx;
+  flex-wrap: wrap;
   padding-top: 4rpx;
 }
 
@@ -146,6 +148,56 @@
   padding: 0 24rpx;
   border-radius: 999rpx;
   font-size: 24rpx;
+}
+
+.route-download-button {
+  background: rgba(79, 74, 70, 0.06);
+}
+
+.route-favorite-button {
+  background: rgba(209, 170, 130, 0.18);
+}
+
+.route-favorite-button--active {
+  background: #4F4A46;
+  color: #FBF7F0;
+}
+
+.route-gpx-brief {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14rpx;
+  align-items: start;
+  margin-top: 8rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 24rpx;
+  background: rgba(247, 239, 228, 0.72);
+}
+
+.route-gpx-brief__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: #4F4A46;
+  color: #FBF7F0;
+  font-size: 22rpx;
+  box-sizing: border-box;
+}
+
+.route-gpx-brief__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.route-gpx-brief__title {
+  color: #4A433E;
+  font-size: 24rpx;
+  line-height: 1.45;
+  font-weight: 600;
 }
 
 .actions-row--compact {

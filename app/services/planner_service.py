@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime
+import hashlib
 from html import escape
 import json
+import re
 from typing import Any, Mapping
 from urllib.parse import quote
 
@@ -1060,11 +1063,113 @@ def get_planner_form_context(route_slug: str | None = None, origin: str | None =
 
 
 def get_route_templates() -> list[RouteDict]:
-    return deepcopy(load_route_templates())
+    routes = deepcopy(load_route_templates())
+    existing_slugs = {str(route.get("slug") or "") for route in routes}
+    existing_gpx_files = {
+        str(route.get("gpx_file") or "").strip() for route in routes if str(route.get("gpx_file") or "").strip()
+    }
+    routes.extend(_build_gpx_demo_routes(existing_slugs, existing_gpx_files))
+    return routes
 
 
 def get_route_by_slug(slug: str) -> dict[str, Any] | None:
     return next((route for route in get_route_templates() if route["slug"] == slug), None)
+
+
+def _build_gpx_demo_routes(existing_slugs: set[str], existing_gpx_files: set[str]) -> list[RouteDict]:
+    gpx_routes: list[RouteDict] = []
+    for gpx_file in gpx_service.get_gpx_files():
+        filename = str(gpx_file.get("name") or "").strip()
+        if not filename or filename in existing_gpx_files:
+            continue
+
+        waypoints = gpx_service.get_gpx_waypoints(filename)
+        if len(waypoints) < 2:
+            continue
+
+        slug = _gpx_demo_slug(filename)
+        if not slug or slug in existing_slugs:
+            continue
+
+        title = _gpx_demo_title(filename)
+        gpx_routes.append(
+            {
+                "slug": slug,
+                "title": title,
+                "region": "gpx-demo",
+                "spot_slugs": [],
+                "days": 2 if len(waypoints) >= 4 else 1,
+                "difficulty": "easy",
+                "scenery_type": ["scenic", "relaxed"],
+                "bike_types": ["150-250cc", "300-500cc", "adv-touring"],
+                "experience_levels": ["beginner", "intermediate"],
+                "best_season": "GPX 测试",
+                "distance_km": max(120, len(waypoints) * 35),
+                "budget_range": "测试专用",
+                "summary": "来自 GPX 文件的测试路线，用于验证现有路线页中的“直接导航”按钮可按 GPX 轨迹点直接打开高德路线。",
+                "gpx_file": filename,
+                "navigation": {
+                    "provider": "amap",
+                    "waypoints": [
+                        {"name": waypoints[0]["name"]},
+                        {"name": waypoints[-1]["name"]},
+                    ],
+                },
+                "days_plan": _gpx_demo_days_plan(waypoints),
+                "pois": {
+                    "fuel": [],
+                    "repair": [],
+                    "lodging": [],
+                    "viewpoint": [
+                        {
+                            "name": waypoints[-1]["name"],
+                            "meta": "GPX 提取终点 · 用于导航验证",
+                        }
+                    ],
+                    "emergency": [],
+                },
+            }
+        )
+
+    return gpx_routes
+
+
+def _gpx_demo_slug(filename: str) -> str:
+    base_name = filename.removesuffix(".gpx")
+    normalized = re.sub(r"[^a-z0-9]+", "-", base_name.lower())
+    normalized = normalized.strip("-")
+    if not normalized:
+        normalized = "gpx-route"
+    suffix = hashlib.sha1(filename.encode("utf-8")).hexdigest()[:8]
+    return f"gpx-{normalized[:36]}-{suffix}"
+
+
+def _gpx_demo_title(filename: str) -> str:
+    title = filename.removesuffix(".gpx").replace("_", " ").strip()
+    return title or "GPX 测试路线"
+
+
+def _gpx_demo_days_plan(waypoints: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    midpoint = max(1, len(waypoints) // 2)
+    chunks = [waypoints[:midpoint], waypoints[midpoint:]] if len(waypoints) >= 4 else [waypoints]
+    days_plan: list[dict[str, Any]] = []
+
+    for index, chunk in enumerate(chunks, start=1):
+        if not chunk:
+            continue
+        title = " -> ".join(point["name"] for point in chunk)
+        days_plan.append(
+            {
+                "day": index,
+                "title": title,
+                "ride_time": f"建议骑行 {3 + index}-{4 + index} 小时",
+                "distance": max(80, len(chunk) * 40),
+                "highlights": ["GPX 轨迹点", "高德导航验证", "自动生成测试路书"],
+                "note": "这一段由 GPX 文件自动生成，用于验证路线页现有直接导航按钮的打开效果。",
+            }
+        )
+
+    return days_plan
 
 
 def get_route_waypoint_collection_schema() -> list[dict[str, Any]]:
@@ -1319,6 +1424,8 @@ def build_routes_index_context(route_templates: list[dict[str, Any]], filters: M
         if not selected_days or str(route["days"]) == selected_days
     ]
 
+    gpx_lookup = _build_gpx_lookup()
+
     return {
         "page": {
             "title": "热门摩旅路线库",
@@ -1355,7 +1462,7 @@ def build_routes_index_context(route_templates: list[dict[str, Any]], filters: M
             ],
         },
         "routes": [
-            _route_index_card(route)
+            _route_index_card(route, gpx_lookup=gpx_lookup)
             for route in filtered_routes
         ],
         "empty_state": {
@@ -1366,7 +1473,7 @@ def build_routes_index_context(route_templates: list[dict[str, Any]], filters: M
     }
 
 
-def _route_index_card(route: Mapping[str, Any]) -> dict[str, Any]:
+def _route_index_card(route: Mapping[str, Any], *, gpx_lookup: Mapping[str, Any] | None = None) -> dict[str, Any]:
     navigation_waypoints = _route_navigation_waypoints(route)
     waypoints = [point["name"] for point in navigation_waypoints]
     waypoint_count = len(waypoints)
@@ -1375,9 +1482,12 @@ def _route_index_card(route: Mapping[str, Any]) -> dict[str, Any]:
     navigation_mode = _route_navigation_mode(navigation_waypoints)
     status_variant = _route_navigation_status_variant(navigation_mode)
     amap_export_href = _route_amap_export_href(navigation_waypoints)
+    gpx_payload = _route_gpx_payload(route, navigation_waypoints, gpx_lookup=gpx_lookup)
     tags = [f"{route['days']} 天", route["best_season"], difficulty_label(route["difficulty"])]
     if route.get("is_navigation_state_demo"):
         tags.insert(0, "状态演示")
+    if gpx_payload["is_available"]:
+        tags.insert(0, "GPX")
     return {
         "slug": route["slug"],
         "title": route["title"],
@@ -1412,6 +1522,7 @@ def _route_index_card(route: Mapping[str, Any]) -> dict[str, Any]:
                 navigation_mode=navigation_mode,
             ),
         },
+        "gpx": gpx_payload,
         "days_plan": [
             {
                 "day": day["day"],
@@ -1421,6 +1532,129 @@ def _route_index_card(route: Mapping[str, Any]) -> dict[str, Any]:
             for day in route.get("days_plan", [])
         ],
     }
+
+
+def _build_gpx_lookup() -> dict[str, dict[str, Any]]:
+    files_by_name = {
+        str(file_info.get("name") or "").strip(): file_info
+        for file_info in gpx_service.get_gpx_files()
+        if str(file_info.get("name") or "").strip()
+    }
+    videos_by_filename: dict[str, dict[str, Any]] = {}
+    for video in gpx_service.get_processed_videos(limit=500):
+        filename = _gpx_basename(video.get("gpx_path") or video.get("path") or video.get("name"))
+        if filename and filename not in videos_by_filename:
+            videos_by_filename[filename] = video
+    return {"files_by_name": files_by_name, "videos_by_filename": videos_by_filename}
+
+
+def _route_gpx_payload(
+    route: Mapping[str, Any],
+    navigation_waypoints: list[Mapping[str, Any]],
+    *,
+    gpx_lookup: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    filename = str(route.get("gpx_file") or "").strip()
+    if not filename:
+        return {
+            "is_available": False,
+            "filename": "",
+            "download_href": "",
+            "download_label": "GPX 文件下载",
+            "source_title": "",
+            "source_author": "",
+            "processed_at": "",
+            "updated_at": "",
+            "file_size": "",
+            "track_point_count": 0,
+            "extracted_spots_count": 0,
+            "meta_text": "",
+            "facts": [],
+        }
+
+    lookup = gpx_lookup or _build_gpx_lookup()
+    file_info = lookup.get("files_by_name", {}).get(filename, {}) if isinstance(lookup, Mapping) else {}
+    video_info = lookup.get("videos_by_filename", {}).get(filename, {}) if isinstance(lookup, Mapping) else {}
+    source_title = str(video_info.get("title") or route.get("title") or filename.removesuffix(".gpx")).strip()
+    source_author = str(video_info.get("author") or "").strip()
+    processed_at = _format_gpx_timestamp(video_info.get("processed_at"))
+    updated_at = _format_gpx_timestamp(file_info.get("mtime"))
+    file_size = _format_gpx_file_size(file_info.get("size"))
+    extracted_spots_count = int(video_info.get("spots_count") or 0)
+    track_point_count = len(navigation_waypoints)
+
+    meta_parts = []
+    if track_point_count:
+        meta_parts.append(f"{track_point_count} 个轨迹点")
+    if extracted_spots_count:
+        meta_parts.append(f"{extracted_spots_count} 个提取点")
+    if source_author:
+        meta_parts.append(source_author)
+
+    facts = [{"label": "文件名", "value": filename}]
+    if file_size:
+        facts.append({"label": "文件大小", "value": file_size})
+    if updated_at:
+        facts.append({"label": "文件更新时间", "value": updated_at})
+    if source_author:
+        facts.append({"label": "来源作者", "value": source_author})
+    if processed_at:
+        facts.append({"label": "提取时间", "value": processed_at})
+    if extracted_spots_count:
+        facts.append({"label": "提取点位", "value": str(extracted_spots_count)})
+
+    return {
+        "is_available": True,
+        "filename": filename,
+        "download_href": f"/api/moto/gpx/download/{quote(filename)}",
+        "download_label": "GPX 文件下载",
+        "source_title": source_title,
+        "source_author": source_author,
+        "processed_at": processed_at,
+        "updated_at": updated_at,
+        "file_size": file_size,
+        "track_point_count": track_point_count,
+        "extracted_spots_count": extracted_spots_count,
+        "meta_text": " · ".join(meta_parts),
+        "facts": facts,
+    }
+
+
+def _gpx_basename(path_value: Any) -> str:
+    raw = str(path_value or "").strip()
+    if not raw:
+        return ""
+    return re.split(r"[\\/]", raw)[-1].strip()
+
+
+def _format_gpx_timestamp(value: Any) -> str:
+    if value in {None, ""}:
+        return ""
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value).strftime("%Y-%m-%d %H:%M")
+
+    text = str(value).strip()
+    if not text:
+        return ""
+
+    normalized = text.replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(normalized).strftime("%Y-%m-%d %H:%M")
+    except ValueError:
+        return text[:16]
+
+
+def _format_gpx_file_size(size: Any) -> str:
+    try:
+        value = float(size)
+    except (TypeError, ValueError):
+        return ""
+
+    if value < 1024:
+        return f"{int(value)} B"
+    if value < 1024 * 1024:
+        return f"{value / 1024:.1f} KB"
+    return f"{value / (1024 * 1024):.1f} MB"
 
 
 def _route_navigation_waypoints(route: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -1697,7 +1931,8 @@ def _route_waypoint_preview_path(waypoint_count: int) -> str:
 
 
 def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
-    route_card = _route_index_card(route)
+    gpx_lookup = _build_gpx_lookup()
+    route_card = _route_index_card(route, gpx_lookup=gpx_lookup)
     return {
         "page": {"title": route["title"], "eyebrow": "路线详情"},
         "route": {
@@ -1759,7 +1994,7 @@ def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
             {"label": "提交定制需求", "href": "/moto/custom"},
         ],
         "related_routes": [
-            _route_index_card(candidate)
+            _route_index_card(candidate, gpx_lookup=gpx_lookup)
             for candidate in get_route_templates()
             if candidate["slug"] != route["slug"]
         ][:2],

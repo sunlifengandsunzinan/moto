@@ -47,6 +47,13 @@
         <text class="route-meta-line__divider">·</text>
         <text class="route-meta-line__item">{{route.waypoint_count}} 个途径点</text>
       </view>
+      <view wx:if="{{route.gpx.is_available}}" class="route-gpx-brief">
+        <text class="route-gpx-brief__badge">GPX</text>
+        <view class="route-gpx-brief__copy">
+          <text class="route-gpx-brief__title">{{route.gpx.source_title}}</text>
+          <view wx:if="{{route.gpx.meta_text}}"><text class="subtle">{{route.gpx.meta_text}}</text></view>
+        </view>
+      </view>
       <view class="route-stage-block">
         <view class="route-stage-head">
           <text class="route-stage-heading">{{route.days}} 天路线拆分</text>
@@ -64,8 +71,10 @@
           </view>
         </view>
       </view>
-      <view wx:if="{{route.amap_export.is_available}}" class="route-card-footer">
-        <button class="button-secondary route-direct-button" data-href="{{route.amap_export.href}}" catchtap="handleDirectNavigate">直接导航</button>
+      <view class="route-card-footer">
+        <button class="button-secondary route-direct-button route-favorite-button {{route.is_favorite ? 'route-favorite-button--active' : ''}}" data-slug="{{route.slug}}" catchtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
+        <button wx:if="{{route.amap_export.is_available}}" class="button-secondary route-direct-button" data-href="{{route.amap_export.href}}" catchtap="handleDirectNavigate">直接导航</button>
+        <button wx:if="{{route.gpx.is_available}}" class="button-secondary route-direct-button route-download-button" data-href="{{route.gpx.download_href}}" data-filename="{{route.gpx.filename}}" catchtap="handleDownloadGpx">GPX 文件下载</button>
       </view>
     </view>
 

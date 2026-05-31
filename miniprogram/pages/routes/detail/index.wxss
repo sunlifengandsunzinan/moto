@@ -80,3 +80,64 @@
   font-size: 28rpx;
   font-weight: 700;
 }
+
+.route-detail-gpx-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.route-detail-gpx-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.route-detail-gpx-title {
+  color: #4A433E;
+  font-size: 28rpx;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.route-detail-gpx-strip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.route-detail-gpx-strip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
+  max-width: 100%;
+  padding: 14rpx 18rpx;
+  border-radius: 20rpx;
+  background: rgba(247, 239, 228, 0.86);
+  box-sizing: border-box;
+}
+
+.route-detail-gpx-strip-item__label {
+  flex: none;
+  color: #8B8177;
+  font-size: 22rpx;
+}
+
+.route-detail-gpx-strip-item__value {
+  color: #4A433E;
+  font-size: 22rpx;
+  line-height: 1.45;
+}
+
+.route-detail-gpx-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.route-detail-action-button {
+  min-height: 68rpx;
+  padding: 0 24rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+}

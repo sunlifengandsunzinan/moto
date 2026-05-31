@@ -17,11 +17,21 @@
   <block wx:else>
     <view class="card me-hero-card">
       <view class="me-hero-card__top">
-        <view class="me-hero-avatar">骑</view>
+        <view wx:if="{{profile.avatar_url}}" class="me-hero-avatar me-hero-avatar--image-wrap">
+          <image class="me-hero-avatar__image" src="{{profile.avatar_url}}" mode="aspectFill" />
+        </view>
+        <view wx:else class="me-hero-avatar">{{profile.name ? profile.name.slice(0, 1) : '骑'}}</view>
         <view class="me-hero-copy">
           <text class="me-hero-name">{{profile.name}}</text>
           <text class="me-hero-tagline">{{profile.tagline}}</text>
         </view>
+      </view>
+      <view class="me-wechat-row">
+        <view class="me-wechat-copy">
+          <text class="me-wechat-title">{{hasWechatProfile ? '已同步微信用户信息' : '先获取微信用户信息并展示'}}</text>
+          <text class="subtle">{{hasWechatProfile ? '当前昵称和头像优先使用微信资料。' : '点击后会读取你的微信头像、昵称和地区，用于“我的”页展示。'}}</text>
+        </view>
+        <button class="button-secondary me-wechat-button" loading="{{profileLoading}}" bindtap="handleGetWechatProfile">{{hasWechatProfile ? '重新获取' : '获取微信信息'}}</button>
       </view>
       <text class="card-desc">{{profile.summary}}</text>
       <view class="chip-row me-hero-chip-row">
@@ -30,6 +40,12 @@
     </view>
 
     <view class="me-action-grid">
+      <view class="card me-action-card me-action-card--favorite" bindtap="handleToggleFavoriteRoutes">
+        <text class="me-action-card__eyebrow">快捷入口</text>
+        <text class="me-action-card__title">我的收藏</text>
+        <text wx:if="{{favoriteRoutes.length}}" class="subtle">已收藏 {{favoriteRoutes.length}} 条路线</text>
+        <text wx:else class="subtle">还没有收藏路线</text>
+      </view>
       <view
         wx:for="{{quickActions}}"
         wx:key="href"
@@ -40,6 +56,30 @@
         <text class="me-action-card__eyebrow">快捷入口</text>
         <text class="me-action-card__title">{{item.label}}</text>
         <text class="subtle">{{item.kind === 'primary' ? '优先入口' : '备选入口'}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{showFavoriteRoutes}}" class="card me-section-card">
+      <view class="section-header">
+        <view>
+          <text class="eyebrow">我的路线</text>
+          <text class="card-title">我的收藏</text>
+        </view>
+      </view>
+
+      <view wx:if="{{favoriteRoutes.length}}" class="list-column me-favorite-list">
+        <view wx:for="{{favoriteRoutes}}" wx:key="slug" class="me-favorite-card" data-slug="{{item.slug}}" bindtap="handleOpenFavorite">
+          <view class="me-favorite-card__header">
+            <text class="entry-title">{{item.title}}</text>
+            <text class="me-favorite-card__distance">{{item.distance_km}} km</text>
+          </view>
+          <view><text class="subtle">{{item.days}} 天 · {{item.waypoint_count}} 个途径点</text></view>
+          <view wx:if="{{item.summary}}"><text class="card-desc">{{item.summary}}</text></view>
+        </view>
+      </view>
+
+      <view wx:else class="me-empty-favorite">
+        <text class="subtle">路线页里点“收藏”后，这里会显示你保存的路线。</text>
       </view>
     </view>
 

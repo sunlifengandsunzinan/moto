@@ -35,6 +35,33 @@
       </block>
     </view>
 
+    <view wx:if="{{route.gpx.is_available}}" class="card route-detail-gpx-card">
+      <view class="section-header">
+        <view>
+          <text class="eyebrow">GPX 同步</text>
+          <text class="route-detail-section-title">提取轨迹</text>
+        </view>
+        <text class="inline-badge">GPX</text>
+      </view>
+
+      <view class="route-detail-gpx-copy">
+        <text class="route-detail-gpx-title">{{route.gpx.source_title}}</text>
+        <view wx:if="{{route.gpx.meta_text}}"><text class="subtle">{{route.gpx.meta_text}}</text></view>
+      </view>
+
+      <view wx:if="{{route.gpx.facts.length}}" class="route-detail-gpx-strip-list">
+        <view wx:for="{{route.gpx.facts}}" wx:key="label" class="route-detail-gpx-strip-item">
+          <text class="route-detail-gpx-strip-item__label">{{item.label}}</text>
+          <text class="route-detail-gpx-strip-item__value">{{item.value}}</text>
+        </view>
+      </view>
+
+      <view class="route-detail-gpx-actions">
+        <button wx:if="{{route.amap_export.is_available}}" class="button-secondary route-detail-action-button" data-href="{{route.amap_export.href}}" catchtap="handleDirectNavigate">直接导航</button>
+        <button class="button-secondary route-detail-action-button" data-href="{{route.gpx.download_href}}" data-filename="{{route.gpx.filename}}" catchtap="handleDownloadGpx">{{route.gpx.download_label}}</button>
+      </view>
+    </view>
+
     <view class="card route-detail-schedule-card">
       <view class="section-header">
         <view>
