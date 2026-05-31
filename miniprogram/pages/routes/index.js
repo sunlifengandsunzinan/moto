@@ -8,6 +8,15 @@ const DURATION_FILTERS = [
   { key: "3-plus-days", label: "3天以上" },
 ];
 
+function pickTestRoutes(routeList) {
+  const candidates = Array.isArray(routeList) ? routeList : [];
+  const preferred = candidates.find((route) => route.slug === "jiangzhehu-2-day");
+  if (preferred) {
+    return [preferred];
+  }
+  return candidates.length > 0 ? [candidates[0]] : [];
+}
+
 function matchesDuration(days, filterKey) {
   if (filterKey === "1-day") {
     return days <= 1;
@@ -50,26 +59,21 @@ Page({
 
     request({ path: "/moto/routes" })
       .then((payload) => {
-        const allRoutes = payload.routes || [];
+        const allRoutes = pickTestRoutes(payload.routes || []);
         this.setData({
           loading: false,
           allRoutes,
         });
         this.applyDurationFilter(this.data.selectedDuration, allRoutes);
       })
-      .catch((error) => {
-        const allRoutes = routesPageFallback.routes || [];
+      .catch((_error) => {
+        const allRoutes = pickTestRoutes(routesPageFallback.routes || []);
         this.setData({
           loading: false,
           error: "",
           allRoutes,
         });
         this.applyDurationFilter(this.data.selectedDuration, allRoutes);
-        wx.showToast({
-          title: "已切换本地演示数据",
-          icon: "none",
-          duration: 1800,
-        });
       })
       .finally(() => {
         if (stopRefresh) {
@@ -96,6 +100,14 @@ Page({
   },
 
   handleOpenRoute(event) {
+    const slug = event.currentTarget.dataset.slug;
+    if (slug) {
+      wx.navigateTo({
+        url: `/pages/routes/detail/index?slug=${encodeURIComponent(slug)}`,
+      });
+      return;
+    }
+
     const href = event.currentTarget.dataset.href;
     wx.navigateTo({
       url: `/pages/webview/index?url=${encodeURIComponent(buildWebUrl(href))}`,

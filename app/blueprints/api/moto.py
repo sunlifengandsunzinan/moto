@@ -4,8 +4,10 @@ from pathlib import Path
 from flask import jsonify, request, send_file
 
 from ...services import (
+    build_route_detail_context,
     build_routes_index_context,
     get_moto_me_context,
+    get_route_by_slug,
     get_route_templates,
     get_route_waypoint_collection_api_payload,
     get_spots_index_context,
@@ -29,6 +31,14 @@ def moto_spots():
 @api_bp.get("/moto/me")
 def moto_me():
     return jsonify(get_moto_me_context())
+
+
+@api_bp.get("/moto/routes/<slug>")
+def moto_route_detail(slug: str):
+    route = get_route_by_slug(slug)
+    if route is None:
+        return jsonify({"message": "Route not found"}), 404
+    return jsonify(build_route_detail_context(route))
 
 
 @api_bp.get("/moto/routes/collect/schema")

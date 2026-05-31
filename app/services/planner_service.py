@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from html import escape
 import json
 from typing import Any, Mapping
 from urllib.parse import quote
@@ -1396,6 +1397,7 @@ def _route_index_card(route: Mapping[str, Any]) -> dict[str, Any]:
             "href": amap_export_href,
             "label": "导出到高德地图",
             "is_available": bool(amap_export_href),
+            "screenshot_href": f"/moto/routes/{route['slug']}/amap-route.svg",
             "waypoint_text": " -> ".join(waypoints),
             "waypoints": navigation_waypoints,
             "coordinate_waypoint_count": coordinate_waypoint_count,
@@ -1607,6 +1609,84 @@ def _route_amap_point_value(point: Mapping[str, Any]) -> str:
     if point.get("has_coordinates") and point.get("lng") is not None and point.get("lat") is not None:
         return f"{point['lng']},{point['lat']},{point['name']}"
     return str(point.get("name") or "")
+
+
+def render_route_amap_screenshot_svg(route: Mapping[str, Any]) -> str:
+                route_card = _route_index_card(route)
+                preview_waypoints = route_card["navigation_waypoints"][:6]
+                path_d = _route_waypoint_preview_path(len(preview_waypoints))
+                pins: list[str] = []
+                labels: list[str] = []
+
+                for index, point in enumerate(preview_waypoints):
+                                x = 120 + index * (920 / max(len(preview_waypoints) - 1, 1))
+                                y = 510 - (60 if index % 2 else 0)
+                                pin_fill = "#d85f3d" if index in {0, len(preview_waypoints) - 1} else "#2f7fb2"
+                                pins.append(
+                                                f"<g transform='translate({x:.1f} {y:.1f})'>"
+                                                f"<path d='M0 -34 C18 -34 32 -20 32 -2 C32 17 18 31 0 54 C-18 31 -32 17 -32 -2 C-32 -20 -18 -34 0 -34 Z' fill='{pin_fill}' stroke='#f8fbff' stroke-width='4' />"
+                                                f"<circle cx='0' cy='-2' r='15' fill='#f8fbff' />"
+                                                f"<text x='0' y='5' text-anchor='middle' fill='{pin_fill}' font-size='18' font-weight='700' font-family='Helvetica Neue, Arial, sans-serif'>{index + 1}</text>"
+                                                f"</g>"
+                                )
+                                labels.append(
+                                                f"<rect x='{x - 62:.1f}' y='{y + 58:.1f}' width='124' height='36' rx='18' fill='rgba(16,24,32,0.44)' />"
+                                                f"<text x='{x:.1f}' y='{y + 82:.1f}' text-anchor='middle' fill='#f8fbff' font-size='20' font-family='Helvetica Neue, Arial, sans-serif'>{escape(point['name'])}</text>"
+                                )
+
+                return f"""<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 720' role='img' aria-label='{escape(route_card['title'])} 高德路线截图'>
+    <defs>
+        <linearGradient id='routeBg' x1='0%' x2='100%' y1='0%' y2='100%'>
+            <stop offset='0%' stop-color='#d9e7d7' />
+            <stop offset='100%' stop-color='#eef3ea' />
+        </linearGradient>
+    </defs>
+    <rect width='1200' height='720' rx='36' fill='url(#routeBg)' />
+    <rect x='46' y='46' width='1108' height='628' rx='28' fill='rgba(248,251,255,0.84)' />
+    <path d='M70 300 C220 210 350 220 490 305 S800 405 1130 240' fill='none' stroke='rgba(137,182,154,0.35)' stroke-width='110' stroke-linecap='round' />
+    <path d='M104 382 C282 332 480 350 664 420 S972 520 1100 470' fill='none' stroke='rgba(170,212,193,0.32)' stroke-width='92' stroke-linecap='round' />
+    <path d='M80 182 C240 260 440 240 620 148 S920 98 1118 168' fill='none' stroke='rgba(185,192,221,0.26)' stroke-width='74' stroke-linecap='round' />
+    <path d='M80 542 L1120 542' fill='none' stroke='#d7dde3' stroke-width='20' stroke-linecap='round' />
+    <path d='M120 132 L1040 132' fill='none' stroke='#d7dde3' stroke-width='12' stroke-dasharray='18 20' stroke-linecap='round' />
+    <path d='M180 120 L310 610' fill='none' stroke='rgba(187,193,199,0.38)' stroke-width='10' stroke-linecap='round' />
+    <path d='M520 94 L430 626' fill='none' stroke='rgba(187,193,199,0.35)' stroke-width='8' stroke-linecap='round' />
+    <path d='M848 106 L986 604' fill='none' stroke='rgba(187,193,199,0.34)' stroke-width='8' stroke-linecap='round' />
+    <text x='90' y='96' fill='#4a6375' font-size='28' font-family='Helvetica Neue, Arial, sans-serif' letter-spacing='3'>高德路线截图</text>
+    <text x='90' y='168' fill='#183246' font-size='58' font-weight='700' font-family='Helvetica Neue, Arial, sans-serif'>{escape(route_card['title'])}</text>
+    <foreignObject x='90' y='204' width='880' height='120'>
+        <div xmlns='http://www.w3.org/1999/xhtml' style='color:#395466;font-size:28px;line-height:1.5;font-family:Helvetica Neue, Arial, sans-serif;'>
+            {escape(route_card['amap_export']['status_text'] or '按当前途径点生成的高德路线截图')}
+        </div>
+    </foreignObject>
+    <path d='{path_d}' fill='none' stroke='rgba(24,50,70,0.12)' stroke-width='28' stroke-linecap='round' stroke-linejoin='round' />
+    <path d='{path_d}' fill='none' stroke='#ffffff' stroke-width='18' stroke-linecap='round' stroke-linejoin='round' />
+    <path d='{path_d}' fill='none' stroke='#2f7fb2' stroke-width='9' stroke-linecap='round' stroke-linejoin='round' />
+    {''.join(pins)}
+    {''.join(labels)}
+    <rect x='90' y='610' width='180' height='56' rx='28' fill='#e8edf1' />
+    <text x='180' y='646' text-anchor='middle' fill='#1f4258' font-size='24' font-family='Helvetica Neue, Arial, sans-serif'>{escape(route_card['amap_export']['status_badge'])}</text>
+    <text x='1110' y='648' text-anchor='end' fill='#557084' font-size='24' font-family='Helvetica Neue, Arial, sans-serif'>{escape(route_card['amap_export']['waypoint_text'])}</text>
+</svg>"""
+
+
+def _route_waypoint_preview_path(waypoint_count: int) -> str:
+        if waypoint_count <= 1:
+                return "M120 510 L1040 510"
+
+        points: list[tuple[float, float]] = []
+        span = 920 / max(waypoint_count - 1, 1)
+        for index in range(waypoint_count):
+                x = 120 + index * span
+                y = 510 - (60 if index % 2 else 0)
+                points.append((x, y))
+
+        commands = [f"M{points[0][0]:.1f} {points[0][1]:.1f}"]
+        for index in range(1, len(points)):
+                prev_x, prev_y = points[index - 1]
+                cur_x, cur_y = points[index]
+                control_x = (prev_x + cur_x) / 2
+                commands.append(f"Q{control_x:.1f} {prev_y:.1f} {cur_x:.1f} {cur_y:.1f}")
+        return " ".join(commands)
 
 
 def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:

@@ -1,0 +1,217 @@
+.page-shell {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #F8F4EE 0%, #F3EEE6 100%);
+}
+
+.route-detail-nav {
+  display: grid;
+  grid-template-columns: 160rpx 1fr 160rpx;
+  align-items: center;
+  min-height: 72rpx;
+  margin-bottom: 16rpx;
+}
+
+.route-detail-nav__side {
+  min-height: 56rpx;
+  display: flex;
+  align-items: center;
+}
+
+.route-detail-nav__side--left {
+  justify-content: flex-start;
+}
+
+.route-detail-nav__center {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.route-detail-nav__back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 56rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 250, 244, 0.86);
+  color: #5B534D;
+  border: 2rpx solid rgba(91, 83, 77, 0.1);
+  font-size: 24rpx;
+}
+
+.route-detail-nav__title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #2F2D2A;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.route-detail-shot-card,
+.route-detail-schedule-card {
+  margin-bottom: 16rpx;
+  padding: 22rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 252, 247, 0.96);
+  border: 2rpx solid rgba(91, 83, 77, 0.04);
+  box-shadow: none;
+}
+
+.route-detail-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.route-detail-section-head--with-badge {
+  margin-bottom: 18rpx;
+}
+
+.route-detail-section-title {
+  color: #2F2D2A;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.route-detail-section-badge {
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: #F2E8DC;
+  color: #5E554E;
+  font-size: 22rpx;
+}
+
+.route-detail-shot-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.route-detail-shot-frame {
+  position: relative;
+  border-radius: 20rpx;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(223, 232, 221, 0.96) 0%, rgba(237, 242, 236, 0.96) 100%);
+  border: 2rpx solid rgba(91, 83, 77, 0.06);
+}
+
+.route-detail-shot-surface {
+  position: relative;
+}
+
+.route-detail-shot-image {
+  display: block;
+  width: 100%;
+  background: #EEF2F5;
+}
+
+.route-detail-shot-overlay {
+  position: absolute;
+  left: 18rpx;
+  right: 18rpx;
+  bottom: 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.route-detail-shot-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  background: rgba(20, 45, 63, 0.56);
+  color: rgba(247, 250, 252, 0.92);
+  font-size: 18rpx;
+}
+
+.route-detail-shot-note {
+  color: rgba(247, 250, 252, 0.86);
+  font-size: 18rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(20, 45, 63, 0.22);
+}
+
+.route-detail-shot-placeholder {
+  min-height: 280rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24rpx;
+  background: rgba(238, 242, 245, 0.92);
+}
+
+.route-stage-list-detail {
+  gap: 18rpx;
+}
+
+.route-stage-item-detail {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16rpx;
+  align-items: start;
+}
+
+.route-stage-day-detail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 82rpx;
+  min-height: 42rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  background: rgba(79, 74, 70, 0.12);
+  color: #6C6259;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.route-stage-track-detail {
+  display: grid;
+  grid-template-columns: 18rpx 1fr;
+  gap: 16rpx;
+}
+
+.route-stage-marker-detail {
+  width: 18rpx;
+  min-height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, #D1AA82 0 16%, #5B534D 16% 34%, #F7EFE4 34% 52%, #5B534D 52% 70%, #D1AA82 70% 100%);
+}
+
+.route-day-card-detail {
+  padding: 2rpx 0;
+}
+
+.route-day-highlight-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx 14rpx;
+  margin: 10rpx 0;
+}
+
+.route-day-highlight-text {
+  color: #8A7A6B;
+  font-size: 22rpx;
+  line-height: 1.6;
+}
+
+.route-day-highlight-text::before {
+  content: "· ";
+}
+
+.route-stage-title-detail {
+  color: #4A433E;
+  line-height: 1.5;
+  font-size: 28rpx;
+  font-weight: 700;
+}

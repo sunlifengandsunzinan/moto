@@ -1,0 +1,63 @@
+<view class="page-shell">
+  <view class="route-detail-nav">
+    <view class="route-detail-nav__side route-detail-nav__side--left" bindtap="handleBack">
+      <text class="route-detail-nav__back">返回</text>
+    </view>
+    <view class="route-detail-nav__center">
+      <text class="route-detail-nav__title">{{page.title}}</text>
+    </view>
+    <view class="route-detail-nav__side"></view>
+  </view>
+
+  <view wx:if="{{loading}}" class="card loading">
+    <text class="subtle">正在加载路线详情...</text>
+  </view>
+
+  <block wx:else>
+    <view class="card route-detail-shot-card">
+      <view class="route-detail-section-head">
+        <text class="route-detail-section-title">高德路线截图</text>
+      </view>
+      <view class="route-detail-shot-frame">
+        <view wx:if="{{route.amap_export.screenshot_url}}" class="route-detail-shot-surface">
+          <image
+            class="route-detail-shot-image"
+            src="{{route.amap_export.screenshot_url}}"
+            mode="widthFix"
+          />
+          <view class="route-detail-shot-overlay">
+            <text class="route-detail-shot-badge">高德预览</text>
+            <text class="route-detail-shot-note">途径点路线截图</text>
+          </view>
+        </view>
+        <view wx:else class="route-detail-shot-placeholder">
+          <text class="subtle">当前没有可展示的路线截图。</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card route-detail-schedule-card">
+      <view class="route-detail-section-head route-detail-section-head--with-badge">
+        <text class="route-detail-section-title">{{route.days}} 天示例日程</text>
+        <text class="route-detail-section-badge">沿途节奏</text>
+      </view>
+
+      <view class="list-column route-stage-list-detail">
+        <view wx:for="{{detailSections.daily_plan}}" wx:key="day" class="route-stage-item-detail">
+          <text class="route-stage-day-detail">Day {{item.day}}</text>
+          <view class="route-stage-track-detail">
+            <view class="route-stage-marker-detail"></view>
+            <view class="route-day-card-detail">
+              <text class="route-stage-title-detail">{{item.title}}</text>
+              <view><text class="subtle">{{item.ride_time}} · {{item.distance}}</text></view>
+              <view class="route-day-highlight-row">
+                <text wx:for="{{item.highlights}}" wx:key="*this" class="route-day-highlight-text">{{item}}</text>
+              </view>
+              <view><text class="card-desc">{{item.note}}</text></view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

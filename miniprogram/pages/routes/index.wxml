@@ -27,7 +27,7 @@
       wx:for-item="route"
       wx:key="slug"
       class="list-card route-card-v2"
-      data-href="{{route.href}}"
+      data-slug="{{route.slug}}"
       bindtap="handleOpenRoute"
     >
       <view class="list-card-header">

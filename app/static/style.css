@@ -1828,6 +1828,19 @@ a {
   padding-bottom: 32px;
 }
 
+.miniapp-route-detail-shot {
+  overflow: hidden;
+}
+
+.miniapp-route-detail-shot__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 24px;
+  border: 1px solid rgba(91, 83, 77, 0.1);
+  background: #eef2f5;
+}
+
 .miniapp-route-detail-hero {
   display: grid;
   gap: 16px;

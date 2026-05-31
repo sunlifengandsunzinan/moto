@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/routes/index",
+    "pages/routes/detail/index",
     "pages/me/index",
     "pages/spots/index",
     "pages/webview/index"

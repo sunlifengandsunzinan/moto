@@ -30,9 +30,10 @@ from .liaoning_spots import (
 from .planner_service import (
 	build_moto_tabbar,
 	build_plan_result,
-	build_route_recommendations_for_spot,
-	build_spot_collection_record,
 	build_route_detail_context,
+	build_route_recommendations_for_spot,
+	render_route_amap_screenshot_svg,
+	build_spot_collection_record,
 	build_routes_index_context,
 	create_custom_plan_payload,
 	get_custom_plan_context,

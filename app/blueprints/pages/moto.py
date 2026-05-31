@@ -6,6 +6,7 @@ from ...services import (
     build_moto_tabbar,
     build_liaoning_spot_detail_context,
     get_collection_monitor_context,
+    render_route_amap_screenshot_svg,
     start_local_collector,
     stop_local_collector,
     build_plan_result,
@@ -124,6 +125,14 @@ def moto_route_detail(slug: str) -> tuple[str, int] | str:
     if route is None:
         return render_template("404.html"), 404
     return render_template("planner/route_detail.html", **build_route_detail_context(route))
+
+
+@moto_bp.get("/moto/routes/<slug>/amap-route.svg")
+def moto_route_amap_screenshot(slug: str) -> Response | tuple[str, int]:
+    route = get_route_by_slug(slug)
+    if route is None:
+        return render_template("404.html"), 404
+    return Response(render_route_amap_screenshot_svg(route), mimetype="image/svg+xml")
 
 
 @moto_bp.get("/moto/routes/collect")
