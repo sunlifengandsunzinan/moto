@@ -287,10 +287,11 @@ def moto_custom() -> str:
 def moto_gpx():
     """GPX 管理页面"""
     videos = gpx_service.get_processed_videos(50)
+    route_records = gpx_service.get_processed_route_records(50)
     files = gpx_service.get_gpx_files()
     stats = gpx_service.get_gpx_stats()
     return render_template(
         "planner/gpx.html",
-        videos=videos, files=files, stats=stats,
+        videos=videos, route_records=route_records, files=files, stats=stats,
         page={"title": "路线提取 (GPX)", "description": "从抖音视频自动提取路线并生成 GPX"},
     )

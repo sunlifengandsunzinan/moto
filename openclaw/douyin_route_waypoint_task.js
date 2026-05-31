@@ -31,6 +31,11 @@ const TASK_SPEC = {
 const EXTRA_ROUTE_SUFFIXES = ["摩旅", "机车", "骑行", "路书", "路线", "高德", "途径点"];
 const ROUTE_CONNECTOR_PATTERN = /(->|→|➡|⟶|－|—|至|到|经|途经|路过)/;
 const POI_SUFFIX_PATTERN = /[\u4e00-\u9fa5A-Za-z0-9]{2,24}(服务区|服务站|古镇|景区|风景区|观景台|观景点|村|镇|县城|城区|公路|大道|大桥|驿站|营地|加油站|停车区|停车场|湖|山|岛|口岸|码头|隧道|广场|海岸|滨海路|检查站)/g;
+const DAY_PATTERN = /(?:(\d{1,2}(?:\.\d+)?)|([一二三四五六七八九十两]{1,3}))\s*(天|日)(?!气)/g;
+const DISTANCE_PATTERN = /(?:(全程|总里程|里程|骑行|路线|往返|单程)?\s*)?(\d{2,4}(?:\.\d+)?)\s*(公里|km|KM|千米)/g;
+const ROUTE_INFO_POSITIVE_HINTS = ["摩旅", "骑行", "路线", "路书", "高德", "全程", "总里程", "里程", "Day", "DAY", "第", "天路线", "天行程", "日路线"];
+const DISTANCE_NEGATIVE_HINTS = ["时速", "海拔", "门票", "温度", "分钟", "秒", "油耗", "续航", "海里", "米", "码", "点赞", "评论"];
+const DAY_NEGATIVE_HINTS = ["今天", "明天", "后天", "天气", "日期", "生日", "第1天之后", "第2天之后"];
 
 function dedupe(values) {
   const seen = new Set();
@@ -53,6 +58,195 @@ function slugify(value) {
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9\u4e00-\u9fa5-]/g, "")
     .replace(/-+/g, "-") || "candidate";
+}
+
+function parseChineseNumber(value) {
+  const text = String(value || "").trim();
+  if (!text) {
+    return null;
+  }
+  const direct = Number(text);
+  if (Number.isFinite(direct)) {
+    return direct;
+  }
+
+  const digits = { "零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9 };
+  if (text === "十") {
+    return 10;
+  }
+  if (text.endsWith("十")) {
+    return (digits[text[0]] || 1) * 10;
+  }
+  if (text.includes("十")) {
+    const [left, right] = text.split("十");
+    return ((digits[left] || 1) * 10) + (digits[right] || 0);
+  }
+  return digits[text] ?? null;
+}
+
+function collectEvidenceEntries(route, evidenceItems) {
+  const entries = [];
+  const pushEntry = (text, source, baseScore) => {
+    const normalized = String(text || "").trim();
+    if (!normalized) {
+      return;
+    }
+    entries.push({ text: normalized, source, baseScore });
+  };
+
+  pushEntry(extractText(route, ["title"]), "route-title", 6);
+  pushEntry(extractText(route, ["summary"]), "route-summary", 5);
+
+  for (const item of evidenceItems) {
+    pushEntry(extractText(item, ["title"]), "evidence-title", 5);
+    pushEntry(extractText(item, ["summary"]), "evidence-summary", 4);
+    for (const excerpt of Array.isArray(item.transcript_excerpt) ? item.transcript_excerpt : []) {
+      pushEntry(excerpt, "transcript", 2);
+    }
+  }
+
+  const deduped = [];
+  const seen = new Set();
+  for (const entry of entries) {
+    const key = `${entry.source}::${entry.text}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(entry);
+  }
+  return deduped;
+}
+
+function scoreContext(text, index, positiveHints, negativeHints) {
+  const start = Math.max(0, index - 12);
+  const end = Math.min(text.length, index + 20);
+  const window = text.slice(start, end);
+  let score = 0;
+  for (const hint of positiveHints) {
+    if (window.includes(hint)) {
+      score += 2;
+    }
+  }
+  for (const hint of negativeHints) {
+    if (window.includes(hint)) {
+      score -= 3;
+    }
+  }
+  return score;
+}
+
+function rankCandidates(candidates) {
+  const grouped = new Map();
+  for (const candidate of candidates) {
+    const key = String(candidate.value);
+    if (!grouped.has(key)) {
+      grouped.set(key, { value: candidate.value, score: 0, hits: 0, evidence: [], sourceKinds: new Set() });
+    }
+    const bucket = grouped.get(key);
+    bucket.score += candidate.score;
+    bucket.hits += 1;
+    bucket.evidence.push(candidate.evidence);
+    bucket.sourceKinds.add(candidate.evidence.kind || candidate.evidence.source || "unknown");
+  }
+
+  const ranked = Array.from(grouped.values()).map((item) => ({
+    ...item,
+    totalScore: item.score + Math.max(0, item.hits - 1) * 2,
+    sourceKindCount: item.sourceKinds.size,
+    sourceKinds: Array.from(item.sourceKinds),
+  }));
+  ranked.sort((left, right) => right.totalScore - left.totalScore || right.hits - left.hits || right.value - left.value);
+  return ranked;
+}
+
+function evidenceKindFromSource(source) {
+  if (String(source || "").includes("title")) {
+    return "title";
+  }
+  if (String(source || "").includes("summary")) {
+    return "summary";
+  }
+  if (String(source || "").includes("transcript")) {
+    return "transcript";
+  }
+  return "other";
+}
+
+function selectTopCandidate(candidates, minScore, fieldLabel) {
+  const ranked = rankCandidates(candidates).filter((item) => item.totalScore >= minScore);
+  if (!ranked.length) {
+    return { value: null, confidence: 0, evidence: [], source_kinds: [], consistency_status: "missing", reason: `缺少明确${fieldLabel}` };
+  }
+
+  const top = ranked[0];
+  const runnerUp = ranked[1] || null;
+  const hasStrongConflict = Boolean(
+    runnerUp
+    && runnerUp.value !== top.value
+    && runnerUp.totalScore >= Math.max(minScore, top.totalScore - 2)
+  );
+  const lacksCrossSourceSupport = top.sourceKindCount < 2;
+
+  if (hasStrongConflict && lacksCrossSourceSupport) {
+    return {
+      value: null,
+      confidence: 0,
+      evidence: top.evidence.slice(0, 3),
+      source_kinds: top.sourceKinds,
+      consistency_status: "conflict",
+      reason: `${fieldLabel}多来源冲突`
+    };
+  }
+
+  return {
+    value: top.value,
+    confidence: top.totalScore,
+    evidence: top.evidence.slice(0, 3),
+    source_kinds: top.sourceKinds,
+    consistency_status: top.sourceKindCount >= 2 ? "confirmed" : "single-source",
+    reason: top.sourceKindCount >= 2 ? "" : `${fieldLabel}仅单来源命中`
+  };
+}
+
+function deriveRouteDays(route, evidenceItems) {
+  const evidenceEntries = collectEvidenceEntries(route, evidenceItems);
+  const candidates = [];
+  for (const entry of evidenceEntries) {
+    for (const match of entry.text.matchAll(DAY_PATTERN)) {
+      const number = Number(match[1]) || parseChineseNumber(match[2]);
+      if (Number.isFinite(number) && number >= 1 && number <= 15) {
+        const score = entry.baseScore + scoreContext(entry.text, match.index || 0, ROUTE_INFO_POSITIVE_HINTS, DAY_NEGATIVE_HINTS);
+        candidates.push({
+          value: number,
+          score,
+          evidence: { source: entry.source, kind: evidenceKindFromSource(entry.source), text: entry.text.slice(0, 80) }
+        });
+      }
+    }
+  }
+  return selectTopCandidate(candidates, 4, "骑行天数");
+}
+
+function deriveRouteDistanceKm(route, evidenceItems) {
+  const evidenceEntries = collectEvidenceEntries(route, evidenceItems);
+  const candidates = [];
+  for (const entry of evidenceEntries) {
+    for (const match of entry.text.matchAll(DISTANCE_PATTERN)) {
+      const value = Number(match[2]);
+      if (!Number.isFinite(value) || value < 20 || value > 5000) {
+        continue;
+      }
+      const prefixBonus = match[1] ? 3 : 0;
+      const score = entry.baseScore + prefixBonus + scoreContext(entry.text, match.index || 0, ROUTE_INFO_POSITIVE_HINTS, DISTANCE_NEGATIVE_HINTS);
+      candidates.push({
+        value,
+        score,
+        evidence: { source: entry.source, kind: evidenceKindFromSource(entry.source), text: entry.text.slice(0, 80) }
+      });
+    }
+  }
+  return selectTopCandidate(candidates, 5, "骑行公里数");
 }
 
 function normalizeName(value) {
@@ -433,9 +627,45 @@ function buildCollectedRoute(route, waypointMap, orderedNames, evidenceItems) {
   const waypoints = orderedNames.map((key) => waypointMap.get(key)).filter(Boolean);
   const navigationMode = routeNavigationMode(waypoints);
   const statusVariant = routeNavigationStatusVariant(navigationMode);
+  const amapHref = buildAmapExportHref(waypoints);
+  const routeDays = deriveRouteDays(route, evidenceItems);
+  const routeDistanceKm = deriveRouteDistanceKm(route, evidenceItems);
+  const coordinateWaypointCount = waypoints.filter((point) => point.has_coordinates).length;
+  const qualificationReasons = [];
+  if (!routeDays.value) {
+    qualificationReasons.push(routeDays.reason || "缺少明确骑行天数");
+  }
+  if (!routeDistanceKm.value) {
+    qualificationReasons.push(routeDistanceKm.reason || "缺少明确骑行公里数");
+  }
+  if (waypoints.length < 2) {
+    qualificationReasons.push("途径点不足 2 个");
+  }
+  if (coordinateWaypointCount !== waypoints.length) {
+    qualificationReasons.push("途径点坐标不完整");
+  }
+  if (!amapHref) {
+    qualificationReasons.push("无法生成高德路线");
+  }
+  const isQualified = qualificationReasons.length === 0;
   return {
     route_slug: route.slug,
     route_title: route.title,
+    route_days: routeDays.value,
+    route_days_confidence: routeDays.confidence,
+    route_days_evidence: routeDays.evidence,
+    route_days_source_kinds: routeDays.source_kinds,
+    route_days_consistency_status: routeDays.consistency_status,
+    route_distance_km: routeDistanceKm.value,
+    route_distance_confidence: routeDistanceKm.confidence,
+    route_distance_evidence: routeDistanceKm.evidence,
+    route_distance_source_kinds: routeDistanceKm.source_kinds,
+    route_distance_consistency_status: routeDistanceKm.consistency_status,
+    waypoint_count: waypoints.length,
+    coordinate_waypoint_count: coordinateWaypointCount,
+    qualification_status: isQualified ? "qualified" : "rejected",
+    qualification_reason: qualificationReasons.join("；"),
+    is_qualified: isQualified,
     collection_status: statusVariant,
     collection_notes: `OpenClaw 从 ${evidenceItems.length} 条抖音内容抽取并合并，建议人工核对后再回写 route_templates.json。`,
     source: {
@@ -449,8 +679,8 @@ function buildCollectedRoute(route, waypointMap, orderedNames, evidenceItems) {
     },
     missing_coordinate_waypoints: waypoints.filter((point) => !point.has_coordinates).map((point) => point.name),
     amap_export: {
-      href: buildAmapExportHref(waypoints),
-      is_available: waypoints.length >= 2,
+      href: amapHref,
+      is_available: Boolean(amapHref),
       navigation_mode: navigationMode,
       status_variant: statusVariant,
       status_badge: routeNavigationStatusBadge(statusVariant),
@@ -521,18 +751,26 @@ async function run(runtime = {}) {
   }
 
   const items = [];
+  let rejectedCount = 0;
   for (const route of routes) {
     const bucket = aggregated.get(route.slug);
     if (!bucket || bucket.orderedNames.length < 2) {
       continue;
     }
-    items.push(buildCollectedRoute(route, bucket.waypointMap, bucket.orderedNames, bucket.evidenceItems));
+    const collectedRoute = buildCollectedRoute(route, bucket.waypointMap, bucket.orderedNames, bucket.evidenceItems);
+    if (collectedRoute.is_qualified) {
+      items.push(collectedRoute);
+    } else {
+      rejectedCount += 1;
+    }
   }
 
   const payload = {
     source: "openclaw-route-waypoints",
     exported_at: new Date().toISOString(),
     schedule: TASK_SPEC.schedule,
+    qualified_count: items.length,
+    rejected_count: rejectedCount,
     items
   };
 

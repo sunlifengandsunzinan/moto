@@ -27,8 +27,8 @@ log = logging.getLogger("gpx_gen")
 try:
     from playwright.sync_api import sync_playwright, TimeoutError as PwTimeout
 except ImportError:
-    print("缺少 playwright: pip install playwright && python -m playwright install chromium")
-    sys.exit(1)
+    sync_playwright = None
+    PwTimeout = TimeoutError
 
 # ====================================================================
 # 路径（适配 moto 项目）
@@ -39,6 +39,7 @@ GPX_DIR = PROJECT_ROOT / "data" / "gpx"
 GPX_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = GPX_DIR / "processed_videos.db"
 SPOTS_USER_PATH = GPX_DIR / "user_spots.json"
+OPENCLAW_ROUTE_WAYPOINTS_PATH = PROJECT_ROOT / "data" / "raw" / "openclaw_route_waypoints.json"
 
 # ====================================================================
 # 辽宁摩旅坐标字典（内置 90+ 点）
@@ -131,16 +132,100 @@ def init_db():
     conn.execute("""CREATE TABLE IF NOT EXISTS search_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT, keyword TEXT, searched_at TEXT,
         found_count INTEGER, processed_count INTEGER)""")
+    _ensure_processed_video_columns(conn)
     conn.commit()
     return conn
+
+def _ensure_processed_video_columns(conn):
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(processed_videos)").fetchall()}
+    extra_columns = {
+        "record_type": "TEXT DEFAULT 'video'",
+        "route_slug": "TEXT",
+        "route_days": "INTEGER",
+        "distance_km": "REAL",
+        "amap_href": "TEXT",
+        "navigation_mode": "TEXT",
+        "qualification_status": "TEXT",
+        "qualification_reason": "TEXT",
+        "source_channel": "TEXT",
+        "waypoints_json": "TEXT",
+        "evidence_json": "TEXT",
+    }
+    for column_name, column_type in extra_columns.items():
+        if column_name not in existing:
+            conn.execute(f"ALTER TABLE processed_videos ADD COLUMN {column_name} {column_type}")
 
 def is_processed(conn, vid):
     return conn.execute("SELECT 1 FROM processed_videos WHERE video_id=?", (vid,)).fetchone() is not None
 
 def mark_processed(conn, vid, title, author, gpx_path, spots):
-    conn.execute("INSERT OR REPLACE INTO processed_videos VALUES (?,?,?,?,?,?,?)",
-        (vid, title, author, datetime.now(timezone.utc).isoformat(),
-         gpx_path, len(spots), json.dumps(spots, ensure_ascii=False)))
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO processed_videos (
+            video_id, title, author, processed_at, gpx_path, spots_count, spots_json,
+            record_type, route_slug, route_days, distance_km, amap_href,
+            navigation_mode, qualification_status, qualification_reason,
+            source_channel, waypoints_json, evidence_json
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """,
+        (
+            vid,
+            title,
+            author,
+            datetime.now(timezone.utc).isoformat(),
+            gpx_path,
+            len(spots),
+            json.dumps(spots, ensure_ascii=False),
+            "video",
+            None,
+            None,
+            None,
+            None,
+            None,
+            "video" if spots else "rejected",
+            "",
+            "douyin-gpx-generator",
+            json.dumps(spots, ensure_ascii=False),
+            json.dumps([], ensure_ascii=False),
+        ),
+    )
+    conn.commit()
+
+def upsert_route_record(conn, route_item, gpx_path, spots):
+    route_slug = str(route_item.get("route_slug") or "").strip()
+    route_title = str(route_item.get("route_title") or route_slug or "OpenClaw route").strip()
+    reference_url = ((route_item.get("source") or {}).get("reference_url") if isinstance(route_item.get("source"), dict) else "") or ""
+    record_id = f"route::{route_slug or re.sub(r'[^a-z0-9]+', '-', route_title.lower())}"
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO processed_videos (
+            video_id, title, author, processed_at, gpx_path, spots_count, spots_json,
+            record_type, route_slug, route_days, distance_km, amap_href,
+            navigation_mode, qualification_status, qualification_reason,
+            source_channel, waypoints_json, evidence_json
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """,
+        (
+            record_id,
+            route_title,
+            "openclaw-scheduled-task",
+            datetime.now(timezone.utc).isoformat(),
+            gpx_path,
+            len(spots),
+            json.dumps(spots, ensure_ascii=False),
+            "route",
+            route_slug,
+            route_item.get("route_days"),
+            route_item.get("route_distance_km"),
+            ((route_item.get("amap_export") or {}).get("href") if isinstance(route_item.get("amap_export"), dict) else "") or reference_url,
+            ((route_item.get("amap_export") or {}).get("navigation_mode") if isinstance(route_item.get("amap_export"), dict) else "") or "coordinates",
+            route_item.get("qualification_status") or "qualified",
+            route_item.get("qualification_reason") or "",
+            ((route_item.get("source") or {}).get("channel") if isinstance(route_item.get("source"), dict) else "") or "openclaw-route-waypoints",
+            json.dumps(route_item.get("navigation", {}).get("waypoints", []), ensure_ascii=False),
+            json.dumps(route_item.get("evidence_items", []), ensure_ascii=False),
+        ),
+    )
     conn.commit()
 
 # ====================================================================
@@ -170,10 +255,14 @@ def extract_place_names(text):
         n = m.group(1).strip()
         if _valid_place(n) and n not in seen: seen.add(n); found.append(n)
     for tw in TERRAIN_WORDS:
-        for m in re.finditer(f'([\u4e00-\u9fff][\u4e00-\u9fff\w]{{0,10}}{re.escape(tw)})', t):
+        for m in re.finditer(rf'([\u4e00-\u9fff][\u4e00-\u9fff\w]{{0,10}}{re.escape(tw)})', t):
             n = m.group(1).strip()
             if _valid_place(n) and n not in seen: seen.add(n); found.append(n)
     return found
+
+def ensure_playwright_available():
+    if sync_playwright is None:
+        raise RuntimeError("缺少 playwright: pip install playwright && python -m playwright install chromium")
 
 def find_coords(name):
     spots = _load_spots()
@@ -213,10 +302,21 @@ def generate_gpx(spots, title, url):
     lines += ["    </trkseg>","  </trk>","</gpx>"]
     return "\n".join(lines)
 
+def write_gpx_file(file_stem, title, url, spots):
+    safe = re.sub(r'[\\/:*?"<>|#@!]', '', file_stem)[:80].strip('_ ')
+    if not safe:
+        safe = f"route_{int(time.time())}"
+    safe = safe.replace(' ', '_')[:80]
+    gpx_path = GPX_DIR / f"{safe}.gpx"
+    with open(gpx_path, "w", encoding="utf-8") as f:
+        f.write(generate_gpx(spots, title, url))
+    return str(gpx_path)
+
 # ====================================================================
 # 抖音视频提取（Playwright）
 # ====================================================================
 def extract_video_info(url):
+    ensure_playwright_available()
     m = re.search(r'/video/(\d+)',url)
     if not m: log.error(f"无效URL: {url}"); return None
     video_id = m.group(1)
@@ -268,6 +368,7 @@ def extract_video_info(url):
 # 抖音搜索
 # ====================================================================
 def search_douyin(keyword, max_results=10):
+    ensure_playwright_available()
     url = f"https://www.douyin.com/search/{urllib.parse.quote(keyword)}?type=general"
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True,args=["--no-sandbox","--disable-blink-features=AutomationControlled"])
@@ -312,12 +413,73 @@ def process_video(url, conn=None):
         if k not in seen_pts: seen_pts.add(k); unique.append(s)
     safe = re.sub(r'[\\/:*?"<>|#@!]','',title)[:80].strip('_ ')
     if not safe or not re.search(r'[\u4e00-\u9fff]',safe): safe=f"douyin_{vid}"
-    safe=safe.replace(' ','_')[:80]; gpx_path=str(GPX_DIR/f"{safe}.gpx")
-    with open(gpx_path,"w",encoding="utf-8") as f: f.write(generate_gpx(unique,title,url))
+    gpx_path = write_gpx_file(safe, title, url, unique)
     log.info(f"✓ GPX: {gpx_path} ({len(unique)}途经点)")
     mark_processed(conn,vid,title,author,gpx_path,unique)
     if close: conn.close()
     return gpx_path
+
+def import_openclaw_route_waypoints(conn=None, source_path: Path = OPENCLAW_ROUTE_WAYPOINTS_PATH):
+    if not source_path.exists():
+        log.warning(f"OpenClaw route output not found: {source_path}")
+        return {"ok": False, "imported": 0, "skipped": 0, "error": "openclaw route output not found"}
+
+    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    items = payload.get("items", []) if isinstance(payload, dict) else []
+    close = False
+    if conn is None:
+        conn = init_db()
+        close = True
+
+    imported = 0
+    skipped = 0
+    for item in items:
+        if not isinstance(item, dict):
+            skipped += 1
+            continue
+        if item.get("qualification_status") != "qualified":
+            skipped += 1
+            continue
+        navigation = item.get("navigation") if isinstance(item.get("navigation"), dict) else {}
+        raw_waypoints = navigation.get("waypoints", []) if isinstance(navigation.get("waypoints"), list) else []
+        spots = []
+        for point in raw_waypoints:
+            if not isinstance(point, dict):
+                continue
+            lat = point.get("lat")
+            lng = point.get("lng")
+            name = str(point.get("name") or "").strip()
+            if name and lat not in {None, ""} and lng not in {None, ""}:
+                spots.append({"name": name, "lat": float(lat), "lng": float(lng), "note": point.get("source") or "openclaw"})
+        if len(spots) < 2:
+            skipped += 1
+            continue
+
+        route_slug = str(item.get("route_slug") or "route").strip()
+        route_title = str(item.get("route_title") or route_slug).strip()
+        reference_url = ((item.get("source") or {}).get("reference_url") if isinstance(item.get("source"), dict) else "") or "https://www.douyin.com/"
+        gpx_path = write_gpx_file(f"openclaw_{route_slug}", route_title, reference_url, spots)
+        upsert_route_record(conn, item, gpx_path, spots)
+        imported += 1
+
+    if close:
+        conn.close()
+    return {"ok": True, "imported": imported, "skipped": skipped, "source_path": str(source_path)}
+
+def batch_process(keywords, max_results):
+    conn = init_db()
+    for keyword in keywords:
+        results = search_douyin(keyword, max_results=max_results)
+        processed_count = 0
+        for item in results:
+            if process_video(item["url"], conn):
+                processed_count += 1
+        conn.execute(
+            "INSERT INTO search_log(keyword, searched_at, found_count, processed_count) VALUES (?,?,?,?)",
+            (keyword, datetime.now(timezone.utc).isoformat(), len(results), processed_count),
+        )
+        conn.commit()
+    conn.close()
 
 def export_gpx_to_candidates():
     """将已处理的途经点导出为 normalized/candidate_spots.json 格式"""
@@ -363,6 +525,7 @@ def main():
     ap.add_argument("--reset-db",action="store_true",help="重置数据库")
     ap.add_argument("--add-spot",help="扩充坐标: '地名,纬度,经度'")
     ap.add_argument("--export-spots",action="store_true",help="导出途经点为候选点")
+    ap.add_argument("--import-openclaw-routes", action="store_true", help="将 OpenClaw 路线结果导入 GPX 数据库")
     ap.add_argument("--max",type=int,default=5,help="每关键词最多处理视频数")
     args=ap.parse_args()
     if args.add_spot:
@@ -380,13 +543,17 @@ def main():
         else: print("数据库不存在"); return
     if args.list_db:
         conn=init_db()
-        cur=conn.execute("SELECT video_id,title,author,processed_at,spots_count,gpx_path FROM processed_videos ORDER BY processed_at DESC LIMIT 50")
+        cur=conn.execute("SELECT video_id,title,record_type,processed_at,spots_count,gpx_path FROM processed_videos ORDER BY processed_at DESC LIMIT 50")
         rows=cur.fetchall(); conn.close()
         if not rows: print("数据库为空"); return
-        print(f"{'视频ID':>20} {'标题':<30} {'途经点':>5} {'处理时间':<20}"); print("-"*80)
-        for r in rows: print(f"{r[0]:>20} {(r[1] or '')[:28]:<30} {r[4]:>5} {r[3][:19]:<20}")
+        print(f"{'记录ID':>20} {'标题':<30} {'类型':<8} {'途经点':>5} {'处理时间':<20}"); print("-"*96)
+        for r in rows: print(f"{r[0]:>20} {(r[1] or '')[:28]:<30} {(r[2] or ''):<8} {r[4]:>5} {r[3][:19]:<20}")
         print(f"\n共{len(rows)}条记录"); return
     if args.export_spots: export_gpx_to_candidates(); return
+    if args.import_openclaw_routes:
+        result = import_openclaw_route_waypoints()
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
     if args.url or args.keyword or args.batch:
         from scripts.gpx_generator import batch_process
         if args.batch:

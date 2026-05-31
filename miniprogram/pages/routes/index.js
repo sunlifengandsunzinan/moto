@@ -3,6 +3,23 @@ const { downloadRemoteFile } = require("../../utils/file-download");
 const { mergeRoutesWithFavorites, toggleFavoriteRoute } = require("../../utils/favorites");
 const { routesPageFallback } = require("../../mock/routes");
 
+const EMPTY_ROUTES_STATE = {
+  page: {
+    title: "热门摩旅路线",
+    description: "当前小程序展示数据已清空。",
+  },
+  featured_summary: {
+    title: "路线列表",
+    description: "当前没有展示中的路线数据。",
+  },
+  empty_state: {
+    title: "路线已清空",
+    description: "当前小程序没有展示任何路线、GPX 或收藏数据。",
+    action: { label: "当前为空", href: "" },
+  },
+  routes: [],
+};
+
 const DURATION_FILTERS = [
   { key: "1-day", label: "1天" },
   { key: "1-2-days", label: "1-2天" },
@@ -65,35 +82,20 @@ Page({
   fetchData(stopRefresh = false) {
     this.setData({ loading: true, error: "" });
 
-    request({ path: "/moto/routes" })
-      .then((payload) => {
-        const allRoutes = mergeRoutesWithFavorites(Array.isArray(payload.routes) ? payload.routes : []);
-        this.setData({
-          loading: false,
-          page: payload.page || this.data.page,
-          featuredSummary: payload.featured_summary || this.data.featuredSummary,
-          emptyState: payload.empty_state || this.data.emptyState,
-          allRoutes,
-        });
-        this.applyDurationFilter(this.data.selectedDuration, allRoutes);
-      })
-      .catch((_error) => {
-        const allRoutes = mergeRoutesWithFavorites(Array.isArray(routesPageFallback.routes) ? routesPageFallback.routes : []);
-        this.setData({
-          loading: false,
-          error: "",
-          page: routesPageFallback.page || this.data.page,
-          featuredSummary: routesPageFallback.featured_summary || this.data.featuredSummary,
-          emptyState: routesPageFallback.empty_state || this.data.emptyState,
-          allRoutes,
-        });
-        this.applyDurationFilter(this.data.selectedDuration, allRoutes);
-      })
-      .finally(() => {
-        if (stopRefresh) {
-          wx.stopPullDownRefresh();
-        }
-      });
+    const payload = EMPTY_ROUTES_STATE;
+    const allRoutes = mergeRoutesWithFavorites(Array.isArray(payload.routes) ? payload.routes : []);
+    this.setData({
+      loading: false,
+      page: payload.page || this.data.page,
+      featuredSummary: payload.featured_summary || this.data.featuredSummary,
+      emptyState: payload.empty_state || this.data.emptyState,
+      allRoutes,
+    });
+    this.applyDurationFilter(this.data.selectedDuration, allRoutes);
+
+    if (stopRefresh) {
+      wx.stopPullDownRefresh();
+    }
   },
 
   applyDurationFilter(filterKey, routeList = this.data.allRoutes) {
@@ -195,6 +197,9 @@ Page({
   },
 
   handleEmptyAction(event) {
-    this.openInWebView(event.currentTarget.dataset.href);
+    const href = event.currentTarget.dataset.href;
+    if (href) {
+      this.openInWebView(href);
+    }
   },
 });

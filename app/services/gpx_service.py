@@ -21,16 +21,41 @@ DB_PATH = GPX_DIR / "processed_videos.db"
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 
 
+def _connect_db() -> sqlite3.Connection | None:
+    if not DB_PATH.exists():
+        return None
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 def get_processed_videos(limit=50) -> list[dict]:
     """获取已处理的视频记录"""
-    if not DB_PATH.exists():
-        return []
     try:
-        conn = sqlite3.connect(str(DB_PATH))
-        conn.row_factory = sqlite3.Row
+        conn = _connect_db()
+        if conn is None:
+            return []
         cur = conn.execute(
-            "SELECT video_id, title, author, processed_at, spots_count, gpx_path "
-            "FROM processed_videos ORDER BY processed_at DESC LIMIT ?", (limit,)
+            "SELECT video_id, title, author, processed_at, spots_count, gpx_path, route_slug, route_days, distance_km, amap_href, navigation_mode, qualification_status, qualification_reason, source_channel "
+            "FROM processed_videos WHERE COALESCE(record_type, 'video') = 'video' ORDER BY processed_at DESC LIMIT ?", (limit,)
+        )
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return rows
+    except Exception:
+        return []
+
+
+def get_processed_route_records(limit=50) -> list[dict]:
+    """获取来自 OpenClaw / 自动脚本的合格路线记录。"""
+    try:
+        conn = _connect_db()
+        if conn is None:
+            return []
+        cur = conn.execute(
+            "SELECT video_id, title, author, processed_at, spots_count, gpx_path, route_slug, route_days, distance_km, amap_href, navigation_mode, qualification_status, qualification_reason, source_channel "
+            "FROM processed_videos WHERE record_type = 'route' ORDER BY processed_at DESC LIMIT ?",
+            (limit,),
         )
         rows = [dict(r) for r in cur.fetchall()]
         conn.close()
@@ -122,6 +147,30 @@ def run_gpx_process_url(video_url: str) -> dict:
         return {"ok": False, "stdout": "", "stderr": str(e)}
 
 
+def sync_openclaw_route_records() -> dict:
+    """将 OpenClaw 自动搜索到的合格路线导入 GPX 数据库。"""
+    try:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "gpx_generator.py"), "--import-openclaw-routes"],
+            capture_output=True, text=True, timeout=60,
+            cwd=str(PROJECT_ROOT)
+        )
+        payload: dict[str, object]
+        try:
+            payload = json.loads(result.stdout.strip() or "{}")
+        except json.JSONDecodeError:
+            payload = {"ok": result.returncode == 0, "stdout": result.stdout[-1000:], "stderr": result.stderr[-1000:]}
+        if "ok" not in payload:
+            payload["ok"] = result.returncode == 0
+        if result.stderr.strip():
+            payload["stderr"] = result.stderr[-1000:]
+        return payload
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "stderr": "OpenClaw 路线导入超时（60s）"}
+    except Exception as e:
+        return {"ok": False, "stderr": str(e)}
+
+
 def export_gpx_candidates() -> dict:
     """导出途经点到 candidate_spots.json"""
     try:
@@ -138,9 +187,12 @@ def export_gpx_candidates() -> dict:
 def get_gpx_stats() -> dict:
     """统计数据"""
     processed = get_processed_videos(999)
+    route_records = get_processed_route_records(999)
     gpx_files = get_gpx_files()
     return {
         "total_videos": len(processed),
+        "total_route_records": len(route_records),
+        "qualified_route_records": sum(1 for item in route_records if item.get("qualification_status") == "qualified"),
         "total_gpx_files": len(gpx_files),
-        "total_spots": sum(r.get("spots_count", 0) for r in processed),
+        "total_spots": sum(r.get("spots_count", 0) for r in processed) + sum(r.get("spots_count", 0) for r in route_records),
     }

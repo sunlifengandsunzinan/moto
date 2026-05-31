@@ -96,3 +96,9 @@ def gpx_export_candidates():
     """导出途经点为候选点位"""
     result = gpx_service.export_gpx_candidates()
     return jsonify(result)
+
+
+@api_bp.post("/moto/gpx/sync-openclaw-routes")
+def gpx_sync_openclaw_routes():
+    """同步 OpenClaw 自动搜索到的合格路线到 GPX 页面数据源。"""
+    return jsonify(gpx_service.sync_openclaw_route_records())

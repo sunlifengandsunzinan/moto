@@ -47,7 +47,7 @@ App({
 
     this.globalData.apiBaseUrl = apiBaseUrl;
     this.globalData.webBaseUrl = webBaseUrl;
-    this.globalData.wechatUserProfile = this.getWechatUserProfile();
+    this.globalData.wechatUserProfile = null;
 
     if (savedApiBaseUrl !== apiBaseUrl) {
       wx.setStorageSync("apiBaseUrl", apiBaseUrl);
