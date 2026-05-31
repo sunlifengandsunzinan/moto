@@ -631,18 +631,10 @@ function buildCollectedRoute(route, waypointMap, orderedNames, evidenceItems) {
   const routeDays = deriveRouteDays(route, evidenceItems);
   const routeDistanceKm = deriveRouteDistanceKm(route, evidenceItems);
   const coordinateWaypointCount = waypoints.filter((point) => point.has_coordinates).length;
+  const resolvableWaypointCount = waypoints.filter((point) => point.has_coordinates || point.name).length;
   const qualificationReasons = [];
-  if (!routeDays.value) {
-    qualificationReasons.push(routeDays.reason || "缺少明确骑行天数");
-  }
-  if (!routeDistanceKm.value) {
-    qualificationReasons.push(routeDistanceKm.reason || "缺少明确骑行公里数");
-  }
-  if (waypoints.length < 2) {
-    qualificationReasons.push("途径点不足 2 个");
-  }
-  if (coordinateWaypointCount !== waypoints.length) {
-    qualificationReasons.push("途径点坐标不完整");
+  if (resolvableWaypointCount < 2) {
+    qualificationReasons.push("可用于高德路线反推的位置点不足 2 个");
   }
   if (!amapHref) {
     qualificationReasons.push("无法生成高德路线");

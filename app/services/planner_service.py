@@ -5,6 +5,7 @@ from datetime import datetime
 import hashlib
 from html import escape
 import json
+import math
 import re
 from typing import Any, Mapping
 from urllib.parse import quote
@@ -1083,11 +1084,6 @@ def _build_gpx_route_records(existing_slugs: set[str]) -> list[RouteDict]:
         if not route_slug or route_slug in existing_slugs:
             continue
 
-        route_days = int(record.get("route_days") or 0)
-        distance_km = float(record.get("distance_km") or 0)
-        if route_days <= 0 or distance_km <= 0:
-            continue
-
         filename = _gpx_basename(record.get("gpx_path") or "")
         if not filename:
             continue
@@ -1096,13 +1092,16 @@ def _build_gpx_route_records(existing_slugs: set[str]) -> list[RouteDict]:
         if len(waypoints) < 2:
             continue
 
+        route_days = _dynamic_gpx_route_days(record, waypoints)
+        distance_km = _dynamic_gpx_route_distance(record, waypoints)
+
         title = str(record.get("title") or filename.removesuffix(".gpx") or route_slug).strip()
         average_day_distance = max(1, round(distance_km / route_days))
         gpx_routes.append(
             {
                 "slug": route_slug,
                 "title": title,
-                "region": "liaoning",
+                "region": "gpx-route",
                 "spot_slugs": [],
                 "days": route_days,
                 "difficulty": "medium",
@@ -1112,7 +1111,7 @@ def _build_gpx_route_records(existing_slugs: set[str]) -> list[RouteDict]:
                 "best_season": "自动提取",
                 "distance_km": int(round(distance_km)),
                 "budget_range": "待补充",
-                "summary": "来自自动入库的合格路线：已具备骑行天数、明确途经点，并以高德路线结果作为公里数参考。",
+                "summary": "来自自动入库的合格路线：已具备明确位置点或可打开点，可按高德路线继续校正路线与公里数；若缺少骑行天数则自动推断拆分。",
                 "gpx_file": filename,
                 "navigation": {
                     "provider": "amap",
@@ -1136,6 +1135,61 @@ def _build_gpx_route_records(existing_slugs: set[str]) -> list[RouteDict]:
         existing_slugs.add(route_slug)
 
     return gpx_routes
+
+
+def _dynamic_gpx_route_days(route_record: Mapping[str, Any], waypoints: list[dict[str, Any]]) -> int:
+    route_days = int(route_record.get("route_days") or 0)
+    if route_days > 0:
+        return route_days
+    estimated_distance = _dynamic_gpx_route_distance(route_record, waypoints)
+    if estimated_distance >= 700:
+        return 3
+    if estimated_distance >= 320 or len(waypoints) >= 5:
+        return 2
+    return 1
+
+
+def _dynamic_gpx_route_distance(route_record: Mapping[str, Any], waypoints: list[dict[str, Any]]) -> float:
+    explicit_distance = float(route_record.get("distance_km") or 0)
+    if explicit_distance > 0:
+        return explicit_distance
+    estimated = _estimate_waypoint_route_distance_km(waypoints)
+    if estimated > 0:
+        return estimated
+    return float(max(80, (len(waypoints) - 1) * 80))
+
+
+def _estimate_waypoint_route_distance_km(waypoints: list[Mapping[str, Any]]) -> float:
+    coordinate_points = [point for point in waypoints if point.get("has_coordinates")]
+    if len(coordinate_points) < 2:
+        return 0.0
+
+    total_distance_km = 0.0
+    previous_point = coordinate_points[0]
+    for point in coordinate_points[1:]:
+        total_distance_km += _haversine_distance_km(
+            float(previous_point.get("lat") or 0),
+            float(previous_point.get("lng") or 0),
+            float(point.get("lat") or 0),
+            float(point.get("lng") or 0),
+        )
+        previous_point = point
+    if total_distance_km <= 0:
+        return 0.0
+    return max(1.0, round(total_distance_km * 1.25, 1))
+
+
+def _haversine_distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    radius_km = 6371.0
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    delta_lat = math.radians(lat2 - lat1)
+    delta_lng = math.radians(lng2 - lng1)
+    haversine = (
+        math.sin(delta_lat / 2) ** 2
+        + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lng / 2) ** 2
+    )
+    return radius_km * 2 * math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine))
 
 
 def _route_record_waypoints(route_record: Mapping[str, Any], filename: str) -> list[dict[str, Any]]:

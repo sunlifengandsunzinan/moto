@@ -40,9 +40,10 @@ GPX_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = GPX_DIR / "processed_videos.db"
 SPOTS_USER_PATH = GPX_DIR / "user_spots.json"
 OPENCLAW_ROUTE_WAYPOINTS_PATH = PROJECT_ROOT / "data" / "raw" / "openclaw_route_waypoints.json"
+ROUTE_TEMPLATES_PATH = PROJECT_ROOT / "app" / "services" / "route_templates.json"
 
 # ====================================================================
-# 辽宁摩旅坐标字典（内置 90+ 点）
+# 全国摩旅坐标字典（内置基础点位 + 路线模板 + 已审批点位）
 # ====================================================================
 _BUILTIN_SPOTS = {
     "沈阳": (41.8057,123.4315), "沈阳站": (41.7940,123.4058), "沈阳北站": (41.8320,123.4370),
@@ -87,6 +88,26 @@ _BUILTIN_SPOTS = {
     "承德": (40.9500,117.9600), "赤峰": (42.2800,118.9500), "通辽": (43.6200,122.2400),
     "四平": (43.1700,124.3500), "长春": (43.9000,125.3200), "吉林": (43.8500,126.5500),
     "沈丹高速": (41.4000,123.5600), "沈大高速": (41.1500,123.0000), "沈吉高速": (41.8800,124.0000),
+    "北京": (39.9042,116.4074), "天津": (39.0842,117.2009), "上海": (31.2304,121.4737),
+    "广州": (23.1291,113.2644), "深圳": (22.5431,114.0579), "珠海": (22.2710,113.5767),
+    "福州": (26.0745,119.2965), "厦门": (24.4798,118.0894), "泉州": (24.8741,118.6757),
+    "杭州": (30.2741,120.1551), "安吉": (30.6380,119.6803), "莫干山": (30.5632,119.8722),
+    "宁波": (29.8683,121.5440), "苏州": (31.2989,120.5853), "无锡": (31.4900,120.3119),
+    "南京": (32.0603,118.7969), "合肥": (31.8206,117.2272), "黄山": (29.7147,118.3376),
+    "南昌": (28.6829,115.8582), "武汉": (30.5928,114.3055), "长沙": (28.2282,112.9388),
+    "张家界": (29.1171,110.4792), "桂林": (25.2736,110.2900), "南宁": (22.8170,108.3669),
+    "海口": (20.0442,110.1999), "三亚": (18.2528,109.5120), "昆明": (25.0389,102.7183),
+    "大理": (25.6065,100.2676), "丽江": (26.8550,100.2278), "香格里拉": (27.8297,99.7008),
+    "西双版纳": (22.0078,100.7974), "拉萨": (29.6520,91.1721), "林芝": (29.6489,94.3615),
+    "芒康": (29.6800,98.5900), "左贡": (29.6700,97.8400), "然乌": (29.5000,96.7600),
+    "鲁朗": (29.7700,94.7300), "索松村": (29.5620,94.6980), "西宁": (36.6171,101.7782),
+    "兰州": (36.0611,103.8343), "西安": (34.3416,108.9398), "银川": (38.4872,106.2309),
+    "成都": (30.5728,104.0668), "重庆": (29.5630,106.5516), "九寨沟": (33.2520,103.9180),
+    "稻城": (29.0375,100.2985), "亚丁": (28.4630,100.3310), "贵阳": (26.6470,106.6302),
+    "郑州": (34.7466,113.6254), "洛阳": (34.6197,112.4540), "开封": (34.7970,114.3076),
+    "济南": (36.6512,117.1201), "青岛": (36.0671,120.3826), "哈尔滨": (45.8038,126.5349),
+    "漠河": (52.9721,122.5370), "乌鲁木齐": (43.8256,87.6168), "喀什": (39.4704,75.9898),
+    "伊宁": (43.9168,81.3242), "阿勒泰": (47.8484,88.1413),
 }
 
 _PLACE_ALIASES = {
@@ -101,6 +122,27 @@ def _load_spots():
         try:
             with open(SPOTS_USER_PATH, "r", encoding="utf-8") as f:
                 spots.update(json.load(f))
+        except Exception:
+            pass
+    # 尝试加载 route_templates.json 中的全国导航点位坐标
+    if ROUTE_TEMPLATES_PATH.exists():
+        try:
+            with open(ROUTE_TEMPLATES_PATH, "r", encoding="utf-8") as f:
+                route_templates = json.load(f)
+            if isinstance(route_templates, list):
+                for route in route_templates:
+                    if not isinstance(route, dict):
+                        continue
+                    navigation = route.get("navigation") if isinstance(route.get("navigation"), dict) else {}
+                    for waypoint in navigation.get("waypoints", []) if isinstance(navigation.get("waypoints"), list) else []:
+                        if not isinstance(waypoint, dict):
+                            continue
+                        name = str(waypoint.get("name") or "").strip()
+                        coordinates = waypoint.get("coordinates") if isinstance(waypoint.get("coordinates"), dict) else {}
+                        lat = waypoint.get("lat", coordinates.get("lat", waypoint.get("latitude")))
+                        lng = waypoint.get("lng", coordinates.get("lng", waypoint.get("longitude")))
+                        if name and lat not in {None, ""} and lng not in {None, ""}:
+                            spots[name] = (float(lat), float(lng))
         except Exception:
             pass
     # 尝试加载 moto 已审批的景点库坐标
@@ -500,7 +542,7 @@ def export_gpx_to_candidates():
                     "source":"douyin-gpx", "video_id":vid, "video_title":title or "",
                     "data":{
                         "name":name, "coordinates":{"lat":s["lat"],"lng":s["lng"]},
-                        "spot_type":"scenic-spot", "city":"(待确定)", "region":"辽宁",
+                        "spot_type":"scenic-spot", "city":"(待确定)", "region":"(待确定)",
                         "summary":f"从抖音视频\"{title}\"提取", "confidence_score":"B",
                         "sources":[{"type":"douyin-video","url":f"https://www.douyin.com/video/{vid}"}]
                     }

@@ -29,6 +29,7 @@ GPX_QUEUE_STATUS_PATH = PROJECT_ROOT / "data" / "raw" / "gpx_queue_status.json"
 GPX_QUEUE_LOG_PATH = PROJECT_ROOT / "data" / "raw" / "gpx_queue.log"
 GPX_QUEUE_PID_PATH = PROJECT_ROOT / "data" / "raw" / "gpx_queue.pid"
 GPX_SEARCH_EXPORT_DIRS = [PROJECT_ROOT / "data" / "raw", Path.home() / "Downloads"]
+GPX_PROCESS_TIMEOUT_SECONDS = 300
 
 QUEUE_DONE_PATTERN = re.compile(r"^\[DONE(?:\s+[^\]]+)?\]\s+(?P<url>https?://\S+)\s*$", re.IGNORECASE)
 QUEUE_URL_PATTERN = re.compile(r"(https?://[^\s]+)", re.IGNORECASE)
@@ -149,7 +150,7 @@ def run_gpx_process_url(video_url: str) -> dict:
     try:
         result = subprocess.run(
             [sys.executable, str(SCRIPTS_DIR / "gpx_generator.py"), "--url", video_url],
-            capture_output=True, text=True, timeout=120,
+            capture_output=True, text=True, timeout=GPX_PROCESS_TIMEOUT_SECONDS,
             cwd=str(PROJECT_ROOT)
         )
         return {
@@ -158,7 +159,7 @@ def run_gpx_process_url(video_url: str) -> dict:
             "stderr": result.stderr[-1000:],
         }
     except subprocess.TimeoutExpired:
-        return {"ok": False, "stdout": "", "stderr": "处理超时（120s）"}
+        return {"ok": False, "stdout": "", "stderr": f"处理超时（{GPX_PROCESS_TIMEOUT_SECONDS}s）"}
     except Exception as e:
         return {"ok": False, "stdout": "", "stderr": str(e)}
 
@@ -703,6 +704,7 @@ def get_gpx_queue_monitor_context() -> dict[str, Any]:
     status = _read_queue_status_payload()
     process_info = get_gpx_queue_process_info(status)
     health = _build_queue_health(status)
+    generated_gpx_count = len(get_gpx_files())
 
     queue_file_text = str(status.get("queue_file") or "").strip()
     queue_path = Path(queue_file_text) if queue_file_text else _resolve_default_queue_candidate("")
@@ -741,6 +743,7 @@ def get_gpx_queue_monitor_context() -> dict[str, Any]:
                 {"label": "当前进度", "value": f"{int(status.get('processed_count') or 0)} / {int(status.get('total_urls') or queue_summary['total_urls'])}"},
                 {"label": "成功", "value": str(status.get("success_count") or 0)},
                 {"label": "失败", "value": str(status.get("failure_count") or 0)},
+                {"label": "已生成 GPX", "value": str(generated_gpx_count)},
                 {"label": "文件内已标记完成", "value": str(queue_summary["done"])},
                 {"label": "文件内待处理", "value": str(queue_summary["pending"])},
                 {"label": "无效行", "value": str(queue_summary["invalid"])},
@@ -756,6 +759,7 @@ def get_gpx_queue_monitor_context() -> dict[str, Any]:
                 {"label": "当前链接", "value": str(status.get("current_url") or "当前无链接处理")},
                 {"label": "最近耗时", "value": _display_duration(status.get("last_duration_seconds"))},
                 {"label": "队列总链接", "value": str(queue_summary["total_urls"])},
+                {"label": "GPX 文件总数", "value": str(generated_gpx_count)},
                 {"label": "文件格式", "value": str(queue_summary["format"])},
                 {"label": "队列注释/空行", "value": f"{queue_summary['comments']} / {queue_summary['blanks']}"},
                 {"label": "最近错误", "value": str(status.get("last_error") or "无")},
