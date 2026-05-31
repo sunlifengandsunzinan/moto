@@ -1,8 +1,8 @@
 {
   "state": "completed_with_errors",
   "current_stage": "finished",
-  "pid": 7605,
-  "queue_file": "/Users/Lifeng.Sun/workspace/Personal/data/raw/gpx_queue_runtime_check.txt",
+  "pid": 13596,
+  "queue_file": "/Users/Lifeng.Sun/workspace/Personal/data/raw/gpx_json_queue_runtime_check.json",
   "current_task": "当前无处理任务",
   "current_url": "",
   "total_urls": 2,
@@ -11,11 +11,11 @@
   "failure_count": 1,
   "skipped_completed_count": 1,
   "invalid_line_count": 0,
-  "last_started_at": "2026-05-31T15:44:01.403452+00:00",
+  "last_started_at": "2026-05-31T16:22:35.388306+00:00",
   "status_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/gpx_queue_status.json",
   "log_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/gpx_queue.log",
   "pid_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/gpx_queue.pid",
-  "last_heartbeat": "2026-05-31T15:44:01.425709+00:00",
+  "last_heartbeat": "2026-05-31T16:22:35.432632+00:00",
   "events": [
     {
       "at": "2026-05-31T15:44:01.378871+00:00",
@@ -51,10 +51,45 @@
       "at": "2026-05-31T15:44:01.425727+00:00",
       "level": "warning",
       "message": "队列处理完成：成功 0 条，失败 1 条，文件内已标记完成 1 条。"
+    },
+    {
+      "at": "2026-05-31T16:22:35.332805+00:00",
+      "level": "info",
+      "message": "开始读取 JSON 队列文件：data/raw/gpx_json_queue_runtime_check.json。"
+    },
+    {
+      "at": "2026-05-31T16:22:35.349397+00:00",
+      "level": "info",
+      "message": "链接处理成功，已回写到 JSON 文件：https://www.douyin.com/video/1001"
+    },
+    {
+      "at": "2026-05-31T16:22:35.371262+00:00",
+      "level": "error",
+      "message": "JSON 队列链接处理失败：https://www.douyin.com/video/1002 · bad"
+    },
+    {
+      "at": "2026-05-31T16:22:35.386801+00:00",
+      "level": "warning",
+      "message": "JSON 队列处理完成：成功 1 条，失败 1 条，已标记完成 1 条。"
+    },
+    {
+      "at": "2026-05-31T16:22:35.396889+00:00",
+      "level": "info",
+      "message": "开始读取 JSON 队列文件：data/raw/gpx_json_queue_runtime_check.json。"
+    },
+    {
+      "at": "2026-05-31T16:22:35.417354+00:00",
+      "level": "error",
+      "message": "JSON 队列链接处理失败：https://www.douyin.com/video/1002 · bad"
+    },
+    {
+      "at": "2026-05-31T16:22:35.432643+00:00",
+      "level": "warning",
+      "message": "JSON 队列处理完成：成功 0 条，失败 1 条，已标记完成 1 条。"
     }
   ],
-  "current_line": 3,
-  "last_success_at": "2026-05-31T15:44:01.382879+00:00",
+  "current_line": 2,
+  "last_success_at": "2026-05-31T16:22:35.343450+00:00",
   "recent_results": [
     {
       "at": "2026-05-31T15:44:01.382879+00:00",
@@ -79,10 +114,34 @@
       "url": "https://www.douyin.com/video/1002",
       "message": "处理失败，保留原始行以便下次重试。",
       "detail": "bad"
+    },
+    {
+      "at": "2026-05-31T16:22:35.343450+00:00",
+      "level": "success",
+      "line": 1,
+      "url": "https://www.douyin.com/video/1001",
+      "message": "处理成功，已在 JSON 队列文件中标记完成。",
+      "detail": "ok"
+    },
+    {
+      "at": "2026-05-31T16:22:35.358518+00:00",
+      "level": "error",
+      "line": 2,
+      "url": "https://www.douyin.com/video/1002",
+      "message": "处理失败，JSON 文件中保留 failed 状态以便下次重试。",
+      "detail": "bad"
+    },
+    {
+      "at": "2026-05-31T16:22:35.408898+00:00",
+      "level": "error",
+      "line": 2,
+      "url": "https://www.douyin.com/video/1002",
+      "message": "处理失败，JSON 文件中保留 failed 状态以便下次重试。",
+      "detail": "bad"
     }
   ],
-  "last_error_at": "2026-05-31T15:44:01.412693+00:00",
+  "last_error_at": "2026-05-31T16:22:35.408898+00:00",
   "last_error": "bad",
-  "last_finished_at": "2026-05-31T15:44:01.418136+00:00",
-  "last_duration_seconds": 0.014684
+  "last_finished_at": "2026-05-31T16:22:35.424472+00:00",
+  "last_duration_seconds": 0.036166
 }

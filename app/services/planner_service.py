@@ -1605,7 +1605,7 @@ def _route_gpx_payload(
     file_info = lookup.get("files_by_name", {}).get(filename, {}) if isinstance(lookup, Mapping) else {}
     video_info = lookup.get("videos_by_filename", {}).get(filename, {}) if isinstance(lookup, Mapping) else {}
     source_title = str(video_info.get("title") or route.get("title") or filename.removesuffix(".gpx")).strip()
-    source_author = str(video_info.get("author") or "").strip()
+    source_author = _display_route_source_author(video_info.get("author"))
     processed_at = _format_gpx_timestamp(video_info.get("processed_at"))
     updated_at = _format_gpx_timestamp(file_info.get("mtime"))
     file_size = _format_gpx_file_size(file_info.get("size"))
@@ -1647,6 +1647,11 @@ def _route_gpx_payload(
         "meta_text": " · ".join(meta_parts),
         "facts": facts,
     }
+
+
+def _display_route_source_author(value: Any) -> str:
+    author = str(value or "").strip().lstrip("@")
+    return f"@{author}" if author else ""
 
 
 def _gpx_basename(path_value: Any) -> str:

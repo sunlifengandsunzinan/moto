@@ -228,7 +228,7 @@
         <div class="gpx-badge">
           <span class="gpx-badge__label">输入方式</span>
           <strong>从文件读取队列</strong>
-          <span class="gpx-subtle">每行一个链接，处理成功后会直接在文件里打完成标记。</span>
+          <span class="gpx-subtle">支持逐行文本，也支持你这种搜索结果 JSON；处理成功后会直接在文件里打完成标记。</span>
         </div>
         <div class="gpx-badge">
           <span class="gpx-badge__label">联动门槛</span>
@@ -250,7 +250,7 @@
           <div class="gpx-flow__step">
             <span class="gpx-flow__label">Step 1</span>
             <strong>指定队列文件</strong>
-            <div class="gpx-subtle">按行读取抖音视频链接，允许注释和空行。</div>
+            <div class="gpx-subtle">既能按行读取链接，也能读取 results 结构的搜索结果 JSON。</div>
           </div>
           <div class="gpx-flow__step">
             <span class="gpx-flow__label">Step 2</span>
@@ -265,7 +265,7 @@
           <div class="gpx-flow__step">
             <span class="gpx-flow__label">Step 4</span>
             <strong>文件内打标并跳过</strong>
-            <div class="gpx-subtle">成功后写成 DONE 行，下次再次运行会自动跳过。</div>
+            <div class="gpx-subtle">文本文件写 DONE 行，JSON 文件回写状态对象，下次再次运行会自动跳过。</div>
           </div>
         </div>
 
@@ -274,7 +274,7 @@
           <div class="gpx-form-actions">
             <button type="submit" class="gpx-button">启动文件队列任务</button>
             <a href="/moto/gpx/monitor" class="gpx-link">打开任务监控页</a>
-            <span class="gpx-helper">文件建议一行一个链接；注释行用 `#` 开头，成功行会被改写成 `[DONE 时间] URL`。</span>
+            <span class="gpx-helper">文本队列可用一行一个链接；搜索结果 JSON 会在每个结果项上回写 `gpx_queue_status`，同一链接重复出现时只处理一次。</span>
           </div>
         </form>
         <div id="processResult"></div>

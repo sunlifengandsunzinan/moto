@@ -28,9 +28,13 @@ GPX_QUEUE_DEFAULT_PATH = PROJECT_ROOT / "data" / "raw" / "gpx_video_queue.txt"
 GPX_QUEUE_STATUS_PATH = PROJECT_ROOT / "data" / "raw" / "gpx_queue_status.json"
 GPX_QUEUE_LOG_PATH = PROJECT_ROOT / "data" / "raw" / "gpx_queue.log"
 GPX_QUEUE_PID_PATH = PROJECT_ROOT / "data" / "raw" / "gpx_queue.pid"
+GPX_SEARCH_EXPORT_DIRS = [PROJECT_ROOT / "data" / "raw", Path.home() / "Downloads"]
 
 QUEUE_DONE_PATTERN = re.compile(r"^\[DONE(?:\s+[^\]]+)?\]\s+(?P<url>https?://\S+)\s*$", re.IGNORECASE)
 QUEUE_URL_PATTERN = re.compile(r"(https?://[^\s]+)", re.IGNORECASE)
+JSON_QUEUE_STATUS_KEY = "gpx_queue_status"
+DOUYIN_VIDEO_ID_PATTERN = re.compile(r"(?:/video/|modal_id=)(\d{6,24})")
+SEARCH_EXPORT_NAME_PATTERN = re.compile(r"^search_\d{8}_\d{6}\.json$", re.IGNORECASE)
 
 
 def _connect_db() -> sqlite3.Connection | None:
@@ -260,6 +264,52 @@ def _extract_queue_url(text: str) -> str:
     return match.group(1).rstrip("),。；;]") if match else ""
 
 
+def _extract_video_id_from_url(url: str) -> str:
+    match = DOUYIN_VIDEO_ID_PATTERN.search(str(url or ""))
+    return match.group(1) if match else ""
+
+
+def _normalize_source_title(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _normalize_source_author(value: Any) -> str:
+    return str(value or "").strip().lstrip("@")
+
+
+def update_processed_video_source_metadata(video_id: str, *, title: str = "", author: str = "") -> None:
+    normalized_video_id = str(video_id or "").strip()
+    if not normalized_video_id:
+        return
+    normalized_title = _normalize_source_title(title)
+    normalized_author = _normalize_source_author(author)
+    if not normalized_title and not normalized_author:
+        return
+
+    conn = _connect_db()
+    if conn is None:
+        return
+    try:
+        assignments: list[str] = []
+        params: list[str] = []
+        if normalized_title:
+            assignments.append("title = ?")
+            params.append(normalized_title)
+        if normalized_author:
+            assignments.append("author = ?")
+            params.append(normalized_author)
+        if not assignments:
+            return
+        params.append(normalized_video_id)
+        conn.execute(
+            f"UPDATE processed_videos SET {', '.join(assignments)} WHERE video_id = ? AND COALESCE(record_type, 'video') = 'video'",
+            tuple(params),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _parse_queue_line(line: str) -> dict[str, str]:
     raw = line.rstrip("\n")
     stripped = raw.strip()
@@ -284,19 +334,65 @@ def _format_done_line(url: str, finished_at: str) -> str:
 
 def _resolve_queue_file(queue_file: str | None = None, *, require_exists: bool = True) -> Path:
     raw_path = str(queue_file or "").strip()
-    candidate = Path(raw_path).expanduser() if raw_path else GPX_QUEUE_DEFAULT_PATH
+    candidate = _resolve_default_queue_candidate(raw_path)
     if not candidate.is_absolute():
         candidate = PROJECT_ROOT / candidate
     resolved = candidate.resolve()
     project_root = PROJECT_ROOT.resolve()
-    if resolved != project_root and project_root not in resolved.parents:
-        raise ValueError("队列文件必须位于当前项目目录内。")
+    if not _is_allowed_queue_path(resolved):
+        raise ValueError("队列文件必须位于当前项目目录内，或位于允许自动读取的搜索导出目录（如 Downloads）。")
     if require_exists:
         if not resolved.exists():
             raise FileNotFoundError(f"队列文件不存在: {_display_path(resolved)}")
         if not resolved.is_file():
             raise ValueError("队列路径不是文件。")
     return resolved
+
+
+def _resolve_default_queue_candidate(raw_path: str) -> Path:
+    if raw_path:
+        explicit = Path(raw_path).expanduser()
+        if explicit.name and SEARCH_EXPORT_NAME_PATTERN.match(explicit.name):
+            discovered = _find_latest_search_export(explicit.name)
+            if discovered is not None:
+                return discovered
+        return explicit
+
+    discovered = _find_latest_search_export()
+    if discovered is not None:
+        return discovered
+    return GPX_QUEUE_DEFAULT_PATH
+
+
+def _find_latest_search_export(preferred_name: str | None = None) -> Path | None:
+    candidates: list[Path] = []
+    for search_dir in GPX_SEARCH_EXPORT_DIRS:
+        if not search_dir.exists() or not search_dir.is_dir():
+            continue
+        if preferred_name:
+            preferred_path = search_dir / preferred_name
+            if preferred_path.exists() and preferred_path.is_file():
+                candidates.append(preferred_path)
+            continue
+        candidates.extend(
+            path for path in search_dir.glob("search_*.json")
+            if path.is_file() and SEARCH_EXPORT_NAME_PATTERN.match(path.name)
+        )
+    if not candidates:
+        return None
+    return max(candidates, key=lambda path: path.stat().st_mtime)
+
+
+def _is_allowed_queue_path(path: Path) -> bool:
+    resolved = path.resolve()
+    project_root = PROJECT_ROOT.resolve()
+    if resolved == project_root or project_root in resolved.parents:
+        return True
+    for search_dir in GPX_SEARCH_EXPORT_DIRS:
+        resolved_search_dir = search_dir.resolve()
+        if resolved == resolved_search_dir or resolved_search_dir in resolved.parents:
+            return True
+    return False
 
 
 def _read_queue_lines(queue_path: Path) -> list[str]:
@@ -309,16 +405,130 @@ def _write_queue_lines(queue_path: Path, lines: list[str]) -> None:
     queue_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
 
-def _summarize_queue_lines(lines: list[str]) -> dict[str, int]:
-    summary = {
-        "total_lines": len(lines),
+def _default_queue_summary() -> dict[str, int | str]:
+    return {
+        "format": "text",
+        "total_lines": 0,
         "total_urls": 0,
         "pending": 0,
         "done": 0,
         "invalid": 0,
         "comments": 0,
         "blanks": 0,
+        "duplicate_entries": 0,
     }
+
+
+def _read_queue_json_payload(queue_path: Path) -> dict[str, Any] | None:
+    if queue_path.suffix.lower() != ".json" or not queue_path.exists():
+        return None
+    try:
+        payload = json.loads(queue_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    results = payload.get("results")
+    if not isinstance(results, dict):
+        return None
+    return payload
+
+
+def _extract_json_queue_entries(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    results = payload.get("results")
+    if not isinstance(results, dict):
+        return entries
+
+    for keyword, items in results.items():
+        if not isinstance(items, list):
+            continue
+        for item_index, item in enumerate(items):
+            if not isinstance(item, dict):
+                entries.append({
+                    "kind": "invalid",
+                    "keyword": str(keyword),
+                    "item_index": item_index,
+                    "url": "",
+                    "item": None,
+                })
+                continue
+            url = _extract_queue_url(str(item.get("url") or ""))
+            status = item.get(JSON_QUEUE_STATUS_KEY)
+            is_done = isinstance(status, dict) and str(status.get("state") or "") == "done"
+            entries.append(
+                {
+                    "kind": "done" if is_done else ("pending" if url else "invalid"),
+                    "keyword": str(keyword),
+                    "item_index": item_index,
+                    "url": url,
+                    "item": item,
+                }
+            )
+    return entries
+
+
+def _write_queue_json_payload(queue_path: Path, payload: dict[str, Any]) -> None:
+    queue_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _summarize_json_queue_payload(payload: dict[str, Any]) -> dict[str, int | str]:
+    summary = _default_queue_summary()
+    summary["format"] = "json-search-results"
+
+    entries = _extract_json_queue_entries(payload)
+    summary["total_lines"] = len(entries)
+    unique_all_urls: set[str] = set()
+    unique_done_urls: set[str] = set()
+    unique_pending_urls: set[str] = set()
+
+    for entry in entries:
+        kind = str(entry.get("kind") or "invalid")
+        url = str(entry.get("url") or "")
+        if kind == "invalid":
+            summary["invalid"] += 1
+            continue
+        if not url:
+            summary["invalid"] += 1
+            continue
+        unique_all_urls.add(url)
+        if kind == "done":
+            unique_done_urls.add(url)
+        else:
+            unique_pending_urls.add(url)
+
+    unique_pending_urls -= unique_done_urls
+    summary["total_urls"] = len(unique_all_urls)
+    summary["done"] = len(unique_done_urls)
+    summary["pending"] = len(unique_pending_urls)
+    summary["duplicate_entries"] = max(len(entries) - len(unique_all_urls) - int(summary["invalid"]), 0)
+    return summary
+
+
+def _summarize_queue_file(queue_path: Path) -> dict[str, int | str]:
+    json_payload = _read_queue_json_payload(queue_path)
+    if json_payload is not None:
+        return _summarize_json_queue_payload(json_payload)
+    return _summarize_queue_lines(_read_queue_lines(queue_path))
+
+
+def _mark_json_queue_url(payload: dict[str, Any], url: str, *, state: str, finished_at: str, detail: str = "") -> None:
+    for entry in _extract_json_queue_entries(payload):
+        if str(entry.get("url") or "") != url:
+            continue
+        item = entry.get("item")
+        if not isinstance(item, dict):
+            continue
+        item[JSON_QUEUE_STATUS_KEY] = {
+            "state": state,
+            "updated_at": finished_at,
+            "detail": detail,
+        }
+
+
+def _summarize_queue_lines(lines: list[str]) -> dict[str, int]:
+    summary = _default_queue_summary()
+    summary["total_lines"] = len(lines)
     for line in lines:
         parsed = _parse_queue_line(line)
         kind = parsed["kind"]
@@ -495,21 +705,13 @@ def get_gpx_queue_monitor_context() -> dict[str, Any]:
     health = _build_queue_health(status)
 
     queue_file_text = str(status.get("queue_file") or "").strip()
-    queue_path = Path(queue_file_text) if queue_file_text else GPX_QUEUE_DEFAULT_PATH
+    queue_path = Path(queue_file_text) if queue_file_text else _resolve_default_queue_candidate("")
     try:
         queue_path = _resolve_queue_file(str(queue_path), require_exists=False)
     except ValueError:
-        queue_path = GPX_QUEUE_DEFAULT_PATH
+        queue_path = _resolve_default_queue_candidate("")
 
-    queue_summary = _summarize_queue_lines(_read_queue_lines(queue_path)) if queue_path.exists() else {
-        "total_lines": 0,
-        "total_urls": 0,
-        "pending": 0,
-        "done": 0,
-        "invalid": 0,
-        "comments": 0,
-        "blanks": 0,
-    }
+    queue_summary = _summarize_queue_file(queue_path) if queue_path.exists() else _default_queue_summary()
 
     return {
         "page": {
@@ -520,7 +722,7 @@ def get_gpx_queue_monitor_context() -> dict[str, Any]:
             "health": health,
             "state_label": _queue_state_label(status.get("state")),
             "current_stage_label": _queue_stage_label(status.get("current_stage")),
-            "queue_file": _display_dynamic_path(status.get("queue_file"), GPX_QUEUE_DEFAULT_PATH),
+            "queue_file": _display_dynamic_path(status.get("queue_file"), queue_path),
             "status_file": _display_dynamic_path(status.get("status_path"), GPX_QUEUE_STATUS_PATH),
             "log_file": _display_dynamic_path(status.get("log_path"), GPX_QUEUE_LOG_PATH),
             "current_url": str(status.get("current_url") or "当前无链接处理"),
@@ -542,17 +744,19 @@ def get_gpx_queue_monitor_context() -> dict[str, Any]:
                 {"label": "文件内已标记完成", "value": str(queue_summary["done"])},
                 {"label": "文件内待处理", "value": str(queue_summary["pending"])},
                 {"label": "无效行", "value": str(queue_summary["invalid"])},
+                {"label": "重复结果", "value": str(queue_summary["duplicate_entries"])},
                 {"label": "最近开始", "value": _display_time(status.get("last_started_at"))},
                 {"label": "最近完成", "value": _display_time(status.get("last_finished_at"))},
             ],
             "summary": [
-                {"label": "队列文件", "value": _display_dynamic_path(status.get("queue_file"), GPX_QUEUE_DEFAULT_PATH)},
+                {"label": "队列文件", "value": _display_dynamic_path(status.get("queue_file"), queue_path)},
                 {"label": "日志文件", "value": _display_dynamic_path(status.get("log_path"), GPX_QUEUE_LOG_PATH)},
                 {"label": "状态文件", "value": _display_dynamic_path(status.get("status_path"), GPX_QUEUE_STATUS_PATH)},
                 {"label": "当前任务", "value": str(status.get("current_task") or "当前无处理任务")},
                 {"label": "当前链接", "value": str(status.get("current_url") or "当前无链接处理")},
                 {"label": "最近耗时", "value": _display_duration(status.get("last_duration_seconds"))},
                 {"label": "队列总链接", "value": str(queue_summary["total_urls"])},
+                {"label": "文件格式", "value": str(queue_summary["format"])},
                 {"label": "队列注释/空行", "value": f"{queue_summary['comments']} / {queue_summary['blanks']}"},
                 {"label": "最近错误", "value": str(status.get("last_error") or "无")},
             ],
@@ -573,7 +777,7 @@ def start_gpx_queue_task(queue_file: str | None = None) -> dict[str, Any]:
         raise RuntimeError("GPX 队列任务已经在运行。")
 
     resolved_queue = _resolve_queue_file(queue_file)
-    queue_summary = _summarize_queue_lines(_read_queue_lines(resolved_queue))
+    queue_summary = _summarize_queue_file(resolved_queue)
     python_executable = PROJECT_ROOT / ".venv" / "bin" / "python"
     command = [
         str(python_executable if python_executable.exists() else Path(sys.executable)),
@@ -646,6 +850,10 @@ def stop_gpx_queue_task() -> dict[str, Any]:
 
 def run_gpx_queue_file(queue_file: str | None = None) -> dict[str, Any]:
     resolved_queue = _resolve_queue_file(queue_file)
+    json_payload = _read_queue_json_payload(resolved_queue)
+    if json_payload is not None:
+        return _run_gpx_queue_json_file(resolved_queue, json_payload)
+
     lines = _read_queue_lines(resolved_queue)
     queue_summary = _summarize_queue_lines(lines)
 
@@ -783,6 +991,169 @@ def run_gpx_queue_file(queue_file: str | None = None) -> dict[str, Any]:
         last_finished_at=finished_at.isoformat(),
         last_duration_seconds=(finished_at - started_at).total_seconds(),
         event_message=f"队列处理完成：成功 {success_count} 条，失败 {failure_count} 条，文件内已标记完成 {final_summary['done']} 条。",
+        event_level="warning" if failure_count else "info",
+    )
+    return {
+        "ok": failure_count == 0,
+        "queue_file": _display_path(resolved_queue),
+        "processed": processed_count,
+        "success_count": success_count,
+        "failure_count": failure_count,
+        "done_count": final_summary["done"],
+        "pending_count": final_summary["pending"],
+    }
+
+
+def _run_gpx_queue_json_file(resolved_queue: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    queue_summary = _summarize_json_queue_payload(payload)
+
+    processed_count = 0
+    success_count = 0
+    failure_count = 0
+    skipped_completed_count = int(queue_summary["done"])
+    invalid_line_count = int(queue_summary["invalid"])
+    started_at = datetime.now(timezone.utc)
+    attempted_urls: set[str] = set()
+
+    _update_queue_status(
+        state="running",
+        current_stage="scanning",
+        pid=os.getpid(),
+        queue_file=str(resolved_queue),
+        current_task="正在扫描 JSON 队列文件",
+        current_url="",
+        total_urls=queue_summary["total_urls"],
+        processed_count=processed_count,
+        success_count=success_count,
+        failure_count=failure_count,
+        skipped_completed_count=skipped_completed_count,
+        invalid_line_count=invalid_line_count,
+        last_started_at=started_at.isoformat(),
+        event_message=f"开始读取 JSON 队列文件：{_display_path(resolved_queue)}。",
+    )
+
+    status_payload = _read_queue_status_payload()
+    entries = _extract_json_queue_entries(payload)
+    for entry_index, entry in enumerate(entries, start=1):
+        kind = str(entry.get("kind") or "invalid")
+        url = str(entry.get("url") or "")
+        keyword = str(entry.get("keyword") or "")
+        item = entry.get("item") if isinstance(entry.get("item"), dict) else {}
+        if kind == "done":
+            continue
+        if kind == "invalid":
+            invalid_line_count += 1
+            status_payload = _update_queue_status(
+                state="running",
+                current_stage="scanning",
+                current_task=f"{keyword} 下第 {entry_index} 条结果没有有效链接，已跳过",
+                invalid_line_count=invalid_line_count,
+                event_message=f"关键词 {keyword} 的第 {entry_index} 条结果没有有效链接，已跳过。",
+                event_level="warning",
+            )
+            continue
+        if url in attempted_urls:
+            continue
+
+        attempted_urls.add(url)
+        status_payload = _update_queue_status(
+            state="running",
+            current_stage="processing",
+            current_task=f"正在处理第 {processed_count + 1} / {queue_summary['total_urls']} 条唯一链接",
+            current_url=url,
+            current_line=entry_index,
+            processed_count=processed_count,
+            success_count=success_count,
+            failure_count=failure_count,
+        )
+
+        item_result = run_gpx_process_url(url)
+        processed_count += 1
+        finished_at = datetime.now(timezone.utc).isoformat()
+        detail = str(item_result.get("stderr") or item_result.get("stdout") or "")
+
+        if item_result.get("ok"):
+            success_count += 1
+            update_processed_video_source_metadata(
+                str(item.get("aweme_id") or _extract_video_id_from_url(url)),
+                title=str(item.get("title") or ""),
+                author=str(item.get("author") or ""),
+            )
+            _mark_json_queue_url(payload, url, state="done", finished_at=finished_at, detail=detail)
+            _write_queue_json_payload(resolved_queue, payload)
+            _append_recent_queue_result(
+                status_payload,
+                {
+                    "at": finished_at,
+                    "level": "success",
+                    "line": entry_index,
+                    "url": url,
+                    "message": "处理成功，已在 JSON 队列文件中标记完成。",
+                    "detail": detail,
+                },
+            )
+            status_payload = _update_queue_status(
+                state="running",
+                current_stage="processing",
+                current_task=f"已完成第 {processed_count} 条唯一链接",
+                current_url=url,
+                processed_count=processed_count,
+                success_count=success_count,
+                failure_count=failure_count,
+                last_success_at=finished_at,
+                recent_results=status_payload.get("recent_results"),
+                event_message=f"链接处理成功，已回写到 JSON 文件：{url}",
+            )
+        else:
+            failure_count += 1
+            _mark_json_queue_url(payload, url, state="failed", finished_at=finished_at, detail=detail)
+            _write_queue_json_payload(resolved_queue, payload)
+            _append_recent_queue_result(
+                status_payload,
+                {
+                    "at": finished_at,
+                    "level": "error",
+                    "line": entry_index,
+                    "url": url,
+                    "message": "处理失败，JSON 文件中保留 failed 状态以便下次重试。",
+                    "detail": detail or "未知错误",
+                },
+            )
+            status_payload = _update_queue_status(
+                state="running",
+                current_stage="processing",
+                current_task=f"链接处理失败：{url}",
+                current_url=url,
+                processed_count=processed_count,
+                success_count=success_count,
+                failure_count=failure_count,
+                last_error_at=finished_at,
+                last_error=detail or "未知错误",
+                recent_results=status_payload.get("recent_results"),
+                event_message=f"JSON 队列链接处理失败：{url} · {detail or '未知错误'}",
+                event_level="error",
+            )
+
+    final_summary = _summarize_queue_file(resolved_queue)
+    finished_at = datetime.now(timezone.utc)
+    last_state = "success" if failure_count == 0 else "completed_with_errors"
+    if GPX_QUEUE_PID_PATH.exists():
+        GPX_QUEUE_PID_PATH.unlink()
+    _update_queue_status(
+        state=last_state,
+        current_stage="finished",
+        pid=None,
+        current_task="当前无处理任务",
+        current_url="",
+        total_urls=final_summary["total_urls"],
+        processed_count=processed_count,
+        success_count=success_count,
+        failure_count=failure_count,
+        skipped_completed_count=final_summary["done"],
+        invalid_line_count=final_summary["invalid"],
+        last_finished_at=finished_at.isoformat(),
+        last_duration_seconds=(finished_at - started_at).total_seconds(),
+        event_message=f"JSON 队列处理完成：成功 {success_count} 条，失败 {failure_count} 条，已标记完成 {final_summary['done']} 条。",
         event_level="warning" if failure_count else "info",
     )
     return {
