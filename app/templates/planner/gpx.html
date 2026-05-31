@@ -2,77 +2,385 @@
 {% block title %}路线提取 (GPX){% endblock %}
 
 {% block content %}
+<style>
+  .gpx-shell {
+    display: grid;
+    gap: 24px;
+  }
+
+  .gpx-hero,
+  .gpx-card {
+    border: 1px solid rgba(79, 74, 70, 0.12);
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 240, 235, 0.9));
+    box-shadow: 0 18px 40px rgba(79, 74, 70, 0.08);
+  }
+
+  .gpx-hero {
+    padding: 28px;
+  }
+
+  .gpx-hero__title {
+    margin: 10px 0 12px;
+    font-size: clamp(32px, 5vw, 52px);
+    line-height: 1.04;
+  }
+
+  .gpx-hero__subtitle {
+    max-width: 760px;
+    margin: 0;
+    color: #5f5650;
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  .gpx-badge-row,
+  .gpx-stat-grid,
+  .gpx-rule-list,
+  .gpx-flow,
+  .gpx-file-list,
+  .gpx-result-list,
+  .gpx-monitor-summary {
+    display: grid;
+    gap: 12px;
+  }
+
+  .gpx-badge-row {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    margin-top: 20px;
+  }
+
+  .gpx-badge,
+  .gpx-stat,
+  .gpx-flow__step,
+  .gpx-rule,
+  .gpx-file-item,
+  .gpx-result-item {
+    border-radius: 18px;
+    border: 1px solid rgba(79, 74, 70, 0.08);
+    background: rgba(255, 255, 255, 0.88);
+    padding: 16px;
+  }
+
+  .gpx-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.95fr);
+    gap: 20px;
+  }
+
+  .gpx-card {
+    padding: 24px;
+  }
+
+  .gpx-card h2 {
+    margin: 0;
+  }
+
+  .gpx-card p {
+    color: #655d57;
+  }
+
+  .gpx-flow {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    margin-top: 16px;
+  }
+
+  .gpx-flow__label,
+  .gpx-rule__label,
+  .gpx-badge__label,
+  .gpx-stat__label,
+  .gpx-muted-label {
+    display: block;
+    margin-bottom: 8px;
+    color: #8b7f76;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .gpx-flow__step strong,
+  .gpx-badge strong,
+  .gpx-stat strong {
+    display: block;
+    color: #2d2622;
+    font-size: 18px;
+  }
+
+  .gpx-input {
+    width: 100%;
+    min-height: 56px;
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid rgba(79, 74, 70, 0.18);
+    border-radius: 18px;
+    font: inherit;
+    line-height: 1.6;
+    resize: vertical;
+    background: #fffdfa;
+  }
+
+  .gpx-monitor-summary {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    margin-top: 16px;
+  }
+
+  .gpx-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-top: 16px;
+  }
+
+  .gpx-button {
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(135deg, #4f4a46, #786a5f);
+  }
+
+  .gpx-button--secondary {
+    background: linear-gradient(135deg, #7c5f49, #ab7e54);
+  }
+
+  .gpx-helper {
+    color: #81756b;
+    font-size: 13px;
+  }
+
+  .gpx-result-summary {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(79, 74, 70, 0.06);
+    color: #332c28;
+  }
+
+  .gpx-result-item--ok {
+    border-color: rgba(42, 125, 42, 0.24);
+    background: rgba(232, 245, 232, 0.9);
+  }
+
+  .gpx-result-item--fail {
+    border-color: rgba(195, 51, 51, 0.22);
+    background: rgba(255, 238, 238, 0.92);
+  }
+
+  .gpx-route-table,
+  .gpx-video-table {
+    width: 100%;
+    margin-top: 16px;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  .gpx-route-table th,
+  .gpx-route-table td,
+  .gpx-video-table th,
+  .gpx-video-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(79, 74, 70, 0.08);
+    vertical-align: top;
+  }
+
+  .gpx-route-table thead,
+  .gpx-video-table thead {
+    background: rgba(245, 240, 235, 0.95);
+  }
+
+  .gpx-stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    margin-top: 16px;
+  }
+
+  .gpx-rule-list {
+    margin-top: 16px;
+  }
+
+  .gpx-link {
+    color: #4f4a46;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .gpx-subtle {
+    color: #857970;
+    font-size: 13px;
+  }
+
+  @media (max-width: 920px) {
+    .gpx-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 <main class="planner-shell planner-shell--narrow">
-  <section class="panel">
-    <p class="eyebrow">GPX 路线提取</p>
-    <h1>从抖音提取摩旅路线</h1>
-    <p class="subtitle">输入抖音视频链接，或同步 OpenClaw 自动搜索到的合格摩旅路线，统一写入 GPX 页面数据。</p>
-  </section>
+  <div class="gpx-shell">
+    <section class="gpx-hero">
+      <p class="eyebrow">GPX 路线提取</p>
+      <h1 class="gpx-hero__title">批量贴入抖音链接，按现有规则沉淀 GPX 与合格路线</h1>
+      <p class="gpx-hero__subtitle">分享链接还是走你现在这条链路：解析视频 ID，抓正文和评论，抽地名，匹配坐标，生成 GPX。只有补齐骑行天数、明确途经点，并由高德路线结果算出公里数的记录，才会继续挂到微信小程序路线页。</p>
+      <div class="gpx-badge-row">
+        <div class="gpx-badge">
+          <span class="gpx-badge__label">输入方式</span>
+          <strong>从文件读取队列</strong>
+          <span class="gpx-subtle">每行一个链接，处理成功后会直接在文件里打完成标记。</span>
+        </div>
+        <div class="gpx-badge">
+          <span class="gpx-badge__label">联动门槛</span>
+          <strong>只挂合格路线</strong>
+          <span class="gpx-subtle">必须有骑行天数、明确途经点和高德公里数。</span>
+        </div>
+        <div class="gpx-badge">
+          <span class="gpx-badge__label">输出结果</span>
+          <strong>GPX 与路线页分层</strong>
+          <span class="gpx-subtle">普通视频先沉淀 GPX，合格路线再进入小程序路线库。</span>
+        </div>
+      </div>
+    </section>
 
-  <section class="card">
-    <h2>处理新视频</h2>
-    <form id="processForm" style="display:flex;gap:8px;margin-top:12px;">
-      <input id="videoUrl" type="url" placeholder="https://www.douyin.com/video/..." 
-             style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px;" required>
-      <button type="submit" style="padding:8px 20px;background:#4F4A46;color:#fff;border:none;border-radius:6px;cursor:pointer;">
-        提取
-      </button>
-    </form>
-    <div id="processResult" style="margin-top:12px;font-size:14px;"></div>
-  </section>
+    <section class="gpx-grid">
+      <div class="gpx-card">
+        <h2>整个方案一览</h2>
+        <div class="gpx-flow">
+          <div class="gpx-flow__step">
+            <span class="gpx-flow__label">Step 1</span>
+            <strong>指定队列文件</strong>
+            <div class="gpx-subtle">按行读取抖音视频链接，允许注释和空行。</div>
+          </div>
+          <div class="gpx-flow__step">
+            <span class="gpx-flow__label">Step 2</span>
+            <strong>沿用现有提取链</strong>
+            <div class="gpx-subtle">video_id 解析、Playwright 抓文本、规则引擎筛地名。</div>
+          </div>
+          <div class="gpx-flow__step">
+            <span class="gpx-flow__label">Step 3</span>
+            <strong>先落 GPX</strong>
+            <div class="gpx-subtle">有地名和坐标就生成 GPX，保留原始提取结果。</div>
+          </div>
+          <div class="gpx-flow__step">
+            <span class="gpx-flow__label">Step 4</span>
+            <strong>文件内打标并跳过</strong>
+            <div class="gpx-subtle">成功后写成 DONE 行，下次再次运行会自动跳过。</div>
+          </div>
+        </div>
 
-  <section class="card">
-    <h2>同步自动搜索路线</h2>
-    <p class="subtle" style="margin-top:8px;">读取 <code>data/raw/openclaw_route_waypoints.json</code>，仅保留带明确公里数、骑行天数、完整坐标途径点且可生成高德路线的记录。</p>
-    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
-      <button id="syncOpenclawRoutes" type="button" style="padding:8px 20px;background:#4F4A46;color:#fff;border:none;border-radius:6px;cursor:pointer;">
-        同步 OpenClaw 路线
-      </button>
-      <div id="syncOpenclawResult" style="font-size:14px;"></div>
-    </div>
-  </section>
+        <form id="processForm">
+          <input id="queueFile" class="gpx-input" type="text" value="{{ queue_monitor.queue_file or 'data/raw/gpx_video_queue.txt' }}" placeholder="data/raw/gpx_video_queue.txt">
+          <div class="gpx-form-actions">
+            <button type="submit" class="gpx-button">启动文件队列任务</button>
+            <a href="/moto/gpx/monitor" class="gpx-link">打开任务监控页</a>
+            <span class="gpx-helper">文件建议一行一个链接；注释行用 `#` 开头，成功行会被改写成 `[DONE 时间] URL`。</span>
+          </div>
+        </form>
+        <div id="processResult"></div>
+      </div>
 
-  <section class="card">
-    <h2>数据概览</h2>
-    <div style="display:flex;gap:24px;margin-top:12px;font-size:14px;">
-      <div><strong>{{ stats.total_videos }}</strong> 个视频</div>
-      <div><strong>{{ stats.total_route_records }}</strong> 条自动路线</div>
-      <div><strong>{{ stats.qualified_route_records }}</strong> 条合格路线</div>
-      <div><strong>{{ stats.total_gpx_files }}</strong> 个 GPX 文件</div>
-      <div><strong>{{ stats.total_spots }}</strong> 个途经点</div>
-    </div>
-  </section>
+      <div class="gpx-card">
+        <h2>队列任务快照</h2>
+        <div class="gpx-monitor-summary">
+          <div class="gpx-rule">
+            <span class="gpx-rule__label">当前状态</span>
+            <strong>{{ queue_monitor.state_label }}</strong>
+            <div class="gpx-subtle">{{ queue_monitor.health.label }}</div>
+          </div>
+          <div class="gpx-rule">
+            <span class="gpx-rule__label">当前阶段</span>
+            <strong>{{ queue_monitor.current_stage_label }}</strong>
+            <div class="gpx-subtle">{{ queue_monitor.current_task }}</div>
+          </div>
+          <div class="gpx-rule">
+            <span class="gpx-rule__label">当前链接</span>
+            <strong style="font-size:14px;line-height:1.5;word-break:break-all;">{{ queue_monitor.current_url }}</strong>
+            <div class="gpx-subtle">PID {{ queue_monitor.process.pid or '未运行' }}</div>
+          </div>
+        </div>
+        <div class="gpx-form-actions">
+          <a href="/moto/gpx/monitor" class="gpx-link">查看完整监控</a>
+          <span class="gpx-helper">监控页会展示进程状态、当前链接、最近结果和队列文件统计。</span>
+        </div>
+      </div>
 
-  <section class="card">
-    <h2>合格自动路线</h2>
+      <div class="gpx-card">
+        <h2>联动规则</h2>
+        <div class="gpx-rule-list">
+          <div class="gpx-rule">
+            <span class="gpx-rule__label">GPX 落库</span>
+            <strong>视频提取只负责生成 GPX</strong>
+            <div class="gpx-subtle">能抽出地名并匹配到坐标，就会写入 GPX 文件和处理记录。</div>
+          </div>
+          <div class="gpx-rule">
+            <span class="gpx-rule__label">路线页联动</span>
+            <strong>满足骑行天数与明确途经点才进入路线页</strong>
+            <div class="gpx-subtle">路线页不再自动挂任何普通 GPX 文件，避免测试数据混入小程序路线库。</div>
+          </div>
+          <div class="gpx-rule">
+            <span class="gpx-rule__label">里程来源</span>
+            <strong>公里数以高德路线计算为准</strong>
+            <div class="gpx-subtle">这里展示的公里数来自合格路线记录，不再用轨迹点数量估算。</div>
+          </div>
+        </div>
+
+        <div class="gpx-form-actions">
+          <button id="syncOpenclawRoutes" type="button" class="gpx-button gpx-button--secondary">同步合格自动路线</button>
+        </div>
+        <div id="syncOpenclawResult"></div>
+      </div>
+    </section>
+
+    <section class="gpx-card">
+      <h2>数据概览</h2>
+      <div class="gpx-stat-grid">
+        <div class="gpx-stat"><span class="gpx-stat__label">视频记录</span><strong>{{ stats.total_videos }}</strong></div>
+        <div class="gpx-stat"><span class="gpx-stat__label">自动路线</span><strong>{{ stats.total_route_records }}</strong></div>
+        <div class="gpx-stat"><span class="gpx-stat__label">合格路线</span><strong>{{ stats.qualified_route_records }}</strong></div>
+        <div class="gpx-stat"><span class="gpx-stat__label">GPX 文件</span><strong>{{ stats.total_gpx_files }}</strong></div>
+        <div class="gpx-stat"><span class="gpx-stat__label">途经点总数</span><strong>{{ stats.total_spots }}</strong></div>
+      </div>
+    </section>
+
+    <section class="gpx-card">
+      <h2>已联动到路线页的合格路线</h2>
+      <p>这里只显示满足联动条件的路线记录。它们会作为动态路线挂到微信小程序路线页，骑行天数与公里数直接沿用合格入库数据。</p>
     {% if route_records %}
-    <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px;">
-      <thead><tr style="background:#f5f0eb;">
-        <th style="padding:6px;text-align:left;">路线</th>
-        <th style="padding:6px;text-align:center;">天数</th>
-        <th style="padding:6px;text-align:center;">公里数</th>
-        <th style="padding:6px;text-align:center;">途经点</th>
-        <th style="padding:6px;text-align:center;">高德</th>
-        <th style="padding:6px;text-align:center;">GPX</th>
+    <table class="gpx-route-table">
+      <thead><tr>
+        <th style="text-align:left;">路线</th>
+        <th style="text-align:center;">天数</th>
+        <th style="text-align:center;">公里数</th>
+        <th style="text-align:center;">途经点</th>
+        <th style="text-align:center;">路线页</th>
+        <th style="text-align:center;">高德</th>
+        <th style="text-align:center;">GPX</th>
       </tr></thead>
       <tbody>
       {% for route in route_records %}
-      <tr style="border-bottom:1px solid #eee;">
-        <td style="padding:6px;">
+      <tr>
+        <td>
           <div>{{ route.title }}</div>
-          <div style="color:#888;font-size:12px;">{{ route.route_slug or '' }}</div>
+          <div class="gpx-subtle">{{ route.route_slug or '' }}</div>
+          <div class="gpx-subtle">{{ route.qualification_reason or '已通过合格路线校验' }}</div>
         </td>
-        <td style="padding:6px;text-align:center;">{{ route.route_days or '-' }}</td>
-        <td style="padding:6px;text-align:center;">{{ route.distance_km|round|int if route.distance_km else '-' }}</td>
-        <td style="padding:6px;text-align:center;">{{ route.spots_count or 0 }}</td>
-        <td style="padding:6px;text-align:center;">
-          {% if route.amap_href %}
-          <a href="{{ route.amap_href }}" target="_blank" rel="noreferrer" style="color:#4F4A46;">打开</a>
+        <td style="text-align:center;">{{ route.route_days or '-' }}</td>
+        <td style="text-align:center;">{{ route.distance_km|round(1) if route.distance_km else '-' }}</td>
+        <td style="text-align:center;">{{ route.spots_count or 0 }}</td>
+        <td style="text-align:center;">
+          {% if route.route_slug %}
+          <a href="/moto/routes/{{ route.route_slug }}" class="gpx-link">查看</a>
           {% else %}-{% endif %}
         </td>
-        <td style="padding:6px;text-align:center;">
+        <td style="text-align:center;">
+          {% if route.amap_href %}
+          <a href="{{ route.amap_href }}" target="_blank" rel="noreferrer" class="gpx-link">打开</a>
+          {% else %}-{% endif %}
+        </td>
+        <td style="text-align:center;">
           {% if route.gpx_path %}
-          <a href="/api/moto/gpx/download/{{ route.gpx_path.split('/')[-1] }}" style="color:#4F4A46;">下载</a>
+          <a href="/api/moto/gpx/download/{{ route.gpx_path.split('/')[-1] }}" class="gpx-link">下载</a>
           {% else %}-{% endif %}
         </td>
       </tr>
@@ -80,29 +388,32 @@
       </tbody>
     </table>
     {% else %}
-    <p class="subtle" style="margin-top:8px;">还没有同步到合格自动路线。先运行 OpenClaw 任务，再点击“同步 OpenClaw 路线”。</p>
+    <p class="gpx-subtle" style="margin-top:16px;">还没有同步到合格自动路线。先运行 OpenClaw 任务，再点击“同步合格自动路线”。</p>
     {% endif %}
-  </section>
+    </section>
 
-  <section class="card">
-    <h2>已处理视频</h2>
+    <section class="gpx-card">
+      <h2>已处理视频</h2>
+      <p>这里保留的是批量或单条处理后的视频记录。它们不默认进入路线页，除非后续被补齐为合格路线。</p>
     {% if videos %}
-    <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px;">
-      <thead><tr style="background:#f5f0eb;">
-        <th style="padding:6px;text-align:left;">标题</th>
-        <th style="padding:6px;text-align:left;">作者</th>
-        <th style="padding:6px;text-align:center;">途经点</th>
-        <th style="padding:6px;text-align:center;">GPX</th>
+    <table class="gpx-video-table">
+      <thead><tr>
+        <th style="text-align:left;">标题</th>
+        <th style="text-align:left;">作者</th>
+        <th style="text-align:center;">途经点</th>
+        <th style="text-align:center;">状态</th>
+        <th style="text-align:center;">GPX</th>
       </tr></thead>
       <tbody>
       {% for v in videos %}
-      <tr style="border-bottom:1px solid #eee;">
-        <td style="padding:6px;">{{ (v.title or '')[:30] }}</td>
-        <td style="padding:6px;color:#888;">{{ v.author or '未知' }}</td>
-        <td style="padding:6px;text-align:center;">{{ v.spots_count or 0 }}</td>
-        <td style="padding:6px;text-align:center;">
+      <tr>
+        <td>{{ (v.title or '')[:40] }}</td>
+        <td class="gpx-subtle">{{ v.author or '未知' }}</td>
+        <td style="text-align:center;">{{ v.spots_count or 0 }}</td>
+        <td style="text-align:center;">{{ v.qualification_status or 'video' }}</td>
+        <td style="text-align:center;">
           {% if v.gpx_path %}
-          <a href="/api/moto/gpx/download/{{ v.gpx_path.split('/')[-1] }}" style="color:#4F4A46;">下载</a>
+          <a href="/api/moto/gpx/download/{{ v.gpx_path.split('/')[-1] }}" class="gpx-link">下载</a>
           {% else %}-{% endif %}
         </td>
       </tr>
@@ -110,66 +421,107 @@
       </tbody>
     </table>
     {% else %}
-    <p class="subtle" style="margin-top:8px;">还没有处理过视频。粘贴链接开始提取。</p>
+    <p class="gpx-subtle" style="margin-top:16px;">还没有处理过视频。粘贴链接开始提取。</p>
     {% endif %}
-  </section>
+    </section>
 
-  <section class="card">
-    <h2>GPX 文件</h2>
+    <section class="gpx-card">
+      <h2>GPX 文件</h2>
     {% if files %}
-    <ul style="margin-top:8px;">
+    <div class="gpx-file-list" style="margin-top:16px;">
       {% for f in files %}
-      <li style="padding:4px 0;font-size:13px;">
-        <a href="/api/moto/gpx/download/{{ f.name }}" style="color:#4F4A46;">{{ f.name }}</a>
-        <span style="color:#999;margin-left:8px;">{{ (f.size / 1024)|round(1) }} KB</span>
-      </li>
+      <div class="gpx-file-item">
+        <a href="/api/moto/gpx/download/{{ f.name }}" class="gpx-link">{{ f.name }}</a>
+        <div class="gpx-subtle">{{ (f.size / 1024)|round(1) }} KB</div>
+      </div>
       {% endfor %}
-    </ul>
+    </div>
     {% else %}
-    <p class="subtle" style="margin-top:8px;">暂无 GPX 文件。</p>
+    <p class="gpx-subtle" style="margin-top:16px;">暂无 GPX 文件。</p>
     {% endif %}
-  </section>
+    </section>
+  </div>
 </main>
 
 <script>
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderProcessResult(data) {
+  const resultEl = document.getElementById('processResult');
+  const results = Array.isArray(data.results) ? data.results : [];
+  if (!results.length) {
+    if (data.ok) {
+      resultEl.innerHTML = '<div class="gpx-result-summary">处理完成，正在刷新页面...</div>';
+      setTimeout(() => location.reload(), 1200);
+      return;
+    }
+    resultEl.innerHTML = '<div class="gpx-result-summary" style="color:#c33;">处理失败：' + escapeHtml(data.stderr || data.error || '未知错误') + '</div>';
+    return;
+  }
+
+  const summary = '<div class="gpx-result-summary">已处理 ' + results.length + ' 条，成功 ' + (data.success_count || 0) + ' 条，失败 ' + (data.failure_count || 0) + ' 条。</div>';
+  const items = results.map(function(item) {
+    const itemClass = item.ok ? 'gpx-result-item gpx-result-item--ok' : 'gpx-result-item gpx-result-item--fail';
+    const detail = item.ok ? '已按现有链路完成处理' : (item.stderr || item.error || '处理失败');
+    return '<div class="' + itemClass + '">' +
+      '<div><strong>' + escapeHtml(item.url) + '</strong></div>' +
+      '<div class="gpx-subtle">' + escapeHtml(detail) + '</div>' +
+    '</div>';
+  }).join('');
+  resultEl.innerHTML = summary + '<div class="gpx-result-list" style="margin-top:12px;">' + items + '</div>';
+  if (data.failure_count === 0) {
+    setTimeout(() => location.reload(), 1500);
+  }
+}
+
 document.getElementById('processForm').addEventListener('submit', async function(e) {
   e.preventDefault();
-  const url = document.getElementById('videoUrl').value.trim();
+  const queueFile = document.getElementById('queueFile').value.trim();
   const resultEl = document.getElementById('processResult');
-  if (!url) return;
-  resultEl.innerHTML = '<span style="color:#888;">⏳ 正在处理，可能需要 30-60 秒...</span>';
+  if (!queueFile) {
+    resultEl.innerHTML = '<div class="gpx-result-summary" style="color:#c33;">请先填写队列文件路径。</div>';
+    return;
+  }
+  resultEl.innerHTML = '<div class="gpx-result-summary">正在启动后台队列任务，启动后请到监控页查看实时进度。</div>';
   try {
-    const resp = await fetch('/api/moto/gpx/process', {
+    const resp = await fetch('/api/moto/gpx/queue/start', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({url: url})
+      body: JSON.stringify({queue_file: queueFile})
     });
     const data = await resp.json();
     if (data.ok) {
-      resultEl.innerHTML = '<span style="color:#2a7d2a;">✅ 处理完成</span>';
-      setTimeout(() => location.reload(), 1500);
-    } else {
-      resultEl.innerHTML = '<span style="color:#c33;">❌ 处理失败: ' + (data.stderr || data.error || '未知错误') + '</span>';
+      resultEl.innerHTML = '<div class="gpx-result-summary">任务已启动，PID ' + escapeHtml(data.pid) + '。<a href="/moto/gpx/monitor" class="gpx-link">打开监控页</a></div>';
+      setTimeout(function() { location.href = '/moto/gpx/monitor'; }, 1200);
+      return;
     }
+    resultEl.innerHTML = '<div class="gpx-result-summary" style="color:#c33;">启动失败：' + escapeHtml(data.error || '未知错误') + '</div>';
   } catch (err) {
-    resultEl.innerHTML = '<span style="color:#c33;">❌ 请求失败: ' + err.message + '</span>';
+    resultEl.innerHTML = '<div class="gpx-result-summary" style="color:#c33;">请求失败：' + escapeHtml(err.message) + '</div>';
   }
 });
 
 document.getElementById('syncOpenclawRoutes').addEventListener('click', async function() {
   const resultEl = document.getElementById('syncOpenclawResult');
-  resultEl.innerHTML = '<span style="color:#888;">⏳ 正在同步 OpenClaw 路线...</span>';
+  resultEl.innerHTML = '<div class="gpx-result-summary">正在同步合格自动路线...</div>';
   try {
     const resp = await fetch('/api/moto/gpx/sync-openclaw-routes', { method: 'POST' });
     const data = await resp.json();
     if (data.ok) {
-      resultEl.innerHTML = `<span style="color:#2a7d2a;">✅ 已同步 ${data.imported || 0} 条，跳过 ${data.skipped || 0} 条</span>`;
+      resultEl.innerHTML = '<div class="gpx-result-summary">已同步 ' + (data.imported || 0) + ' 条，跳过 ' + (data.skipped || 0) + ' 条。</div>';
       setTimeout(() => location.reload(), 1500);
     } else {
-      resultEl.innerHTML = '<span style="color:#c33;">❌ 同步失败: ' + (data.stderr || data.error || '未知错误') + '</span>';
+      resultEl.innerHTML = '<div class="gpx-result-summary" style="color:#c33;">同步失败：' + escapeHtml(data.stderr || data.error || '未知错误') + '</div>';
     }
   } catch (err) {
-    resultEl.innerHTML = '<span style="color:#c33;">❌ 请求失败: ' + err.message + '</span>';
+    resultEl.innerHTML = '<div class="gpx-result-summary" style="color:#c33;">请求失败：' + escapeHtml(err.message) + '</div>';
   }
 });
 </script>

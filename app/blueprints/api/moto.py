@@ -80,14 +80,52 @@ def gpx_stats():
     return jsonify({"ok": True, **gpx_service.get_gpx_stats()})
 
 
+@api_bp.get("/moto/gpx/queue/status")
+def gpx_queue_status():
+    """GPX 队列任务状态"""
+    return jsonify({"ok": True, **gpx_service.get_gpx_queue_monitor_api_payload()})
+
+
+@api_bp.post("/moto/gpx/queue/start")
+def gpx_queue_start():
+    """启动文件队列式 GPX 处理任务"""
+    data = request.get_json(silent=True) or {}
+    queue_file = str(data.get("queue_file") or request.form.get("queue_file") or "").strip()
+    try:
+        result = gpx_service.start_gpx_queue_task(queue_file)
+    except (RuntimeError, FileNotFoundError, ValueError) as error:
+        return jsonify({"ok": False, "error": str(error)}), 400
+    return jsonify({"ok": True, **result})
+
+
+@api_bp.post("/moto/gpx/queue/stop")
+def gpx_queue_stop():
+    """停止文件队列式 GPX 处理任务"""
+    try:
+        result = gpx_service.stop_gpx_queue_task()
+    except RuntimeError as error:
+        return jsonify({"ok": False, "error": str(error)}), 400
+    return jsonify({"ok": True, **result})
+
+
 @api_bp.post("/moto/gpx/process")
 def gpx_process():
     """提交抖音视频 URL 处理"""
     data = request.get_json(force=True) or {}
     url = data.get("url", "").strip()
+    urls = data.get("urls") if isinstance(data.get("urls"), list) else []
+    urls_text = str(data.get("urls_text", "") or "")
+
+    if urls or urls_text:
+        result = gpx_service.run_gpx_process_urls(urls, urls_text)
+        status_code = 200 if result.get("processed") else 400
+        return jsonify(result), status_code
+
     if not url:
         return jsonify({"ok": False, "error": "缺少 url 参数"}), 400
+
     result = gpx_service.run_gpx_process_url(url)
+    result["mode"] = "single"
     return jsonify(result)
 
 

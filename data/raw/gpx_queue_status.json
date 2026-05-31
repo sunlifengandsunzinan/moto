@@ -1,0 +1,88 @@
+{
+  "state": "completed_with_errors",
+  "current_stage": "finished",
+  "pid": 7605,
+  "queue_file": "/Users/Lifeng.Sun/workspace/Personal/data/raw/gpx_queue_runtime_check.txt",
+  "current_task": "当前无处理任务",
+  "current_url": "",
+  "total_urls": 2,
+  "processed_count": 1,
+  "success_count": 0,
+  "failure_count": 1,
+  "skipped_completed_count": 1,
+  "invalid_line_count": 0,
+  "last_started_at": "2026-05-31T15:44:01.403452+00:00",
+  "status_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/gpx_queue_status.json",
+  "log_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/gpx_queue.log",
+  "pid_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/gpx_queue.pid",
+  "last_heartbeat": "2026-05-31T15:44:01.425709+00:00",
+  "events": [
+    {
+      "at": "2026-05-31T15:44:01.378871+00:00",
+      "level": "info",
+      "message": "开始读取队列文件：data/raw/gpx_queue_runtime_check.txt。"
+    },
+    {
+      "at": "2026-05-31T15:44:01.387011+00:00",
+      "level": "info",
+      "message": "第 2 行处理成功，已标记完成。"
+    },
+    {
+      "at": "2026-05-31T15:44:01.396143+00:00",
+      "level": "error",
+      "message": "第 3 行处理失败：bad"
+    },
+    {
+      "at": "2026-05-31T15:44:01.403059+00:00",
+      "level": "warning",
+      "message": "队列处理完成：成功 1 条，失败 1 条，文件内已标记完成 1 条。"
+    },
+    {
+      "at": "2026-05-31T15:44:01.407768+00:00",
+      "level": "info",
+      "message": "开始读取队列文件：data/raw/gpx_queue_runtime_check.txt。"
+    },
+    {
+      "at": "2026-05-31T15:44:01.417415+00:00",
+      "level": "error",
+      "message": "第 3 行处理失败：bad"
+    },
+    {
+      "at": "2026-05-31T15:44:01.425727+00:00",
+      "level": "warning",
+      "message": "队列处理完成：成功 0 条，失败 1 条，文件内已标记完成 1 条。"
+    }
+  ],
+  "current_line": 3,
+  "last_success_at": "2026-05-31T15:44:01.382879+00:00",
+  "recent_results": [
+    {
+      "at": "2026-05-31T15:44:01.382879+00:00",
+      "level": "success",
+      "line": 2,
+      "url": "https://www.douyin.com/video/1001",
+      "message": "处理成功，已在队列文件中标记完成。",
+      "detail": "ok"
+    },
+    {
+      "at": "2026-05-31T15:44:01.391665+00:00",
+      "level": "error",
+      "line": 3,
+      "url": "https://www.douyin.com/video/1002",
+      "message": "处理失败，保留原始行以便下次重试。",
+      "detail": "bad"
+    },
+    {
+      "at": "2026-05-31T15:44:01.412693+00:00",
+      "level": "error",
+      "line": 3,
+      "url": "https://www.douyin.com/video/1002",
+      "message": "处理失败，保留原始行以便下次重试。",
+      "detail": "bad"
+    }
+  ],
+  "last_error_at": "2026-05-31T15:44:01.412693+00:00",
+  "last_error": "bad",
+  "last_finished_at": "2026-05-31T15:44:01.418136+00:00",
+  "last_duration_seconds": 0.014684
+}

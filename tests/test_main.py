@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 
@@ -75,6 +77,97 @@ def test_moto_routes_page_supports_day_selection_and_amap_export(client):
     assert "导出到高德地图" in html
     assert "采集导航点" in html
     assert "m.amap.com/navigation/carmap/" in html
+
+
+def test_moto_gpx_page_renders_batch_workflow_and_link_rules(client):
+    response = client.get("/moto/gpx")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "批量贴入抖音链接" in html
+    assert "支持批量视频输入" in html
+    assert "只挂合格路线" in html
+    assert "公里数以高德路线计算为准" in html
+
+
+def test_gpx_process_api_supports_batch_urls(client, monkeypatch):
+    def fake_run_gpx_process_urls(urls=None, raw_text=""):
+        assert urls == ["https://www.douyin.com/video/1001", "https://www.douyin.com/video/1002"]
+        assert raw_text == ""
+        return {
+            "ok": False,
+            "mode": "batch",
+            "processed": 2,
+            "success_count": 1,
+            "failure_count": 1,
+            "results": [
+                {"url": "https://www.douyin.com/video/1001", "ok": True, "stdout": "ok", "stderr": ""},
+                {"url": "https://www.douyin.com/video/1002", "ok": False, "stdout": "", "stderr": "bad"},
+            ],
+        }
+
+    monkeypatch.setattr("app.blueprints.api.moto.gpx_service.run_gpx_process_urls", fake_run_gpx_process_urls)
+
+    response = client.post(
+        "/api/moto/gpx/process",
+        json={"urls": ["https://www.douyin.com/video/1001", "https://www.douyin.com/video/1002"]},
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["mode"] == "batch"
+    assert data["processed"] == 2
+    assert data["success_count"] == 1
+    assert data["failure_count"] == 1
+
+
+def test_route_templates_only_append_qualified_route_records(monkeypatch):
+    from app.services import planner_service
+
+    qualified_waypoints = [
+        {"name": "沈阳", "lat": 41.8057, "lng": 123.4315},
+        {"name": "本溪", "lat": 41.3256, "lng": 123.7686},
+        {"name": "桓仁", "lat": 41.2640, "lng": 125.3614},
+    ]
+
+    monkeypatch.setattr(planner_service, "load_route_templates", lambda: [])
+    monkeypatch.setattr(
+        planner_service.gpx_service,
+        "get_processed_route_records",
+        lambda limit=500: [
+            {
+                "title": "辽宁东线测试",
+                "route_slug": "liaoning-qualified-test",
+                "route_days": 2,
+                "distance_km": 260,
+                "gpx_path": "/tmp/liaoning-qualified-test.gpx",
+                "qualification_status": "qualified",
+                "waypoints_json": json.dumps(qualified_waypoints, ensure_ascii=False),
+            },
+            {
+                "title": "不合格路线",
+                "route_slug": "liaoning-rejected-test",
+                "route_days": 0,
+                "distance_km": 0,
+                "gpx_path": "/tmp/liaoning-rejected-test.gpx",
+                "qualification_status": "rejected",
+                "waypoints_json": json.dumps(qualified_waypoints, ensure_ascii=False),
+            },
+        ],
+    )
+    monkeypatch.setattr(planner_service.gpx_service, "get_gpx_waypoints", lambda filename: [])
+    monkeypatch.setattr(planner_service.gpx_service, "get_gpx_files", lambda: [])
+    monkeypatch.setattr(planner_service.gpx_service, "get_processed_videos", lambda limit=500: [])
+
+    routes = planner_service.get_route_templates()
+
+    assert len(routes) == 1
+    route = routes[0]
+    assert route["slug"] == "liaoning-qualified-test"
+    assert route["days"] == 2
+    assert route["distance_km"] == 260
+    assert route["navigation"]["waypoints"][0]["name"] == "沈阳"
+    assert route["days_plan"][0]["distance"] == 130
 
 
 def test_moto_me_page_renders_workspace_summary(client):
@@ -246,7 +339,7 @@ def test_route_template_loader_validates_json_schema(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match="route\[bad-route\]\.title must be a non-empty string"):
+    with pytest.raises(ValueError, match=r"route\[bad-route\]\.title must be a non-empty string"):
         route_templates_config.validate_route_templates_file(invalid_path)
 
 
@@ -265,9 +358,6 @@ def test_route_collection_page_and_api_expose_collection_entry(client):
     assert payload["selected_route"]["amap_export"]["status_variant"] == "partial"
     assert payload["selected_route_seed"]["route_slug"] == "navigation-demo-partial-2-day"
     assert any(field["name"] == "navigation.waypoints[]" for field in payload["schema"])
-
-
-            "spot_markers": ["checkin-point", "coffee-stop"],
 def test_planner_form_exposes_more_routes_and_spots(client):
     from pathlib import Path
 

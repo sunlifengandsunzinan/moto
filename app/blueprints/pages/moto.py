@@ -290,8 +290,67 @@ def moto_gpx():
     route_records = gpx_service.get_processed_route_records(50)
     files = gpx_service.get_gpx_files()
     stats = gpx_service.get_gpx_stats()
+    queue_context = gpx_service.get_gpx_queue_monitor_context()
     return render_template(
         "planner/gpx.html",
-        videos=videos, route_records=route_records, files=files, stats=stats,
+        videos=videos, route_records=route_records, files=files, stats=stats, queue_monitor=queue_context["monitor"],
         page={"title": "路线提取 (GPX)", "description": "从抖音视频自动提取路线并生成 GPX"},
     )
+
+
+@moto_bp.get("/moto/gpx/monitor")
+def moto_gpx_monitor() -> str:
+    context = gpx_service.get_gpx_queue_monitor_context()
+    context["feedback"] = {
+        "message": request.args.get("monitor_message", ""),
+        "kind": request.args.get("monitor_kind", "info"),
+    }
+    return render_template("planner/gpx_monitor.html", **context)
+
+
+@moto_bp.get("/moto/gpx/monitor.json")
+def moto_gpx_monitor_json():
+    return jsonify(gpx_service.get_gpx_queue_monitor_api_payload())
+
+
+@moto_bp.post("/moto/gpx/monitor/start")
+def moto_gpx_monitor_start():
+    queue_file = str(request.form.get("queue_file") or "").strip()
+    try:
+        result = gpx_service.start_gpx_queue_task(queue_file)
+        return redirect(
+            url_for(
+                "moto.moto_gpx_monitor",
+                monitor_kind="info",
+                monitor_message=f"已启动 GPX 队列任务，PID={result['pid']}，队列文件={result['queue_file']}。",
+            )
+        )
+    except (RuntimeError, FileNotFoundError, ValueError) as error:
+        return redirect(
+            url_for(
+                "moto.moto_gpx_monitor",
+                monitor_kind="error",
+                monitor_message=str(error),
+            )
+        )
+
+
+@moto_bp.post("/moto/gpx/monitor/stop")
+def moto_gpx_monitor_stop():
+    try:
+        result = gpx_service.stop_gpx_queue_task()
+        return redirect(
+            url_for(
+                "moto.moto_gpx_monitor",
+                monitor_kind="info",
+                monitor_message=f"已停止 GPX 队列任务，PID={result['pid']}。",
+            )
+        )
+    except RuntimeError as error:
+        return redirect(
+            url_for(
+                "moto.moto_gpx_monitor",
+                monitor_kind="error",
+                monitor_message=str(error),
+            )
+        )

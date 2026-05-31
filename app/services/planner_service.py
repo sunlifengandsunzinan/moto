@@ -1065,10 +1065,7 @@ def get_planner_form_context(route_slug: str | None = None, origin: str | None =
 def get_route_templates() -> list[RouteDict]:
     routes = deepcopy(load_route_templates())
     existing_slugs = {str(route.get("slug") or "") for route in routes}
-    existing_gpx_files = {
-        str(route.get("gpx_file") or "").strip() for route in routes if str(route.get("gpx_file") or "").strip()
-    }
-    routes.extend(_build_gpx_demo_routes(existing_slugs, existing_gpx_files))
+    routes.extend(_build_gpx_route_records(existing_slugs))
     return routes
 
 
@@ -1076,46 +1073,52 @@ def get_route_by_slug(slug: str) -> dict[str, Any] | None:
     return next((route for route in get_route_templates() if route["slug"] == slug), None)
 
 
-def _build_gpx_demo_routes(existing_slugs: set[str], existing_gpx_files: set[str]) -> list[RouteDict]:
+def _build_gpx_route_records(existing_slugs: set[str]) -> list[RouteDict]:
     gpx_routes: list[RouteDict] = []
-    for gpx_file in gpx_service.get_gpx_files():
-        filename = str(gpx_file.get("name") or "").strip()
-        if not filename or filename in existing_gpx_files:
+    for record in gpx_service.get_processed_route_records(limit=500):
+        if str(record.get("qualification_status") or "").strip() != "qualified":
             continue
 
-        waypoints = gpx_service.get_gpx_waypoints(filename)
+        route_slug = str(record.get("route_slug") or "").strip()
+        if not route_slug or route_slug in existing_slugs:
+            continue
+
+        route_days = int(record.get("route_days") or 0)
+        distance_km = float(record.get("distance_km") or 0)
+        if route_days <= 0 or distance_km <= 0:
+            continue
+
+        filename = _gpx_basename(record.get("gpx_path") or "")
+        if not filename:
+            continue
+
+        waypoints = _route_record_waypoints(record, filename)
         if len(waypoints) < 2:
             continue
 
-        slug = _gpx_demo_slug(filename)
-        if not slug or slug in existing_slugs:
-            continue
-
-        title = _gpx_demo_title(filename)
+        title = str(record.get("title") or filename.removesuffix(".gpx") or route_slug).strip()
+        average_day_distance = max(1, round(distance_km / route_days))
         gpx_routes.append(
             {
-                "slug": slug,
+                "slug": route_slug,
                 "title": title,
-                "region": "gpx-demo",
+                "region": "liaoning",
                 "spot_slugs": [],
-                "days": 2 if len(waypoints) >= 4 else 1,
-                "difficulty": "easy",
+                "days": route_days,
+                "difficulty": "medium",
                 "scenery_type": ["scenic", "relaxed"],
                 "bike_types": ["150-250cc", "300-500cc", "adv-touring"],
                 "experience_levels": ["beginner", "intermediate"],
-                "best_season": "GPX 测试",
-                "distance_km": max(120, len(waypoints) * 35),
-                "budget_range": "测试专用",
-                "summary": "来自 GPX 文件的测试路线，用于验证现有路线页中的“直接导航”按钮可按 GPX 轨迹点直接打开高德路线。",
+                "best_season": "自动提取",
+                "distance_km": int(round(distance_km)),
+                "budget_range": "待补充",
+                "summary": "来自自动入库的合格路线：已具备骑行天数、明确途经点，并以高德路线结果作为公里数参考。",
                 "gpx_file": filename,
                 "navigation": {
                     "provider": "amap",
-                    "waypoints": [
-                        {"name": waypoints[0]["name"]},
-                        {"name": waypoints[-1]["name"]},
-                    ],
+                    "waypoints": waypoints,
                 },
-                "days_plan": _gpx_demo_days_plan(waypoints),
+                "days_plan": _gpx_route_days_plan(waypoints, route_days, average_day_distance),
                 "pois": {
                     "fuel": [],
                     "repair": [],
@@ -1123,49 +1126,71 @@ def _build_gpx_demo_routes(existing_slugs: set[str], existing_gpx_files: set[str
                     "viewpoint": [
                         {
                             "name": waypoints[-1]["name"],
-                            "meta": "GPX 提取终点 · 用于导航验证",
+                            "meta": "自动提取终点 · 已纳入路线页联动",
                         }
                     ],
                     "emergency": [],
                 },
             }
         )
+        existing_slugs.add(route_slug)
 
     return gpx_routes
 
 
-def _gpx_demo_slug(filename: str) -> str:
-    base_name = filename.removesuffix(".gpx")
-    normalized = re.sub(r"[^a-z0-9]+", "-", base_name.lower())
-    normalized = normalized.strip("-")
-    if not normalized:
-        normalized = "gpx-route"
-    suffix = hashlib.sha1(filename.encode("utf-8")).hexdigest()[:8]
-    return f"gpx-{normalized[:36]}-{suffix}"
+def _route_record_waypoints(route_record: Mapping[str, Any], filename: str) -> list[dict[str, Any]]:
+    raw_waypoints = route_record.get("waypoints_json")
+    if isinstance(raw_waypoints, str) and raw_waypoints.strip():
+        try:
+            parsed = json.loads(raw_waypoints)
+        except json.JSONDecodeError:
+            parsed = []
+        if isinstance(parsed, list):
+            normalized_points: list[dict[str, Any]] = []
+            for item in parsed:
+                if not isinstance(item, Mapping):
+                    continue
+                name = str(item.get("name") or "").strip()
+                lat = item.get("lat")
+                lng = item.get("lng")
+                if not name or lat in {None, ""} or lng in {None, ""}:
+                    continue
+                try:
+                    normalized_points.append(
+                        {
+                            "name": name,
+                            "lat": float(lat),
+                            "lng": float(lng),
+                            "has_coordinates": True,
+                        }
+                    )
+                except (TypeError, ValueError):
+                    continue
+            if normalized_points:
+                return normalized_points
+
+    return gpx_service.get_gpx_waypoints(filename)
 
 
-def _gpx_demo_title(filename: str) -> str:
-    title = filename.removesuffix(".gpx").replace("_", " ").strip()
-    return title or "GPX 测试路线"
-
-
-def _gpx_demo_days_plan(waypoints: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    midpoint = max(1, len(waypoints) // 2)
-    chunks = [waypoints[:midpoint], waypoints[midpoint:]] if len(waypoints) >= 4 else [waypoints]
+def _gpx_route_days_plan(waypoints: list[dict[str, Any]], route_days: int, average_day_distance: int) -> list[dict[str, Any]]:
+    chunk_size = max(1, len(waypoints) // route_days)
     days_plan: list[dict[str, Any]] = []
 
-    for index, chunk in enumerate(chunks, start=1):
+    for index in range(route_days):
+        start = index * chunk_size
+        end = None if index == route_days - 1 else (index + 1) * chunk_size
+        chunk = waypoints[start:end]
         if not chunk:
             continue
         title = " -> ".join(point["name"] for point in chunk)
         days_plan.append(
             {
-                "day": index,
+                "day": index + 1,
                 "title": title,
                 "ride_time": f"建议骑行 {3 + index}-{4 + index} 小时",
-                "distance": max(80, len(chunk) * 40),
-                "highlights": ["GPX 轨迹点", "高德导航验证", "自动生成测试路书"],
-                "note": "这一段由 GPX 文件自动生成，用于验证路线页现有直接导航按钮的打开效果。",
+                "distance": average_day_distance,
+                "highlights": ["明确途经点", "高德坐标导航", "自动入库路线"],
+                "note": "该日计划按合格路线的途经点顺序拆分，用于和路线页及高德导航保持一致。",
             }
         )
 
@@ -1541,6 +1566,10 @@ def _build_gpx_lookup() -> dict[str, dict[str, Any]]:
         if str(file_info.get("name") or "").strip()
     }
     videos_by_filename: dict[str, dict[str, Any]] = {}
+    for route_record in gpx_service.get_processed_route_records(limit=500):
+        filename = _gpx_basename(route_record.get("gpx_path") or route_record.get("path") or route_record.get("name"))
+        if filename and filename not in videos_by_filename:
+            videos_by_filename[filename] = route_record
     for video in gpx_service.get_processed_videos(limit=500):
         filename = _gpx_basename(video.get("gpx_path") or video.get("path") or video.get("name"))
         if filename and filename not in videos_by_filename:
