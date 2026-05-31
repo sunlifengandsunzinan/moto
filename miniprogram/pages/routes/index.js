@@ -8,15 +8,6 @@ const DURATION_FILTERS = [
   { key: "3-plus-days", label: "3天以上" },
 ];
 
-function pickTestRoutes(routeList) {
-  const candidates = Array.isArray(routeList) ? routeList : [];
-  const preferred = candidates.find((route) => route.slug === "jiangzhehu-2-day");
-  if (preferred) {
-    return [preferred];
-  }
-  return candidates.length > 0 ? [candidates[0]] : [];
-}
-
 function matchesDuration(days, filterKey) {
   if (filterKey === "1-day") {
     return days <= 1;
@@ -37,6 +28,13 @@ Page({
   data: {
     loading: true,
     error: "",
+    page: { title: "热门摩旅路线", description: "" },
+    featuredSummary: { title: "", description: "" },
+    emptyState: {
+      title: "暂无路线",
+      description: "当前还没有匹配路线。",
+      action: { label: "去采集导航点", href: "/moto/routes/collect" },
+    },
     allRoutes: [],
     routes: [],
     selectedDuration: "1-2-days",
@@ -59,18 +57,24 @@ Page({
 
     request({ path: "/moto/routes" })
       .then((payload) => {
-        const allRoutes = pickTestRoutes(payload.routes || []);
+        const allRoutes = Array.isArray(payload.routes) ? payload.routes : [];
         this.setData({
           loading: false,
+          page: payload.page || this.data.page,
+          featuredSummary: payload.featured_summary || this.data.featuredSummary,
+          emptyState: payload.empty_state || this.data.emptyState,
           allRoutes,
         });
         this.applyDurationFilter(this.data.selectedDuration, allRoutes);
       })
       .catch((_error) => {
-        const allRoutes = pickTestRoutes(routesPageFallback.routes || []);
+        const allRoutes = Array.isArray(routesPageFallback.routes) ? routesPageFallback.routes : [];
         this.setData({
           loading: false,
           error: "",
+          page: routesPageFallback.page || this.data.page,
+          featuredSummary: routesPageFallback.featured_summary || this.data.featuredSummary,
+          emptyState: routesPageFallback.empty_state || this.data.emptyState,
           allRoutes,
         });
         this.applyDurationFilter(this.data.selectedDuration, allRoutes);
@@ -99,6 +103,17 @@ Page({
     this.applyDurationFilter(filterKey);
   },
 
+  openInWebView(rawHref) {
+    if (!rawHref) {
+      return;
+    }
+
+    const href = /^https?:\/\//.test(rawHref) ? rawHref : buildWebUrl(rawHref);
+    wx.navigateTo({
+      url: `/pages/webview/index?url=${encodeURIComponent(href)}`,
+    });
+  },
+
   handleOpenRoute(event) {
     const slug = event.currentTarget.dataset.slug;
     if (slug) {
@@ -108,16 +123,26 @@ Page({
       return;
     }
 
-    const href = event.currentTarget.dataset.href;
-    wx.navigateTo({
-      url: `/pages/webview/index?url=${encodeURIComponent(buildWebUrl(href))}`,
-    });
+    this.openInWebView(event.currentTarget.dataset.href);
   },
 
   handleDirectNavigate(event) {
-    const href = event.currentTarget.dataset.href;
-    wx.navigateTo({
-      url: `/pages/webview/index?url=${encodeURIComponent(href)}`,
-    });
+    this.openInWebView(event.currentTarget.dataset.href);
+  },
+
+  handleOpenCollect(event) {
+    this.openInWebView(event.currentTarget.dataset.href);
+  },
+
+  handleOpenReplan(event) {
+    this.openInWebView(event.currentTarget.dataset.href);
+  },
+
+  handleOpenPlanner() {
+    this.openInWebView("/moto/planner");
+  },
+
+  handleEmptyAction(event) {
+    this.openInWebView(event.currentTarget.dataset.href);
   },
 });

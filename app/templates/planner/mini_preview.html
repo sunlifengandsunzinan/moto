@@ -44,6 +44,8 @@
       };
       let activeTab = 'routes';
       let activeDuration = '1-2-days';
+      let activeView = 'tab';
+      let activeRouteSlug = '';
 
       const durationFilters = [
         { key: '1-day', label: '1天' },
@@ -76,6 +78,70 @@
         if (filterKey === '2-3-days') return days > 2 && days <= 3;
         if (filterKey === '3-plus-days') return days > 3;
         return true;
+      }
+
+      function routeDetailEndpoint(slug) {
+        return `/api/moto/routes/${encodeURIComponent(slug)}`;
+      }
+
+      function routeScreenshotUrl(amapExport = {}) {
+        return amapExport.screenshot_url || amapExport.screenshot_href || '';
+      }
+
+      function renderRouteDetail(payload) {
+        const route = payload.route || {};
+        const dailyPlan = payload.detail_sections?.daily_plan || [];
+        const screenshotUrl = routeScreenshotUrl(route.amap_export || {});
+        return `
+          <section class="miniapp-card miniapp-card--hero miniapp-route-detail-hero">
+            <div class="miniapp-actions miniapp-actions--compact">
+              <button class="miniapp-button miniapp-button--ghost" type="button" data-preview-back-to-routes>返回路线</button>
+            </div>
+            <div class="miniapp-inline-meta">
+              <span>路线详情</span>
+              <strong>${escapeHtml(payload.page?.title || route.title || '')}</strong>
+            </div>
+          </section>
+          <section class="miniapp-card miniapp-route-detail-shot">
+            <div class="miniapp-section-header">
+              <div>
+                <p class="miniapp-section-header__eyebrow">路线截图</p>
+                <h2>高德路线截图</h2>
+              </div>
+            </div>
+            ${screenshotUrl ? `
+              <img class="miniapp-route-detail-shot__image" src="${escapeHtml(screenshotUrl)}" alt="${escapeHtml(route.title || '路线')} 高德路线截图">
+              <p class="miniapp-card__subtle miniapp-route-detail-inline">途径点路线截图，可用于高德路线预览。</p>
+            ` : `
+              <p class="miniapp-card__desc">当前没有可展示的路线截图。</p>
+            `}
+          </section>
+          <section class="miniapp-card miniapp-route-detail-schedule">
+            <div class="miniapp-section-header">
+              <div>
+                <p class="miniapp-section-header__eyebrow">示例日程</p>
+                <h2>${escapeHtml(route.days || dailyPlan.length || '')} 天路书拆分</h2>
+              </div>
+              <span class="miniapp-route-detail-meta">沿途节奏</span>
+            </div>
+            <div class="miniapp-route-stage-list">
+              ${dailyPlan.map((day) => `
+                <article class="miniapp-route-stage-item miniapp-route-stage-item--detail">
+                  <span class="miniapp-route-stage-day">Day ${escapeHtml(day.day)}</span>
+                  <div class="miniapp-route-stage-track">
+                    <span class="miniapp-route-stage-marker"></span>
+                    <div class="miniapp-route-day-card">
+                      <p class="miniapp-route-stage-title">${escapeHtml(day.title)}</p>
+                      <p class="miniapp-card__subtle">${escapeHtml(day.ride_time || '')}${day.ride_time && day.distance ? ' · ' : ''}${escapeHtml(day.distance || '')}</p>
+                      ${(day.highlights || []).length ? `<p class="miniapp-card__subtle">${escapeHtml((day.highlights || []).join(' · '))}</p>` : ''}
+                      <p class="miniapp-card__desc">${escapeHtml(day.note || '')}</p>
+                    </div>
+                  </div>
+                </article>
+              `).join('') || '<p class="miniapp-card__desc">当前没有可展示的示例日程。</p>'}
+            </div>
+          </section>
+        `;
       }
 
       function renderRoutes(payload) {
@@ -163,7 +229,7 @@
                 </section>
                 <div class="miniapp-actions">
                   <a class="miniapp-button miniapp-button--ghost" href="${escapeHtml(route.collect_href)}" target="_blank" rel="noreferrer">补采坐标</a>
-                  <a class="miniapp-button miniapp-button--ghost" href="${escapeHtml(route.href)}" target="_blank" rel="noreferrer">详情</a>
+                  <button class="miniapp-button miniapp-button--ghost" type="button" data-preview-route="${escapeHtml(route.slug)}">详情</button>
                   <a class="miniapp-button miniapp-button--secondary" href="${escapeHtml(route.replan_href)}" target="_blank" rel="noreferrer">继续规划</a>
                 </div>
               </article>
@@ -253,8 +319,31 @@
         });
       }
 
+      function bindRouteInteractions() {
+        content.querySelectorAll('[data-route-duration]').forEach((button) => {
+          button.addEventListener('click', () => {
+            activeDuration = button.dataset.routeDuration || '1-2-days';
+            loadTab('routes');
+          });
+        });
+        content.querySelectorAll('[data-preview-route]').forEach((button) => {
+          button.addEventListener('click', () => {
+            loadRouteDetail(button.dataset.previewRoute || '');
+          });
+        });
+        content.querySelectorAll('[data-preview-back-to-routes]').forEach((button) => {
+          button.addEventListener('click', () => {
+            activeView = 'tab';
+            activeRouteSlug = '';
+            loadTab('routes');
+          });
+        });
+      }
+
       async function loadTab(tab, extraQuery = {}) {
         activeTab = tab;
+        activeView = 'tab';
+        activeRouteSlug = '';
         setActiveButtons();
         status.textContent = '加载中';
         content.innerHTML = '<section class="miniapp-card"><p class="miniapp-card__desc">正在拉取数据...</p></section>';
@@ -272,17 +361,34 @@
           status.textContent = tab === 'routes' ? '路线' : '我的';
           if (tab === 'routes') content.innerHTML = renderRoutes(payload);
           if (tab === 'me') content.innerHTML = renderMe(payload);
-          if (tab === 'routes') {
-            content.querySelectorAll('[data-route-duration]').forEach((button) => {
-              button.addEventListener('click', () => {
-                activeDuration = button.dataset.routeDuration || '1-2-days';
-                loadTab('routes');
-              });
-            });
-          }
+          if (tab === 'routes') bindRouteInteractions();
         } catch (error) {
           status.textContent = '异常';
           content.innerHTML = `<section class="miniapp-card"><p class="miniapp-card__desc">${escapeHtml(error.message || '预览加载失败')}</p></section>`;
+        }
+      }
+
+      async function loadRouteDetail(slug) {
+        if (!slug) return;
+        activeTab = 'routes';
+        activeView = 'detail';
+        activeRouteSlug = slug;
+        setActiveButtons();
+        status.textContent = '加载中';
+        content.innerHTML = '<section class="miniapp-card"><p class="miniapp-card__desc">正在拉取路线详情...</p></section>';
+
+        try {
+          const response = await fetch(routeDetailEndpoint(slug));
+          const payload = await response.json();
+          if (!response.ok) {
+            throw new Error(payload.message || '路线详情加载失败');
+          }
+          status.textContent = '路线详情';
+          content.innerHTML = renderRouteDetail(payload);
+          bindRouteInteractions();
+        } catch (error) {
+          status.textContent = '异常';
+          content.innerHTML = `<section class="miniapp-card"><p class="miniapp-card__desc">${escapeHtml(error.message || '路线详情加载失败')}</p></section>`;
         }
       }
 
