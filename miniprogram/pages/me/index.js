@@ -1,4 +1,5 @@
 const { request, buildWebUrl } = require("../../utils/request");
+const { mePageFallback } = require("../../mock/me");
 
 Page({
   data: {
@@ -34,7 +35,20 @@ Page({
         });
       })
       .catch((error) => {
-        this.setData({ loading: false, error: error.message || "加载失败" });
+        this.setData({
+          loading: false,
+          error: "",
+          page: mePageFallback.page,
+          profile: mePageFallback.profile,
+          metrics: mePageFallback.metrics || [],
+          sections: mePageFallback.sections || [],
+          quickActions: mePageFallback.quick_actions || [],
+        });
+        wx.showToast({
+          title: "已切换本地演示数据",
+          icon: "none",
+          duration: 1800,
+        });
       })
       .finally(() => {
         if (stopRefresh) {

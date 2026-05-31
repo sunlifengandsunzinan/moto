@@ -1,4 +1,5 @@
 const { request, buildWebUrl } = require("../../utils/request");
+const { routesPageFallback } = require("../../mock/routes");
 
 const DURATION_FILTERS = [
   { key: "1-day", label: "1天" },
@@ -57,9 +58,17 @@ Page({
         this.applyDurationFilter(this.data.selectedDuration, allRoutes);
       })
       .catch((error) => {
+        const allRoutes = routesPageFallback.routes || [];
         this.setData({
           loading: false,
-          error: error.message || "加载失败",
+          error: "",
+          allRoutes,
+        });
+        this.applyDurationFilter(this.data.selectedDuration, allRoutes);
+        wx.showToast({
+          title: "已切换本地演示数据",
+          icon: "none",
+          duration: 1800,
         });
       })
       .finally(() => {
