@@ -972,7 +972,6 @@ def main():
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
     if args.url or args.keyword or args.batch:
-        from scripts.gpx_generator import batch_process
         if args.batch:
             with open(args.batch,"r",encoding="utf-8") as f: kws=[l.strip() for l in f if l.strip()]
         elif args.url:
