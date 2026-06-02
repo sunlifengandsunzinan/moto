@@ -15,6 +15,7 @@ function normalizePayload(payload) {
         filename: "",
         download_href: "",
         download_label: "GPX 文件下载",
+        source_badge: "",
         source_title: "",
         meta_text: "",
         facts: [],

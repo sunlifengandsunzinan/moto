@@ -25,13 +25,20 @@
       {% if feedback and feedback.message %}
         <div class="planner-status-strip collector-monitor-feedback collector-monitor-feedback--{{ feedback.kind }}">{{ feedback.message }}</div>
       {% endif %}
+      <div class="planner-actions">
+        {% for option in monitor.collector_options %}
+          <a href="/moto/collector/monitor?collector={{ option.key }}" class="{{ 'button-primary' if option.is_active else 'button-secondary' }}">{{ option.label }}</a>
+        {% endfor %}
+      </div>
       <div class="planner-actions collector-monitor-controls">
         <form action="/moto/collector/monitor/start" method="post" class="planner-inline-form collector-monitor-start-form">
-          <p class="planner-footnote collector-monitor-start-form__hint">点击启动后会持续采集，直到你手动点“停止采集”。</p>
-          <button class="button-primary" type="submit" {% if not monitor.process.can_start %}disabled{% endif %}>启动采集</button>
+          <input type="hidden" name="collector" value="{{ monitor.collector_key }}">
+          <p class="planner-footnote collector-monitor-start-form__hint">{{ monitor.start_hint }}</p>
+          <button class="button-primary" type="submit" {% if not monitor.process.can_start %}disabled{% endif %}>{{ monitor.start_button_label }}</button>
         </form>
         <form action="/moto/collector/monitor/stop" method="post">
-          <button class="button-secondary" type="submit" {% if not monitor.process.can_stop %}disabled{% endif %}>停止采集</button>
+          <input type="hidden" name="collector" value="{{ monitor.collector_key }}">
+          <button class="button-secondary" type="submit" {% if not monitor.process.can_stop %}disabled{% endif %}>{{ monitor.stop_button_label }}</button>
         </form>
       </div>
       <div class="metrics-grid">

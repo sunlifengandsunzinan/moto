@@ -1644,6 +1644,7 @@ def _route_gpx_payload(
             "filename": "",
             "download_href": "",
             "download_label": "GPX 文件下载",
+            "source_badge": "",
             "source_title": "",
             "source_author": "",
             "processed_at": "",
@@ -1665,6 +1666,7 @@ def _route_gpx_payload(
     file_size = _format_gpx_file_size(file_info.get("size"))
     extracted_spots_count = int(video_info.get("spots_count") or 0)
     track_point_count = len(navigation_waypoints)
+    source_badge = _route_gpx_source_badge(video_info, extracted_spots_count=extracted_spots_count)
 
     meta_parts = []
     if track_point_count:
@@ -1675,6 +1677,8 @@ def _route_gpx_payload(
         meta_parts.append(source_author)
 
     facts = [{"label": "文件名", "value": filename}]
+    if source_badge:
+        facts.append({"label": "来源类型", "value": source_badge})
     if file_size:
         facts.append({"label": "文件大小", "value": file_size})
     if updated_at:
@@ -1691,6 +1695,7 @@ def _route_gpx_payload(
         "filename": filename,
         "download_href": f"/api/moto/gpx/download/{quote(filename)}",
         "download_label": "GPX 文件下载",
+        "source_badge": source_badge,
         "source_title": source_title,
         "source_author": source_author,
         "processed_at": processed_at,
@@ -1701,6 +1706,22 @@ def _route_gpx_payload(
         "meta_text": " · ".join(meta_parts),
         "facts": facts,
     }
+
+
+def _route_gpx_source_badge(video_info: Mapping[str, Any], *, extracted_spots_count: int) -> str:
+    source_channel = str(video_info.get("source_channel") or "").strip().lower()
+    qualification_status = str(video_info.get("qualification_status") or "").strip().lower()
+    author = str(video_info.get("author") or "").strip()
+
+    if source_channel in {"local-free-video-route-analysis", "douyin-gpx-generator"}:
+        return "视频提取"
+    if "openclaw" in source_channel:
+        return "GPX 导入"
+    if qualification_status == "qualified" and (extracted_spots_count > 0 or author):
+        return "视频提取"
+    if video_info:
+        return "GPX 导入"
+    return ""
 
 
 def _display_route_source_author(value: Any) -> str:

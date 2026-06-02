@@ -6,7 +6,7 @@
           wx:for="{{durationFilters}}"
           wx:key="key"
           class="chip route-filter-tab {{item.is_active ? 'chip-active route-filter-tab--active' : ''}}"
-          data-filter-key="{{item.key}}"
+          data-filter-value="{{item.value}}"
           bindtap="handleDurationFilter"
         >{{item.label}}</text>
       </view>
@@ -48,7 +48,10 @@
         <text class="route-meta-line__item">{{route.waypoint_count}} 个途径点</text>
       </view>
       <view wx:if="{{route.gpx.is_available}}" class="route-gpx-brief">
-        <text class="route-gpx-brief__badge">GPX</text>
+        <view class="route-gpx-brief__badges">
+          <text class="route-gpx-brief__badge">GPX</text>
+          <text wx:if="{{route.gpx.source_badge}}" class="route-gpx-brief__source-badge">{{route.gpx.source_badge}}</text>
+        </view>
         <view class="route-gpx-brief__copy">
           <text class="route-gpx-brief__title">{{route.gpx.source_title}}</text>
           <view wx:if="{{route.gpx.meta_text}}"><text class="subtle">{{route.gpx.meta_text}}</text></view>

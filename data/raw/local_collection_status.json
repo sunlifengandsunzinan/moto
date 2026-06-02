@@ -1,20 +1,30 @@
 {
-  "state": "stopped",
-  "run_mode": "manual",
+  "state": "success",
+  "run_mode": "once",
   "current_stage": "idle",
-  "pipeline_status": "idle",
-  "pipeline_summary": "adapted openclaw export -> normalized raw candidates",
-  "cycle_count": 1,
+  "pipeline_status": "skipped",
+  "pipeline_summary": "collected xiaohongshu route notes -> filtered qualified route candidates",
+  "cycle_count": 2,
   "current_task": "当前无采集任务",
   "current_task_index": 18,
-  "tasks_total": 240,
-  "items_collected": 0,
-  "last_heartbeat": "2026-05-28T03:04:43.046902+00:00",
-  "last_success_at": "2026-05-28T02:43:51.887642+00:00",
+  "tasks_total": 2,
+  "items_collected": 1,
+  "last_heartbeat": "2026-06-02T01:05:46.343292+00:00",
+  "last_success_at": "2026-06-02T01:05:46.343301+00:00",
   "last_pipeline_at": "2026-05-28T02:43:51.882723+00:00",
   "next_run_at": "",
-  "last_duration_seconds": 1.2,
+  "last_duration_seconds": 180.21,
   "events": [
+    {
+      "at": "2026-06-02T01:05:46.360846+00:00",
+      "level": "info",
+      "message": "小红书路线采集完成：匹配 2 条，合格路线 1 条，拒绝 1 条。"
+    },
+    {
+      "at": "2026-06-02T01:04:37.353786+00:00",
+      "level": "info",
+      "message": "小红书路线采集完成：匹配 2 条，合格路线 1 条，拒绝 1 条。"
+    },
     {
       "at": "2026-05-28T03:04:46.088989+00:00",
       "level": "info",
@@ -91,33 +101,62 @@
       "message": "等待 300 秒后开始下一轮采集。"
     }
   ],
-  "health": "warning",
+  "health": "ok",
   "pid": null,
-  "collector_name": "liaoning-local-social-collector",
+  "collector_name": "xiaohongshu-route-collector",
   "started_at": "2026-05-28T03:04:42.963437+00:00",
   "source_paths": [
     "/Users/Lifeng.Sun/workspace/Personal/data/raw/openclaw_export.example.json"
   ],
-  "output_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/openclaw_export.json",
-  "raw_candidates_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/local_collector_candidates.json",
-  "tasks_completed": 18,
+  "output_path": "/private/tmp/xhs-manifest.XXXXXX.json",
+  "raw_candidates_path": "/private/tmp/xhs-candidates.XXXXXX.json",
+  "tasks_completed": 2,
   "pipeline_enabled": true,
   "last_error": "",
   "pending_candidates_processed": 0,
   "pending_candidates_added": 0,
   "pending_candidates_updated": 0,
-  "pending_candidates_total": 3,
+  "pending_candidates_total": 0,
   "cycle_entry": {
-    "cycle": 1,
-    "finished_at": "2026-05-28T02:43:51.887653+00:00",
+    "cycle": 2,
+    "finished_at": "2026-06-02T01:05:46.343314+00:00",
     "state": "success",
-    "items_collected": 0,
-    "tasks_completed": 240,
-    "tasks_total": 240,
-    "duration_seconds": 1.2,
-    "pipeline_status": "success"
+    "items_collected": 1,
+    "tasks_completed": 2,
+    "tasks_total": 2,
+    "duration_seconds": 180.21,
+    "pending_candidates_processed": 0,
+    "pending_candidates_added": 0,
+    "pending_candidates_updated": 0,
+    "pending_candidates_total": 0
   },
   "recent_cycles": [
+    {
+      "cycle": 2,
+      "finished_at": "2026-06-02T01:05:46.343314+00:00",
+      "state": "success",
+      "items_collected": 1,
+      "tasks_completed": 2,
+      "tasks_total": 2,
+      "duration_seconds": 180.21,
+      "pending_candidates_processed": 0,
+      "pending_candidates_added": 0,
+      "pending_candidates_updated": 0,
+      "pending_candidates_total": 0
+    },
+    {
+      "cycle": 2,
+      "finished_at": "2026-06-02T01:04:37.351540+00:00",
+      "state": "success",
+      "items_collected": 1,
+      "tasks_completed": 2,
+      "tasks_total": 2,
+      "duration_seconds": 0.12,
+      "pending_candidates_processed": 0,
+      "pending_candidates_added": 0,
+      "pending_candidates_updated": 0,
+      "pending_candidates_total": 0
+    },
     {
       "cycle": 1,
       "finished_at": "2026-05-28T02:43:51.887653+00:00",
@@ -128,5 +167,7 @@
       "duration_seconds": 1.2,
       "pipeline_status": "success"
     }
-  ]
+  ],
+  "script_command": ".venv/bin/python scripts/collect_xiaohongshu_routes.py",
+  "log_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/xiaohongshu_route_collection.log"
 }

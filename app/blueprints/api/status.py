@@ -1,4 +1,4 @@
-from flask import current_app, jsonify
+from flask import current_app, jsonify, request
 
 from ...services import get_collection_monitor_api_payload, get_runtime_info
 from . import api_bp
@@ -12,4 +12,4 @@ def status():
 
 @api_bp.get("/collector-monitor")
 def collector_monitor():
-    return jsonify(get_collection_monitor_api_payload())
+    return jsonify(get_collection_monitor_api_payload(request.args.get("collector", "local-social")))

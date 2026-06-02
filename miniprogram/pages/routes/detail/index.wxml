@@ -41,7 +41,10 @@
           <text class="eyebrow">GPX 同步</text>
           <text class="route-detail-section-title">提取轨迹</text>
         </view>
-        <text class="inline-badge">GPX</text>
+        <view class="route-detail-gpx-badges">
+          <text class="inline-badge">GPX</text>
+          <text wx:if="{{route.gpx.source_badge}}" class="route-detail-source-badge">{{route.gpx.source_badge}}</text>
+        </view>
       </view>
 
       <view class="route-detail-gpx-copy">

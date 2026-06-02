@@ -174,6 +174,13 @@
   background: rgba(247, 239, 228, 0.72);
 }
 
+.route-gpx-brief__badges {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  align-items: flex-start;
+}
+
 .route-gpx-brief__badge {
   display: inline-flex;
   align-items: center;
@@ -184,6 +191,20 @@
   background: #4F4A46;
   color: #FBF7F0;
   font-size: 22rpx;
+  box-sizing: border-box;
+}
+
+.route-gpx-brief__source-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(209, 170, 130, 0.22);
+  color: #7A5C3C;
+  font-size: 20rpx;
+  font-weight: 600;
   box-sizing: border-box;
 }
 

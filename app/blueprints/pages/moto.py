@@ -31,6 +31,7 @@ from ...services import (
     review_candidate_spot,
     gpx_service,
 )
+from ...services.collector_monitor import COLLECTOR_PROFILES
 
 
 moto_bp = Blueprint("moto", __name__)
@@ -45,7 +46,8 @@ def moto_home() -> str:
 
 @moto_bp.get("/moto/collector/monitor")
 def moto_collector_monitor() -> str:
-    context = get_collection_monitor_context()
+    collector = request.args.get("collector", "local-social")
+    context = get_collection_monitor_context(collector)
     context["feedback"] = {
         "message": request.args.get("monitor_message", ""),
         "kind": request.args.get("monitor_kind", "info"),
@@ -55,24 +57,28 @@ def moto_collector_monitor() -> str:
 
 @moto_bp.get("/moto/collector/monitor.json")
 def moto_collector_monitor_json():
-    return jsonify(get_collection_monitor_context())
+    return jsonify(get_collection_monitor_context(request.args.get("collector", "local-social")))
 
 
 @moto_bp.post("/moto/collector/monitor/start")
 def moto_collector_monitor_start():
+    collector = request.form.get("collector", "local-social")
     try:
-        result = start_local_collector()
+        result = start_local_collector(collector)
+        collector_label = COLLECTOR_PROFILES.get(collector, COLLECTOR_PROFILES["local-social"])["label"]
         return redirect(
             url_for(
                 "moto.moto_collector_monitor",
+                collector=collector,
                 monitor_kind="info",
-                monitor_message=f"已启动本地采集进程，PID={result['pid']}，将持续采集直到手动停止。",
+                monitor_message=f"已启动{collector_label}进程，PID={result['pid']}。",
             )
         )
     except Exception as error:
         return redirect(
             url_for(
                 "moto.moto_collector_monitor",
+                collector=collector,
                 monitor_kind="error",
                 monitor_message=str(error),
             )
@@ -81,19 +87,23 @@ def moto_collector_monitor_start():
 
 @moto_bp.post("/moto/collector/monitor/stop")
 def moto_collector_monitor_stop():
+    collector = request.form.get("collector", "local-social")
     try:
-        result = stop_local_collector()
+        result = stop_local_collector(collector)
+        collector_label = COLLECTOR_PROFILES.get(collector, COLLECTOR_PROFILES["local-social"])["label"]
         return redirect(
             url_for(
                 "moto.moto_collector_monitor",
+                collector=collector,
                 monitor_kind="info",
-                monitor_message=f"已停止本地采集进程，PID={result['pid']}。",
+                monitor_message=f"已停止{collector_label}进程，PID={result['pid']}。",
             )
         )
     except Exception as error:
         return redirect(
             url_for(
                 "moto.moto_collector_monitor",
+                collector=collector,
                 monitor_kind="error",
                 monitor_message=str(error),
             )

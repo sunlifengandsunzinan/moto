@@ -87,6 +87,27 @@
   gap: 20rpx;
 }
 
+.route-detail-gpx-badges {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.route-detail-source-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  background: rgba(209, 170, 130, 0.22);
+  color: #7A5C3C;
+  font-size: 22rpx;
+  font-weight: 600;
+  box-sizing: border-box;
+}
+
 .route-detail-gpx-copy {
   display: flex;
   flex-direction: column;

@@ -8,39 +8,73 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-COLLECTOR_STATUS_PATH = PROJECT_ROOT / "data" / "raw" / "local_collection_status.json"
-COLLECTOR_OUTPUT_PATH = PROJECT_ROOT / "data" / "raw" / "openclaw_export.json"
-COLLECTOR_SCRIPT_PATH = PROJECT_ROOT / "scripts" / "run_local_social_collection.py"
-COLLECTOR_LOG_PATH = PROJECT_ROOT / "data" / "raw" / "local_collection.log"
-COLLECTOR_PID_PATH = PROJECT_ROOT / "data" / "raw" / "local_collection.pid"
+COLLECTOR_PROFILES: dict[str, dict[str, Any]] = {
+    "local-social": {
+        "key": "local-social",
+        "label": "本地采集",
+        "title": "本地采集监控",
+        "description": "查看本地采集脚本是否正在运行、最近一次是否成功，以及当前输出数据是否正常刷新。",
+        "status_path": PROJECT_ROOT / "data" / "raw" / "local_collection_status.json",
+        "output_path": PROJECT_ROOT / "data" / "raw" / "openclaw_export.json",
+        "script_path": PROJECT_ROOT / "scripts" / "run_local_social_collection.py",
+        "log_path": PROJECT_ROOT / "data" / "raw" / "local_collection.log",
+        "pid_path": PROJECT_ROOT / "data" / "raw" / "local_collection.pid",
+        "start_args": ["--continuous"],
+        "start_button_label": "启动采集",
+        "stop_button_label": "停止采集",
+        "start_hint": "点击启动后会持续采集，直到你手动点“停止采集”。",
+    },
+    "xiaohongshu-route": {
+        "key": "xiaohongshu-route",
+        "label": "小红书路线",
+        "title": "小红书路线采集监控",
+        "description": "查看小红书摩旅路线采集脚本是否正在运行、最近一次是否成功，以及当前路线清单是否正常刷新。",
+        "status_path": PROJECT_ROOT / "data" / "raw" / "xiaohongshu_route_status.json",
+        "output_path": PROJECT_ROOT / "data" / "raw" / "xiaohongshu_route_manifest.json",
+        "script_path": PROJECT_ROOT / "scripts" / "collect_xiaohongshu_routes.py",
+        "log_path": PROJECT_ROOT / "data" / "raw" / "xiaohongshu_route_collection.log",
+        "pid_path": PROJECT_ROOT / "data" / "raw" / "xiaohongshu_route_collection.pid",
+        "start_args": [],
+        "start_button_label": "启动路线采集",
+        "stop_button_label": "停止路线采集",
+        "start_hint": "点击启动后会执行一轮小红书路线采集；如需再次运行，可以重新点击启动。",
+    },
+}
 
 
-def get_collection_monitor_context() -> dict[str, Any]:
-    status = _read_status_payload()
-    output_payload = _read_output_payload()
-    process_info = get_collection_process_info(status)
+def get_collection_monitor_context(collector_key: str = "local-social") -> dict[str, Any]:
+    profile = _resolve_profile(collector_key)
+    status = _read_status_payload(profile)
+    output_payload = _read_output_payload(profile)
+    process_info = get_collection_process_info(status, collector_key)
     health = _build_health(status)
     task_index = int(status.get("current_task_index") or status.get("tasks_completed") or 0)
     task_total = int(status.get("tasks_total") or 0)
     return {
         "page": {
-            "title": "本地采集监控",
-            "description": "查看本地采集脚本是否正在运行、最近一次是否成功，以及当前输出数据是否正常刷新。",
+            "title": str(profile["title"]),
+            "description": str(profile["description"]),
         },
         "monitor": {
+            "collector_key": str(profile["key"]),
+            "collector_label": str(profile["label"]),
+            "collector_options": [
+                {"key": item["key"], "label": item["label"], "is_active": item["key"] == profile["key"]}
+                for item in COLLECTOR_PROFILES.values()
+            ],
             "health": health,
             "state_label": _state_label(status.get("state")),
             "run_mode_label": _run_mode_label(status.get("run_mode")),
             "current_stage_label": _stage_label(status.get("current_stage")),
             "pipeline_status_label": _pipeline_status_label(status.get("pipeline_status")),
-            "script_command": str(status.get("script_command") or f".venv/bin/python {COLLECTOR_SCRIPT_PATH.relative_to(PROJECT_ROOT)}"),
-            "status_file": _display_dynamic_path(status.get("status_path"), COLLECTOR_STATUS_PATH),
-            "output_file": _display_dynamic_path(status.get("output_path"), COLLECTOR_OUTPUT_PATH),
-            "log_file": _display_dynamic_path(status.get("log_path"), COLLECTOR_LOG_PATH),
+            "script_command": str(status.get("script_command") or _default_script_command(profile)),
+            "status_file": _display_dynamic_path(status.get("status_path"), Path(profile["status_path"])),
+            "output_file": _display_dynamic_path(status.get("output_path"), Path(profile["output_path"])),
+            "log_file": _display_dynamic_path(status.get("log_path"), Path(profile["log_path"])),
             "last_heartbeat": _display_time(status.get("last_heartbeat")),
             "last_success_at": _display_time(status.get("last_success_at")),
             "last_error_at": _display_time(status.get("last_error_at")),
@@ -48,6 +82,9 @@ def get_collection_monitor_context() -> dict[str, Any]:
             "last_error": str(status.get("last_error") or "无"),
             "current_task": str(status.get("current_task") or "当前无采集任务"),
             "pipeline_summary": str(status.get("pipeline_summary") or "未记录"),
+            "start_button_label": str(profile["start_button_label"]),
+            "stop_button_label": str(profile["stop_button_label"]),
+            "start_hint": str(profile["start_hint"]),
             "pending_queue_delta": {
                 "processed": str(status.get("pending_candidates_processed", 0)),
                 "added": str(status.get("pending_candidates_added", 0)),
@@ -85,32 +122,38 @@ def get_collection_monitor_context() -> dict[str, Any]:
                 {"label": "运行计划", "value": f"计划每 {status.get('expected_run_interval_minutes', '未记录')} 分钟运行一次，每轮最多下载 {status.get('download_limit', '未记录')} 个视频"},
                 {"label": "去重结果", "value": f"本轮重复 {status.get('duplicate_candidates_in_run', 0)} · 历史已下载 {status.get('skipped_already_downloaded', 0)} · 下载上限跳过 {status.get('skipped_download_limit', 0)}"},
                 {"label": "待审批增量", "value": f"新增 {status.get('pending_candidates_added', 0)} · 更新 {status.get('pending_candidates_updated', 0)} · 队列总量 {status.get('pending_candidates_total', 0)}"},
-                {"label": "日志文件", "value": _display_dynamic_path(status.get('log_path'), COLLECTOR_LOG_PATH)},
-                {"label": "输出文件", "value": _display_dynamic_path(status.get('output_path'), COLLECTOR_OUTPUT_PATH)},
-                {"label": "状态文件", "value": _display_dynamic_path(status.get('status_path'), COLLECTOR_STATUS_PATH)},
+                {"label": "日志文件", "value": _display_dynamic_path(status.get('log_path'), Path(profile['log_path']))},
+                {"label": "输出文件", "value": _display_dynamic_path(status.get('output_path'), Path(profile['output_path']))},
+                {"label": "状态文件", "value": _display_dynamic_path(status.get('status_path'), Path(profile['status_path']))},
             ],
         },
     }
 
 
-def get_collection_monitor_api_payload() -> dict[str, Any]:
-    context = get_collection_monitor_context()
+def get_collection_monitor_api_payload(collector_key: str = "local-social") -> dict[str, Any]:
+    context = get_collection_monitor_context(collector_key)
     return {
         "page": context["page"],
         "monitor": context["monitor"],
     }
 
 
-def start_local_collector() -> dict[str, Any]:
-    process_info = get_collection_process_info()
+def start_local_collector(collector_key: str = "local-social") -> dict[str, Any]:
+    profile = _resolve_profile(collector_key)
+    process_info = get_collection_process_info(collector_key=collector_key)
     if process_info["is_running"]:
-        raise RuntimeError("本地采集脚本已经在运行。")
+        raise RuntimeError(f"{profile['label']}脚本已经在运行。")
 
     python_executable = PROJECT_ROOT / ".venv" / "bin" / "python"
-    command = [str(python_executable if python_executable.exists() else Path(sys.executable)), str(COLLECTOR_SCRIPT_PATH), "--continuous"]
+    command = [
+        str(python_executable if python_executable.exists() else Path(sys.executable)),
+        str(profile["script_path"]),
+        *[str(arg) for arg in profile.get("start_args", [])],
+    ]
 
-    COLLECTOR_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with COLLECTOR_LOG_PATH.open("a", encoding="utf-8") as log_file:
+    log_path = Path(profile["log_path"])
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as log_file:
         process = subprocess.Popen(  # noqa: S603
             command,
             cwd=PROJECT_ROOT,
@@ -119,25 +162,27 @@ def start_local_collector() -> dict[str, Any]:
             start_new_session=True,
         )
 
-    COLLECTOR_PID_PATH.write_text(str(process.pid), encoding="utf-8")
+    Path(profile["pid_path"]).write_text(str(process.pid), encoding="utf-8")
     _update_status_file(
+        profile,
         state="running",
         health="running",
         run_mode="manual",
         current_stage="collecting",
         pid=process.pid,
         last_heartbeat=datetime.now(timezone.utc).isoformat(),
-        current_task="正在启动本地采集进程",
+        current_task=f"正在启动{profile['label']}进程",
         next_run_at="",
-        event_message=f"已启动本地采集进程，PID={process.pid}，将持续采集直到手动停止。",
+        event_message=f"已启动{profile['label']}进程，PID={process.pid}。",
     )
     return {"pid": process.pid}
 
 
-def stop_local_collector() -> dict[str, Any]:
-    process_info = get_collection_process_info()
+def stop_local_collector(collector_key: str = "local-social") -> dict[str, Any]:
+    profile = _resolve_profile(collector_key)
+    process_info = get_collection_process_info(collector_key=collector_key)
     if not process_info["pid"]:
-        raise RuntimeError("没有找到本地采集进程。")
+        raise RuntimeError(f"没有找到{profile['label']}进程。")
 
     pid = int(process_info["pid"])
     if process_info["is_running"]:
@@ -148,51 +193,57 @@ def stop_local_collector() -> dict[str, Any]:
                 break
             time.sleep(0.1)
 
-    if COLLECTOR_PID_PATH.exists():
-        COLLECTOR_PID_PATH.unlink()
+    pid_path = Path(profile["pid_path"])
+    if pid_path.exists():
+        pid_path.unlink()
 
     _update_status_file(
+        profile,
         state="stopped",
         health="warning",
         current_stage="idle",
         pid=None,
         current_task="当前无采集任务",
         next_run_at="",
-        event_message=f"已停止本地采集进程，PID={pid}。",
+        event_message=f"已停止{profile['label']}进程，PID={pid}。",
     )
     return {"pid": pid}
 
 
-def get_collection_process_info(status: dict[str, Any] | None = None) -> dict[str, Any]:
-    payload = status if isinstance(status, dict) else _read_status_payload()
-    pid = _read_pid(payload)
+def get_collection_process_info(status: dict[str, Any] | None = None, collector_key: str = "local-social") -> dict[str, Any]:
+    profile = _resolve_profile(collector_key)
+    payload = status if isinstance(status, dict) else _read_status_payload(profile)
+    pid = _read_pid(payload, profile)
     is_running = _is_pid_alive(pid) if pid else False
-    if pid and not is_running and COLLECTOR_PID_PATH.exists():
-        COLLECTOR_PID_PATH.unlink()
+    pid_path = Path(profile["pid_path"])
+    if pid and not is_running and pid_path.exists():
+        pid_path.unlink()
     return {
         "pid": pid,
         "is_running": is_running,
         "can_start": not is_running,
         "can_stop": is_running,
-        "log_file": _display_path(COLLECTOR_LOG_PATH),
+        "log_file": _display_path(Path(profile["log_path"])),
     }
 
 
-def _read_status_payload() -> dict[str, Any]:
-    if not COLLECTOR_STATUS_PATH.exists():
+def _read_status_payload(profile: Mapping[str, Any]) -> dict[str, Any]:
+    status_path = Path(profile["status_path"])
+    if not status_path.exists():
         return {}
     try:
-        payload = json.loads(COLLECTOR_STATUS_PATH.read_text(encoding="utf-8"))
+        payload = json.loads(status_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return {"state": "error", "last_error": "状态文件损坏，无法解析。"}
     return payload if isinstance(payload, dict) else {}
 
 
-def _read_output_payload() -> dict[str, Any]:
-    if not COLLECTOR_OUTPUT_PATH.exists():
+def _read_output_payload(profile: Mapping[str, Any]) -> dict[str, Any]:
+    output_path = Path(profile["output_path"])
+    if not output_path.exists():
         return {"items": []}
     try:
-        payload = json.loads(COLLECTOR_OUTPUT_PATH.read_text(encoding="utf-8"))
+        payload = json.loads(output_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return {"items": []}
     return payload if isinstance(payload, dict) else {"items": []}
@@ -413,10 +464,11 @@ def _recent_cycle_sum(cycles: list[Any], key: str) -> int:
     return total
 
 
-def _read_pid(status: dict[str, Any]) -> int | None:
+def _read_pid(status: dict[str, Any], profile: Mapping[str, Any]) -> int | None:
     candidates = []
-    if COLLECTOR_PID_PATH.exists():
-        candidates.append(COLLECTOR_PID_PATH.read_text(encoding="utf-8"))
+    pid_path = Path(profile["pid_path"])
+    if pid_path.exists():
+        candidates.append(pid_path.read_text(encoding="utf-8"))
     candidates.append(status.get("pid"))
     for value in candidates:
         try:
@@ -438,10 +490,10 @@ def _is_pid_alive(pid: int | None) -> bool:
     return True
 
 
-def _update_status_file(**changes: Any) -> None:
-    payload = _read_status_payload()
+def _update_status_file(profile: Mapping[str, Any], **changes: Any) -> None:
+    payload = _read_status_payload(profile)
     payload.update(changes)
-    payload.setdefault("collector_name", "liaoning-local-social-collector")
+    payload.setdefault("collector_name", Path(profile["script_path"]).stem)
     payload.setdefault("events", [])
     if "event_message" in changes:
         payload["events"] = [
@@ -454,5 +506,17 @@ def _update_status_file(**changes: Any) -> None:
         ][:20]
         payload.pop("event_message", None)
         payload.pop("event_level", None)
-    COLLECTOR_STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    COLLECTOR_STATUS_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    status_path = Path(profile["status_path"])
+    status_path.parent.mkdir(parents=True, exist_ok=True)
+    status_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _resolve_profile(collector_key: str) -> dict[str, Any]:
+    return COLLECTOR_PROFILES.get(str(collector_key or "").strip(), COLLECTOR_PROFILES["local-social"])
+
+
+def _default_script_command(profile: Mapping[str, Any]) -> str:
+    script_path = Path(profile["script_path"]).relative_to(PROJECT_ROOT)
+    extra_args = " ".join(str(arg) for arg in profile.get("start_args", []))
+    command = f".venv/bin/python {script_path}"
+    return f"{command} {extra_args}".strip()

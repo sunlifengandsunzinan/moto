@@ -3,44 +3,60 @@ const { downloadRemoteFile } = require("../../utils/file-download");
 const { mergeRoutesWithFavorites, toggleFavoriteRoute } = require("../../utils/favorites");
 const { routesPageFallback } = require("../../mock/routes");
 
-const EMPTY_ROUTES_STATE = {
-  page: {
-    title: "热门摩旅路线",
-    description: "当前小程序展示数据已清空。",
-  },
-  featured_summary: {
-    title: "路线列表",
-    description: "当前没有展示中的路线数据。",
-  },
-  empty_state: {
-    title: "路线已清空",
-    description: "当前小程序没有展示任何路线、GPX 或收藏数据。",
-    action: { label: "当前为空", href: "" },
-  },
-  routes: [],
-};
+const EMPTY_ROUTES_STATE = routesPageFallback;
 
-const DURATION_FILTERS = [
-  { key: "1-day", label: "1天" },
-  { key: "1-2-days", label: "1-2天" },
-  { key: "2-3-days", label: "2-3天" },
-  { key: "3-plus-days", label: "3天以上" },
-];
+function buildDurationFilters(filters, selectedDays) {
+  const quickFilters = filters && Array.isArray(filters.day_quick_filters) ? filters.day_quick_filters : [];
+  if (!quickFilters.length) {
+    return [{ key: "", label: "全部", value: "", is_active: true }];
+  }
 
-function matchesDuration(days, filterKey) {
-  if (filterKey === "1-day") {
-    return days <= 1;
-  }
-  if (filterKey === "1-2-days") {
-    return days > 1 && days <= 2;
-  }
-  if (filterKey === "2-3-days") {
-    return days > 2 && days <= 3;
-  }
-  if (filterKey === "3-plus-days") {
-    return days > 3;
-  }
-  return true;
+  return quickFilters.map((item) => ({
+    key: String(item.value || "all"),
+    label: item.label || "全部",
+    value: item.value || "",
+    is_active: String(item.value || "") === String(selectedDays || ""),
+  }));
+}
+
+function normalizeRoute(route) {
+  const safeRoute = route || {};
+  return {
+    gpx: {
+      is_available: false,
+      filename: "",
+      download_href: "",
+      source_badge: "",
+      source_title: "",
+      meta_text: "",
+      ...((safeRoute && safeRoute.gpx) || {}),
+    },
+    amap_export: {
+      is_available: false,
+      href: "",
+      ...((safeRoute && safeRoute.amap_export) || {}),
+    },
+    days_plan: Array.isArray(safeRoute.days_plan) ? safeRoute.days_plan : [],
+    ...safeRoute,
+  };
+}
+
+function normalizePayload(payload) {
+  const safePayload = payload || EMPTY_ROUTES_STATE;
+  const selectedDays = safePayload.filters && safePayload.filters.selected_days ? safePayload.filters.selected_days : "";
+  const routes = mergeRoutesWithFavorites(
+    (Array.isArray(safePayload.routes) ? safePayload.routes : []).map(normalizeRoute),
+  );
+
+  return {
+    page: safePayload.page || EMPTY_ROUTES_STATE.page,
+    featuredSummary: safePayload.featured_summary || EMPTY_ROUTES_STATE.featured_summary,
+    emptyState: safePayload.empty_state || EMPTY_ROUTES_STATE.empty_state,
+    allRoutes: routes,
+    routes,
+    selectedDuration: selectedDays,
+    durationFilters: buildDurationFilters(safePayload.filters, selectedDays),
+  };
 }
 
 Page({
@@ -56,11 +72,8 @@ Page({
     },
     allRoutes: [],
     routes: [],
-    selectedDuration: "1-2-days",
-    durationFilters: DURATION_FILTERS.map((item) => ({
-      ...item,
-      is_active: item.key === "1-2-days",
-    })),
+    selectedDuration: "",
+    durationFilters: [{ key: "", label: "全部", value: "", is_active: true }],
   },
 
   onLoad() {
@@ -70,49 +83,48 @@ Page({
   onShow() {
     if (this.data.allRoutes.length) {
       const allRoutes = mergeRoutesWithFavorites(this.data.allRoutes);
-      this.setData({ allRoutes });
-      this.applyDurationFilter(this.data.selectedDuration, allRoutes);
+      this.setData({ allRoutes, routes: allRoutes });
     }
   },
 
   onPullDownRefresh() {
-    this.fetchData(true);
+    this.fetchData(this.buildQuery(), true);
   },
 
-  fetchData(stopRefresh = false) {
+  buildQuery(overrides = {}) {
+    return {
+      days: overrides.days !== undefined ? overrides.days : this.data.selectedDuration,
+    };
+  },
+
+  fetchData(query = {}, stopRefresh = false) {
     this.setData({ loading: true, error: "" });
 
-    const payload = EMPTY_ROUTES_STATE;
-    const allRoutes = mergeRoutesWithFavorites(Array.isArray(payload.routes) ? payload.routes : []);
-    this.setData({
-      loading: false,
-      page: payload.page || this.data.page,
-      featuredSummary: payload.featured_summary || this.data.featuredSummary,
-      emptyState: payload.empty_state || this.data.emptyState,
-      allRoutes,
-    });
-    this.applyDurationFilter(this.data.selectedDuration, allRoutes);
-
-    if (stopRefresh) {
-      wx.stopPullDownRefresh();
-    }
-  },
-
-  applyDurationFilter(filterKey, routeList = this.data.allRoutes) {
-    const routes = (routeList || []).filter((route) => matchesDuration(Number(route.days || 0), filterKey));
-    this.setData({
-      selectedDuration: filterKey,
-      routes,
-      durationFilters: DURATION_FILTERS.map((item) => ({
-        ...item,
-        is_active: item.key === filterKey,
-      })),
-    });
+    request({ path: "/moto/routes", data: query })
+      .then((payload) => {
+        this.setData({
+          loading: false,
+          error: "",
+          ...normalizePayload(payload),
+        });
+      })
+      .catch((error) => {
+        this.setData({
+          loading: false,
+          error: error?.message || "加载路线失败，已切换本地演示数据。",
+          ...normalizePayload(EMPTY_ROUTES_STATE),
+        });
+      })
+      .finally(() => {
+        if (stopRefresh) {
+          wx.stopPullDownRefresh();
+        }
+      });
   },
 
   handleDurationFilter(event) {
-    const filterKey = event.currentTarget.dataset.filterKey || "1-2-days";
-    this.applyDurationFilter(filterKey);
+    const days = event.currentTarget.dataset.filterValue || "";
+    this.fetchData(this.buildQuery({ days }));
   },
 
   openInWebView(rawHref) {

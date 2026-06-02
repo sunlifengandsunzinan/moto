@@ -19,7 +19,7 @@
 import argparse, json, logging, os, re, sqlite3, sys, time, urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("gpx_gen")
@@ -41,6 +41,12 @@ DB_PATH = GPX_DIR / "processed_videos.db"
 SPOTS_USER_PATH = GPX_DIR / "user_spots.json"
 OPENCLAW_ROUTE_WAYPOINTS_PATH = PROJECT_ROOT / "data" / "raw" / "openclaw_route_waypoints.json"
 ROUTE_TEMPLATES_PATH = PROJECT_ROOT / "app" / "services" / "route_templates.json"
+ROUTE_DAY_PATTERN = re.compile(r"(?:(\d+)\s*天\s*\d+\s*晚|(\d+)\s*[天日](?:行程|路线|攻略|自驾|摩旅)?)", re.IGNORECASE)
+ROUTE_DISTANCE_PATTERN = re.compile(r"(\d{2,5}(?:\.\d+)?)\s*(?:km|KM|公里)", re.IGNORECASE)
+ROUTE_DAY_INDEX_PATTERN = re.compile(r"(?:^|\b)(?:day|Day|DAY|d|D)\s*(\d{1,2})(?:\s*[-~到至]\s*(\d{1,2}))?")
+ROUTE_CONNECTOR_PATTERN = re.compile(r"(?:->|→|➡|—|－|-|至|到|经|途经|出发|前往|抵达|路线|线路|行程|沿着|穿越|全程|攻略)")
+ROUTE_HINT_PATTERN = re.compile(r"(?:路线|线路|行程|路书|攻略|自驾|摩旅|骑行|穿越|环线|国道|省道|day\d+)", re.IGNORECASE)
+NON_ROUTE_TOPIC_PATTERN = re.compile(r"(?:装备|清单|物品|注意事项|避坑|保姆级攻略|怎么带|带什么|高反|油耗|费用|预算|住宿|机油|轮胎|头盔|护具)")
 
 # ====================================================================
 # 全国摩旅坐标字典（内置基础点位 + 路线模板 + 已审批点位）
@@ -163,6 +169,253 @@ def _load_spots():
             pass
     return spots
 
+
+def parse_json_object(value: str) -> dict[str, Any]:
+    text = str(value or "").strip()
+    if not text:
+        return {}
+    if text.startswith("```"):
+        match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, flags=re.DOTALL)
+        if match:
+            text = match.group(1)
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        match = re.search(r"(\{.*\})", text, flags=re.DOTALL)
+        if not match:
+            return {}
+        try:
+            parsed = json.loads(match.group(1))
+        except json.JSONDecodeError:
+            return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _normalize_string_list(value: Any) -> list[str]:
+    if isinstance(value, list):
+        items = value
+    elif value in {None, ""}:
+        items = []
+    else:
+        items = re.split(r"[\n,，;；|/]+", str(value))
+    normalized: list[str] = []
+    for item in items:
+        text = str(item or "").strip()
+        if text and text not in normalized:
+            normalized.append(text)
+    return normalized
+
+
+def _normalize_route_days(value: Any) -> int | None:
+    try:
+        number = int(float(value))
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
+def _normalize_distance_km(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return round(number, 1) if number > 0 else None
+
+
+def _route_slug_for_video(video_id: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "-", f"douyin-route-{video_id}".lower()).strip("-")
+    return normalized or f"douyin-route-{video_id}"
+
+
+def _normalize_route_text(value: str) -> str:
+    return (
+        str(value or "")
+        .replace("｜", "|")
+        .replace("—", "-")
+        .replace("－", "-")
+        .replace("→", "->")
+        .replace("➡", "->")
+        .replace("•", " ")
+        .replace("●", " ")
+        .replace("、", " ")
+    )
+
+
+def _split_route_text_units(info: dict[str, Any], all_text: str) -> list[str]:
+    raw_parts = [str(info.get("title") or "").strip(), all_text]
+    units: list[str] = []
+    for raw_part in raw_parts:
+        normalized = _normalize_route_text(raw_part)
+        for piece in re.split(r"[\n\r]+|[。！？!?；;]+", normalized):
+            text = piece.strip(" -|\t")
+            if text:
+                units.append(text)
+    return units
+
+
+def _ordered_places_in_text(text: str, place_candidates: list[str]) -> list[str]:
+    if not text:
+        return []
+    found: list[tuple[int, int, str]] = []
+    for name in place_candidates:
+        match = re.search(re.escape(name), text) if name else None
+        if match:
+            found.append((match.start(), -len(name), name))
+    ordered: list[str] = []
+    for _, _, name in sorted(found):
+        if name not in ordered:
+            ordered.append(name)
+    return ordered
+
+
+def _derive_route_days_from_text(text: str) -> int | None:
+    explicit_days: list[int] = []
+    for match in ROUTE_DAY_PATTERN.finditer(text):
+        for group in match.groups():
+            if group:
+                explicit_days.append(int(group))
+    if explicit_days:
+        return max(explicit_days)
+    indexed_days: list[int] = []
+    for match in ROUTE_DAY_INDEX_PATTERN.finditer(text):
+        start = int(match.group(1))
+        end = int(match.group(2) or start)
+        indexed_days.append(max(start, end))
+    return max(indexed_days) if indexed_days else None
+
+
+def _derive_distance_from_text(text: str) -> float | None:
+    distances = [float(match.group(1)) for match in ROUTE_DISTANCE_PATTERN.finditer(text)]
+    return max(distances) if distances else None
+
+
+def _collect_route_evidence_lines(units: list[str], place_candidates: list[str]) -> tuple[list[str], list[str]]:
+    route_lines: list[str] = []
+    ordered_places: list[str] = []
+    for unit in units:
+        places = _ordered_places_in_text(unit, place_candidates)
+        has_connector = bool(ROUTE_CONNECTOR_PATTERN.search(unit) or ROUTE_DAY_INDEX_PATTERN.search(unit))
+        if len(places) >= 2 and (has_connector or ROUTE_HINT_PATTERN.search(unit) or not route_lines):
+            route_lines.append(unit)
+            for name in places:
+                if name not in ordered_places:
+                    ordered_places.append(name)
+    return route_lines, ordered_places
+
+
+def analyze_video_route_content(info: dict[str, Any], all_text: str, place_candidates: list[str]) -> dict[str, Any]:
+    combined_text = "\n".join(filter(None, [str(info.get("title") or "").strip(), all_text]))
+    normalized_candidates = _normalize_string_list(place_candidates)
+    for name in extract_place_names(combined_text):
+        if name not in normalized_candidates:
+            normalized_candidates.append(name)
+
+    units = _split_route_text_units(info, all_text)
+    route_lines, ordered_places = _collect_route_evidence_lines(units, normalized_candidates)
+    route_days = _derive_route_days_from_text(combined_text)
+    distance_km = _derive_distance_from_text(combined_text)
+
+    if not ordered_places:
+        title_places = _ordered_places_in_text(str(info.get("title") or ""), normalized_candidates)
+        text_places = _ordered_places_in_text(combined_text, normalized_candidates)
+        merged_places = title_places + [name for name in text_places if name not in title_places]
+        if len(merged_places) >= 2 and not NON_ROUTE_TOPIC_PATTERN.search(combined_text):
+            ordered_places = merged_places
+
+    route_content = "\n".join(route_lines[:8]).strip()
+    if not route_content and len(ordered_places) >= 2:
+        route_content = " -> ".join(ordered_places[:12])
+    if len(ordered_places) >= 2 and route_content and len(route_content) < 12:
+        route_content = f"推荐路线：{' -> '.join(ordered_places[:12])}"
+
+    if not route_content:
+        if NON_ROUTE_TOPIC_PATTERN.search(combined_text):
+            reason = "视频内容更偏装备/注意事项，没有明确路线正文"
+        else:
+            reason = "未从视频正文中提取到明确路线内容"
+    elif len(ordered_places) < 2:
+        reason = "提取到的路线内容里明确地理位置不足 2 个"
+    else:
+        reason = ""
+
+    route_summary = ""
+    if len(ordered_places) >= 2:
+        route_summary = f"{ordered_places[0]} -> {ordered_places[-1]}"
+        if len(ordered_places) > 2:
+            route_summary = " -> ".join(ordered_places[:4])
+
+    return {
+        "route_title": str(info.get("title") or "").strip(),
+        "route_summary": route_summary,
+        "route_content": route_content,
+        "route_days": route_days,
+        "distance_km": distance_km,
+        "locations": ordered_places,
+        "waypoints": [{"name": name, "role": "waypoint"} for name in ordered_places],
+        "qualification_reason": reason,
+    }
+
+
+def _candidate_route_names(route_analysis: dict[str, Any], all_text: str) -> list[str]:
+    candidates: list[str] = []
+    for waypoint in route_analysis.get("waypoints") or []:
+        if isinstance(waypoint, dict):
+            name = str(waypoint.get("name") or "").strip()
+        else:
+            name = str(waypoint or "").strip()
+        if name and name not in candidates:
+            candidates.append(name)
+    for name in _normalize_string_list(route_analysis.get("locations")):
+        if name not in candidates:
+            candidates.append(name)
+    for name in extract_place_names(all_text):
+        if name not in candidates:
+            candidates.append(name)
+    return candidates
+
+
+def _build_route_spots(route_names: list[str]) -> list[dict[str, Any]]:
+    spots: list[dict[str, Any]] = []
+    seen_coordinates: set[tuple[float, float]] = set()
+    for name in route_names:
+        coords = find_coords(name)
+        if not coords:
+            continue
+        key = (round(float(coords["lat"]), 4), round(float(coords["lng"]), 4))
+        if key in seen_coordinates:
+            continue
+        seen_coordinates.add(key)
+        spots.append({
+            "name": name,
+            "lat": float(coords["lat"]),
+            "lng": float(coords["lng"]),
+            "note": coords.get("source") or "本地规则提取",
+        })
+    return spots
+
+
+def _amap_point_value(point: dict[str, Any]) -> str:
+    return f"{point['lng']},{point['lat']},{point['name']}"
+
+
+def _build_amap_export_href(spots: list[dict[str, Any]]) -> str:
+    if len(spots) < 2:
+        return ""
+    start = spots[0]
+    destination = spots[-1]
+    via_points = spots[1:-1]
+    params = [
+        "jm=1",
+        "sort=tfc",
+        f"saddr={urllib.parse.quote(_amap_point_value(start))}",
+        f"daddr={urllib.parse.quote(_amap_point_value(destination))}",
+    ]
+    if via_points:
+        via_value = "|".join(_amap_point_value(point) for point in via_points)
+        params.append(f"maddr={urllib.parse.quote(via_value)}")
+    params.extend(["src=mypage", "callnative=0", "innersrc=uriapi"])
+    return f"https://m.amap.com/navigation/carmap/{'&'.join(params)}"
+
 # ====================================================================
 # 数据库
 # ====================================================================
@@ -198,9 +451,36 @@ def _ensure_processed_video_columns(conn):
             conn.execute(f"ALTER TABLE processed_videos ADD COLUMN {column_name} {column_type}")
 
 def is_processed(conn, vid):
-    return conn.execute("SELECT 1 FROM processed_videos WHERE video_id=?", (vid,)).fetchone() is not None
+    row = conn.execute(
+        "SELECT qualification_status, gpx_path FROM processed_videos WHERE video_id=?",
+        (vid,),
+    ).fetchone()
+    if row is None:
+        return False
+    qualification_status = str(row[0] or "").strip().lower()
+    gpx_path = str(row[1] or "").strip()
+    if qualification_status == "rejected" and not gpx_path:
+        return False
+    return True
 
-def mark_processed(conn, vid, title, author, gpx_path, spots):
+def mark_processed(
+    conn,
+    vid,
+    title,
+    author,
+    gpx_path,
+    spots,
+    *,
+    route_slug=None,
+    route_days=None,
+    distance_km=None,
+    amap_href="",
+    navigation_mode="",
+    qualification_status="video",
+    qualification_reason="",
+    source_channel="douyin-gpx-generator",
+    evidence=None,
+):
     conn.execute(
         """
         INSERT OR REPLACE INTO processed_videos (
@@ -219,16 +499,16 @@ def mark_processed(conn, vid, title, author, gpx_path, spots):
             len(spots),
             json.dumps(spots, ensure_ascii=False),
             "video",
-            None,
-            None,
-            None,
-            None,
-            None,
-            "video" if spots else "rejected",
-            "",
-            "douyin-gpx-generator",
+            route_slug,
+            route_days,
+            distance_km,
+            amap_href,
+            navigation_mode,
+            qualification_status,
+            qualification_reason,
+            source_channel,
             json.dumps(spots, ensure_ascii=False),
-            json.dumps([], ensure_ascii=False),
+            json.dumps(evidence or [], ensure_ascii=False),
         ),
     )
     conn.commit()
@@ -250,7 +530,7 @@ def upsert_route_record(conn, route_item, gpx_path, spots):
         (
             record_id,
             route_title,
-            "openclaw-scheduled-task",
+            str(route_item.get("author") or "openclaw-scheduled-task").strip() or "openclaw-scheduled-task",
             datetime.now(timezone.utc).isoformat(),
             gpx_path,
             len(spots),
@@ -442,22 +722,117 @@ def process_video(url, conn=None):
     if is_processed(conn,vid): log.info(f"已处理: {title[:40]}"); return None
     log.info(f"处理: {title[:60]}")
     all_text = "\n".join(filter(None,[info.get("text_content",""),info.get("comments_text","")]))
-    places = extract_place_names(all_text)
-    if not places: log.warning("未提取到地名"); mark_processed(conn,vid,title,author,"",[]); return None
-    spots = []
-    for p in places:
-        c=find_coords(p)
-        if c: spots.append({"name":p,"lat":c["lat"],"lng":c["lng"],"note":c["source"]})
-    if not spots: log.warning("未匹配坐标"); mark_processed(conn,vid,title,author,"",[]); return None
-    seen_pts=set(); unique=[]
-    for s in spots:
-        k=(round(s["lat"],4),round(s["lng"],4))
-        if k not in seen_pts: seen_pts.add(k); unique.append(s)
+    initial_places = extract_place_names(all_text)
+    route_analysis = analyze_video_route_content(info, all_text, initial_places)
+    route_content = str(route_analysis.get("route_content") or "").strip()
+    route_slug = _route_slug_for_video(vid)
+    unique = _build_route_spots(_candidate_route_names(route_analysis, all_text))
+    evidence = [{
+        "source_url": url,
+        "title": title,
+        "author": author,
+        "route_summary": str(route_analysis.get("route_summary") or "").strip(),
+        "route_content": route_content,
+        "locations": route_analysis.get("locations") or [],
+        "waypoints": route_analysis.get("waypoints") or [],
+        "qualification_reason": str(route_analysis.get("qualification_reason") or "").strip(),
+    }]
+    if not route_content:
+        reason = str(route_analysis.get("qualification_reason") or "本地规则未提取到明确路线内容").strip() or "本地规则未提取到明确路线内容"
+        log.warning(reason)
+        mark_processed(
+            conn,
+            vid,
+            title,
+            author,
+            "",
+            unique,
+            route_slug=route_slug,
+            route_days=route_analysis.get("route_days"),
+            distance_km=route_analysis.get("distance_km"),
+            qualification_status="rejected",
+            qualification_reason=reason,
+            source_channel="local-free-video-route-analysis",
+            evidence=evidence,
+        )
+        return None
+    if len(unique) < 2:
+        reason = "本地分析得到的地理位置不足 2 个或无法匹配坐标"
+        log.warning(reason)
+        mark_processed(
+            conn,
+            vid,
+            title,
+            author,
+            "",
+            unique,
+            route_slug=route_slug,
+            route_days=route_analysis.get("route_days"),
+            distance_km=route_analysis.get("distance_km"),
+            qualification_status="rejected",
+            qualification_reason=reason,
+            source_channel="local-free-video-route-analysis",
+            evidence=evidence,
+        )
+        return None
     safe = re.sub(r'[\\/:*?"<>|#@!]','',title)[:80].strip('_ ')
     if not safe or not re.search(r'[\u4e00-\u9fff]',safe): safe=f"douyin_{vid}"
     gpx_path = write_gpx_file(safe, title, url, unique)
     log.info(f"✓ GPX: {gpx_path} ({len(unique)}途经点)")
-    mark_processed(conn,vid,title,author,gpx_path,unique)
+    amap_href = _build_amap_export_href(unique)
+    mark_processed(
+        conn,
+        vid,
+        title,
+        author,
+        gpx_path,
+        unique,
+        route_slug=route_slug,
+        route_days=route_analysis.get("route_days"),
+        distance_km=route_analysis.get("distance_km"),
+        amap_href=amap_href,
+        navigation_mode="coordinates",
+        qualification_status="qualified",
+        qualification_reason="",
+        source_channel="local-free-video-route-analysis",
+        evidence=evidence,
+    )
+    upsert_route_record(
+        conn,
+        {
+            "route_slug": route_slug,
+            "route_title": str(route_analysis.get("route_title") or title).strip() or title,
+            "author": author,
+            "route_days": route_analysis.get("route_days"),
+            "route_distance_km": route_analysis.get("distance_km"),
+            "qualification_status": "qualified",
+            "qualification_reason": "",
+            "source": {
+                "channel": "local-free-video-route-analysis",
+                "reference_url": url,
+                "operator": "local-route-extraction",
+            },
+            "amap_export": {
+                "href": amap_href,
+                "navigation_mode": "coordinates",
+            },
+            "navigation": {
+                "waypoints": [
+                    {
+                        "name": spot["name"],
+                        "lat": spot["lat"],
+                        "lng": spot["lng"],
+                        "has_coordinates": True,
+                        "source": spot.get("note") or "本地规则提取",
+                    }
+                    for spot in unique
+                ]
+            },
+            "evidence_items": evidence,
+        },
+        gpx_path,
+        unique,
+    )
     if close: conn.close()
     return gpx_path
 
@@ -604,7 +979,10 @@ def main():
             url=args.url
             m=re.search(r'modal_id=(\d{19})',url)
             if m: url=f"https://www.douyin.com/video/{m.group(1)}"
-            conn=init_db(); process_video(url,conn); conn.close(); return
+            conn=init_db(); result=process_video(url,conn); conn.close();
+            if not result:
+                raise SystemExit(1)
+            return
         else: kws=[args.keyword]
         batch_process(kws,args.max)
 
