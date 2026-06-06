@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>第6集 | 环华摩旅路线分享 @丁小宝摩旅时况</name>
+    <desc>来源: https://www.douyin.com/video/7618911983114390819</desc>
+    <trkseg>
+      <trkpt lat="39.99" lon="119.75">
+        <name>山海关</name>
+        <desc>山海关 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.1243" lon="124.383">
+        <name>丹东</name>
+        <desc>丹东 (精确)</desc>
+      </trkpt>
+      <trkpt lat="38.914" lon="121.6147">
+        <name>大连</name>
+        <desc>大连 (精确)</desc>
+      </trkpt>
+      <trkpt lat="43.85" lon="126.55">
+        <name>吉林</name>
+        <desc>吉林 (精确)</desc>
+      </trkpt>
+      <trkpt lat="39.0842" lon="117.2009">
+        <name>天津</name>
+        <desc>天津 (精确)</desc>
+      </trkpt>
+      <trkpt lat="31.2304" lon="121.4737">
+        <name>上海</name>
+        <desc>上海 (精确)</desc>
+      </trkpt>
+      <trkpt lat="23.1291" lon="113.2644">
+        <name>广州</name>
+        <desc>广州 (精确)</desc>
+      </trkpt>
+      <trkpt lat="22.271" lon="113.5767">
+        <name>珠海</name>
+        <desc>珠海 (精确)</desc>
+      </trkpt>
+      <trkpt lat="32.0603" lon="118.7969">
+        <name>南京</name>
+        <desc>南京 (精确)</desc>
+      </trkpt>
+      <trkpt lat="28.2282" lon="112.9388">
+        <name>长沙</name>
+        <desc>长沙 (精确)</desc>
+      </trkpt>
+      <trkpt lat="18.2528" lon="109.5121">
+        <name>三亚</name>
+        <desc>三亚 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.26" lon="122.14">
+        <name>山海</name>
+        <desc>山海 (近似→山海广场)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

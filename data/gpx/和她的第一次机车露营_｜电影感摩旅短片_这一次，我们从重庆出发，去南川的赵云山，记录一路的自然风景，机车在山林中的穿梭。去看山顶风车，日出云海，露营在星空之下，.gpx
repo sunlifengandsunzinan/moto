@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>和她的第一次机车露营 ｜电影感摩旅短片 这一次，我们从重庆出发，去南川的赵云山，记录一路的自然风景，机车在山林中的穿梭。去看山顶风车，日出云海，露营在星空之下，试着在大自然中，为大家分享，风和自由的疗愈。相机：Canon EOS R5 Mark II镜头：Canon RF24-105mm F4 L IS USMCanon RF35mm F1.8 MACRO IS STM#摩旅 #机车露营 #复古机车 #摩托古兹#有所事事的暑假</name>
+    <desc>来源: https://www.douyin.com/video/7531689388565089570</desc>
+    <trkseg>
+      <trkpt lat="22.0078" lon="100.7974">
+        <name>西双版纳</name>
+        <desc>西双版纳 (精确)</desc>
+      </trkpt>
+      <trkpt lat="31.8206" lon="117.2272">
+        <name>合肥</name>
+        <desc>合肥 (精确)</desc>
+      </trkpt>
+      <trkpt lat="29.563" lon="106.5516">
+        <name>重庆</name>
+        <desc>重庆 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

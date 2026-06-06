@@ -1,6 +1,0 @@
-# 每行一个抖音视频链接或分享文本。
-# 成功处理后，系统会把该行改写为 [DONE 时间] URL。
-# 已经标记为 DONE 的行，下次运行会自动跳过。
-
-https://www.douyin.com/video/1234567890123456789
-https://v.douyin.com/xxxx/

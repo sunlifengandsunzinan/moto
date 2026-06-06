@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>这个夏天 来甘南吧 一起去看蓝天白云。#摩旅</name>
+    <desc>来源: https://www.douyin.com/video/7345415707150060826</desc>
+    <trkseg>
+      <trkpt lat="22.0078" lon="100.7974">
+        <name>西双版纳</name>
+        <desc>西双版纳 (精确)</desc>
+      </trkpt>
+      <trkpt lat="39.9042" lon="116.4074">
+        <name>北京</name>
+        <desc>北京 (精确)</desc>
+      </trkpt>
+      <trkpt lat="31.2989" lon="120.5853">
+        <name>苏州</name>
+        <desc>苏州 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>别在熬夜做攻略了，指定自己的专属路线规划，其实非常简单#高德地图 #路线规划 #自驾游攻略 #自驾技巧 #床车旅行</name>
+    <desc>来源: https://www.douyin.com/video/7628508234459171185</desc>
+    <trkseg>
+      <trkpt lat="27.8297" lon="99.7008">
+        <name>香格里拉</name>
+        <desc>香格里拉 (精确)</desc>
+      </trkpt>
+      <trkpt lat="39.9042" lon="116.4074">
+        <name>北京</name>
+        <desc>北京 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

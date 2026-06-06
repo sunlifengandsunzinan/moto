@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>有些风景真的拍不出那种震撼的感觉#喀拉峻大草原 #摩旅 #摩旅新疆 #摩旅西藏 #700mt圆梦318</name>
+    <desc>来源: https://www.douyin.com/video/7516013087419551034</desc>
+    <trkseg>
+      <trkpt lat="29.652" lon="91.1721">
+        <name>拉萨</name>
+        <desc>拉萨 (精确)</desc>
+      </trkpt>
+      <trkpt lat="29.6489" lon="94.3615">
+        <name>林芝</name>
+        <desc>林芝 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

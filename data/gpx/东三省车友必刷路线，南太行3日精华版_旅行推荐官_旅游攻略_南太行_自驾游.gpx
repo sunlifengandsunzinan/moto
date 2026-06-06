@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>东三省车友必刷路线，南太行3日精华版 #旅行推荐官 #旅游攻略 #南太行 #自驾游</name>
+    <desc>来源: https://www.douyin.com/video/7525381004207361323</desc>
+    <trkseg>
+      <trkpt lat="43.9" lon="125.32">
+        <name>长春</name>
+        <desc>长春 (精确)</desc>
+      </trkpt>
+      <trkpt lat="43.85" lon="126.55">
+        <name>吉林</name>
+        <desc>吉林 (精确)</desc>
+      </trkpt>
+      <trkpt lat="29.563" lon="106.5516">
+        <name>重庆</name>
+        <desc>重庆 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

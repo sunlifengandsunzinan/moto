@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>331国道双穿越轻越野路线，家用suv即可轻松拿捏#331国道 #自驾游 #领队 #轻越野 #331国道自驾</name>
+    <desc>来源: https://www.douyin.com/video/7639328027906607995</desc>
+    <trkseg>
+      <trkpt lat="40.857" lon="124.861">
+        <name>青山沟</name>
+        <desc>青山沟 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.1243" lon="124.383">
+        <name>丹东</name>
+        <desc>丹东 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.7281" lon="124.7825">
+        <name>宽甸</name>
+        <desc>宽甸 (精确)</desc>
+      </trkpt>
+      <trkpt lat="43.85" lon="126.55">
+        <name>吉林</name>
+        <desc>吉林 (精确)</desc>
+      </trkpt>
+      <trkpt lat="39.9042" lon="116.4074">
+        <name>北京</name>
+        <desc>北京 (精确)</desc>
+      </trkpt>
+      <trkpt lat="39.0842" lon="117.2009">
+        <name>天津</name>
+        <desc>天津 (精确)</desc>
+      </trkpt>
+      <trkpt lat="34.3416" lon="108.9398">
+        <name>西安</name>
+        <desc>西安 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

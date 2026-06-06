@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>锐评国内摩旅路线从夯到拉 #从夯到拉 #摩旅路线 #摩旅#交换世界计划 #超会玩派对</name>
+    <desc>来源: https://www.douyin.com/video/7637646977367623355</desc>
+    <trkseg>
+      <trkpt lat="22.817" lon="108.3669">
+        <name>南宁</name>
+        <desc>南宁 (精确)</desc>
+      </trkpt>
+      <trkpt lat="36.0611" lon="103.8343">
+        <name>兰州</name>
+        <desc>兰州 (精确)</desc>
+      </trkpt>
+      <trkpt lat="30.5728" lon="104.0668">
+        <name>成都</name>
+        <desc>成都 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

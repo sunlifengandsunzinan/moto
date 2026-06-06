@@ -1,4 +1,29 @@
-.venv/
+# Data - sensitive / large
+data/cookies/
+data/douyin_cookies.json
+data/videos/
+data/raw/
+data/processed_videos.db
+*.png
+*.jpg
+*.jpeg
+*.mp4
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Env
 .env
+.env.local

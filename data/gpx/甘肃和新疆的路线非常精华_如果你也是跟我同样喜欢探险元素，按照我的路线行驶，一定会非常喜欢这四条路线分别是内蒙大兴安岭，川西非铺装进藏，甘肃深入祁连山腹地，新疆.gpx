@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>甘肃和新疆的路线非常精华 如果你也是跟我同样喜欢探险元素，按照我的路线行驶，一定会非常喜欢这四条路线分别是内蒙大兴安岭，川西非铺装进藏，甘肃深入祁连山腹地，新疆穿越中天山，其中甘肃和新疆，我强烈推荐，它会刷新你对旅行的认知我会把路线图发布在评论区，有疑问评论私信，或者来到直播间#摩旅路线 #甘肃摩旅 #新疆摩旅 #进藏路线 #大兴安岭</name>
+    <desc>来源: https://www.douyin.com/video/7482089703936691467</desc>
+    <trkseg>
+      <trkpt lat="43.85" lon="126.55">
+        <name>吉林</name>
+        <desc>吉林 (精确)</desc>
+      </trkpt>
+      <trkpt lat="39.0842" lon="117.2009">
+        <name>天津</name>
+        <desc>天津 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>自驾:辽宁版独库公路、沈阳周边一日自驾线路</name>
+    <desc>来源: https://www.douyin.com/video/7555154137593728297</desc>
+    <trkseg>
+      <trkpt lat="41.1078" lon="123.7594">
+        <name>背阴汀铁路断桥</name>
+        <desc>背阴汀铁路断桥 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.1142" lon="123.7536">
+        <name>南芬音乐公路</name>
+        <desc>南芬音乐公路 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.1128" lon="123.7558">
+        <name>英雄纪念广场</name>
+        <desc>英雄纪念广场 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.0922" lon="123.7611">
+        <name>山有溪露营地</name>
+        <desc>山有溪露营地 (精确)</desc>
+      </trkpt>
+      <trkpt lat="43.8256" lon="87.6168">
+        <name>乌鲁木齐</name>
+        <desc>乌鲁木齐 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.12" lon="123.78">
+        <name>南芬区</name>
+        <desc>南芬区 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.09" lon="123.77">
+        <name>南天门</name>
+        <desc>南天门 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.0389" lon="123.6917">
+        <name>下马塘</name>
+        <desc>下马塘 (精确)</desc>
+      </trkpt>
+      <trkpt lat="47.8484" lon="88.1413">
+        <name>阿勒泰</name>
+        <desc>阿勒泰 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.8057" lon="123.4315">
+        <name>沈阳</name>
+        <desc>沈阳 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.2941" lon="123.7652">
+        <name>本溪</name>
+        <desc>本溪 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.84" lon="124.13">
+        <name>社河</name>
+        <desc>社河 (精确)</desc>
+      </trkpt>
+      <trkpt lat="43.9168" lon="81.3242">
+        <name>伊宁</name>
+        <desc>伊宁 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏍️ 辽宁摩旅Agent监控面板</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0f0f23;
+    color: #e0e0ff;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px; padding-bottom: 16px;
+    border-bottom: 1px solid #2a2a5e;
+  }
+  .header h1 { font-size: 24px; }
+  .header h1 span { color: #00d4aa; }
+  .time-badge {
+    background: #1a1a3e; padding: 8px 16px; border-radius: 8px;
+    font-size: 13px; color: #8888aa;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #00d4aa; display: inline-block;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px; margin-bottom: 24px;
+  }
+  .card {
+    background: #1a1a3e; border: 1px solid #2a2a5e;
+    border-radius: 12px; padding: 18px;
+  }
+  .card-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px; font-size: 15px; font-weight: 600;
+  }
+  .card-body { font-size: 13px; line-height: 1.6; }
+  .stat-row {
+    display: flex; justify-content: space-between; padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .stat-row:last-child { border: none; }
+  .stat-label { color: #8888aa; }
+  .stat-value { font-weight: 600; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 10px;
+    font-size: 12px; font-weight: 600;
+  }
+  .badge-ok { background: rgba(0,212,170,0.2); color: #00d4aa; }
+  .badge-warn { background: rgba(255,179,71,0.2); color: #ffb347; }
+  .badge-err { background: rgba(255,71,87,0.2); color: #ff4757; }
+  .progress-bar {
+    width: 100%; height: 6px;
+    background: rgba(255,255,255,0.1); border-radius: 3px;
+    margin: 8px 0; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00d4aa, #00ff88);
+    border-radius: 3px; transition: width 0.5s;
+  }
+  .files-table {
+    width: 100%; font-size: 12px; border-collapse: collapse;
+  }
+  .files-table th {
+    text-align: left; color: #8888aa;
+    padding: 6px 8px; border-bottom: 1px solid #2a2a5e;
+    font-weight: 500;
+  }
+  .files-table td {
+    padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .files-table tr:hover { background: rgba(255,255,255,0.03); }
+  .suggestions {
+    margin-top: 16px; padding: 12px 16px;
+    background: rgba(0,212,170,0.08);
+    border: 1px solid rgba(0,212,170,0.3);
+    border-radius: 8px; font-size: 13px; line-height: 1.6;
+  }
+  .route-table { width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 8px; }
+  .route-table th {
+    text-align: left; color: #8888aa; padding: 4px 6px;
+    border-bottom: 1px solid #2a2a5e; font-weight: 500;
+  }
+  .route-table td { padding: 4px 6px; }
+  .route-table .rank-num {
+    display: inline-block; width: 22px; height: 22px;
+    line-height: 22px; text-align: center;
+    border-radius: 50%; font-size: 11px; font-weight: 700;
+  }
+  .top1 { background: #ffd700; color: #000; }
+  .top2 { background: #c0c0c0; color: #000; }
+  .top3 { background: #cd7f32; color: #fff; }
+  .other { background: rgba(255,255,255,0.1); color: #8888aa; }
+  .scroll { max-height: 300px; overflow-y: auto; }
+  .scroll::-webkit-scrollbar { width: 4px; }
+  .scroll::-webkit-scrollbar-track { background: transparent; }
+  .scroll::-webkit-scrollbar-thumb { background: #2a2a5e; border-radius: 2px; }
+  .status-box {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px;
+  }
+  .status-running { background: rgba(0,212,170,0.2); color: #00d4aa; }
+  .status-done { background: rgba(100,100,255,0.2); color: #8888ff; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🏍️ <span>摩旅Agent</span> 监控面板</h1>
+  <div class="time-badge">
+    <span class="dot"></span>
+    <span id="lastUpdate">加载中...</span>
+  </div>
+</div>
+
+<div class="grid" id="agentCards">
+  <div class="card">
+    <div class="card-header">🤖 Agent 配置状态</div>
+    <div class="card-body" id="agentBody">加载中...</div>
+  </div>
+  <div class="card">
+    <div class="card-header">📊 数据采集进度</div>
+    <div class="card-body" id="dataBody">加载中...</div>
+  </div>
+  <div class="card">
+    <div class="card-header">🔧 服务状态</div>
+    <div class="card-body" id="serviceBody">加载中...</div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header">📁 分析产出文件</div>
+  <div class="card-body scroll" id="filesBody"><table class="files-table"><thead><tr><th>文件名</th><th>大小</th><th>说明</th></tr></thead><tbody id="filesTableBody"><tr><td>加载中...</td></tr></tbody></table></div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header">🥇 TOP 5 精选摩旅路线</div>
+  <div class="card-body scroll" id="topRoutesBody">
+    <table class="route-table">
+      <thead><tr><th>#</th><th>路线</th><th>里程</th><th>评分</th></tr></thead>
+      <tbody id="routeTableBody"><tr><td colspan="4">加载中...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="suggestions" class="suggestions">💡 加载建议中...</div>
+
+<script>
+async function refresh() {
+  try {
+    const resp = await fetch('/api/status?_=' + Date.now());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    render(data);
+  } catch (e) {
+    document.getElementById('lastUpdate').textContent = '⚠️ ' + new Date().toLocaleTimeString('zh-CN') + ' (等待数据)';
+  }
+}
+
+function render(data) {
+  document.getElementById('lastUpdate').textContent = '🟢 ' + (data.timestamp || new Date().toLocaleTimeString('zh-CN'));
+
+  // Agents
+  const agents = data.agents || {};
+  document.getElementById('agentBody').innerHTML = Object.entries(agents).map(([name, info]) =>
+    `<div class="stat-row"><span class="stat-label">${name}</span><span class="stat-value"><span class="badge ${info.exists ? 'badge-ok' : 'badge-err'}">${info.exists ? '✅' : '❌'} ${info.soul_preview ? info.soul_preview.slice(0,30) : ''}</span></span></div>`
+  ).join('');
+
+  // Data
+  const d = data.data || {};
+  const totalTarget = 200;
+  const pct = Math.min(100, Math.round((d.ln_notes || 0) / totalTarget * 100));
+  document.getElementById('dataBody').innerHTML =
+    `<div class="stat-row"><span class="stat-label">📝 总笔记</span><span class="stat-value">${d.total_notes || 0}</span></div>
+    <div class="stat-row"><span class="stat-label">📍 辽宁相关</span><span class="stat-value">${d.ln_notes || 0} / ${totalTarget}</span></div>
+    <div class="stat-row"><span class="stat-label">💬 评论</span><span class="stat-value">${d.total_comments || 0}</span></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div class="stat-row"><span class="stat-label">📦 contents</span><span class="stat-value">${d.contents_size_kb || 0} KB</span></div>
+    <div class="stat-row"><span class="stat-label">📦 comments</span><span class="stat-value">${d.comments_size_kb || 0} KB</span></div>`;
+
+  // Service
+  document.getElementById('serviceBody').innerHTML =
+    `<div class="stat-row"><span class="stat-label">🤖 Ollama (qwen2.5:7b)</span><span class="stat-value"><span class="badge ${data.ollama === 'running' ? 'badge-ok' : 'badge-warn'}">${data.ollama === 'running' ? '运行中' : '空闲'}</span></span></div>
+    <div class="stat-row"><span class="stat-label">🐍 Python进程</span><span class="stat-value"><span class="badge ${data.python_running ? 'badge-ok' : 'badge-warn'}">${data.python_running ? '运行中' : '空闲'}</span></span></div>`;
+
+  // Files
+  const files = data.analysis_files || {};
+  const fileExplanations = {
+    '辽宁摩旅路线_全量分析.json': '160条原始结构化分析',
+    '辽宁摩旅路线_精选排名.json': '33条AI精选+Ollama评分',
+    '辽宁摩旅路线_精华摘要.md': '人类可读Markdown报告',
+    '辽宁摩旅路线_去重评分.json': '去重后中间结果',
+    '辽宁摩旅路线_评分中间结果.json': '评分过程数据',
+    'analysis_agent_output.json': 'Analysis agent单条输出',
+    'liaoning_coords_reference.json': '30个坐标参考库',
+    '辽宁采样分析.json': '5条采样示范',
+    'agent_status.json': '实时监控数据',
+  };
+  const filesBody = document.getElementById('filesTableBody');
+  if (Object.keys(files).length === 0) {
+    filesBody.innerHTML = '<tr><td colspan="3">暂无产出文件</td></tr>';
+  } else {
+    filesBody.innerHTML = Object.entries(files).sort((a, b) => b[1] - a[1])
+      .map(([name, size]) => `<tr><td>${name}</td><td>${size} KB</td><td style="color:#8888aa">${fileExplanations[name] || ''}</td></tr>`).join('');
+  }
+
+  // Top routes
+  const routes = data.top_routes || [];
+  const routeBody = document.getElementById('routeTableBody');
+  if (routes.length === 0) {
+    routeBody.innerHTML = '<tr><td colspan="4" style="color:#8888aa">暂无路线排名数据</td></tr>';
+  } else {
+    routeBody.innerHTML = routes.map((r, i) => {
+      const rankClass = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : 'other';
+      return `<tr><td><span class="rank-num ${rankClass}">${i+1}</span></td><td>${r.title}</td><td>${r.distance} km</td><td><span class="badge badge-ok">${r.score}</span></td></tr>`;
+    }).join('');
+  }
+
+  // Suggestions
+  const sugDiv = document.getElementById('suggestions');
+  if (data.suggestions && data.suggestions.length > 0) {
+    sugDiv.innerHTML = '💡 ' + data.suggestions.join('<br>💡 ');
+  } else {
+    sugDiv.innerHTML = '✅ 一切正常，无需干预';
+  }
+}
+
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>

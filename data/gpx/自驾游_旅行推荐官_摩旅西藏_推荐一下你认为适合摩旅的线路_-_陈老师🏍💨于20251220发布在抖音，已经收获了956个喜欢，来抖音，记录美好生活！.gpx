@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>#自驾游 #旅行推荐官 #摩旅西藏 推荐一下你认为适合摩旅的线路 - 陈老师🏍💨于20251220发布在抖音，已经收获了956个喜欢，来抖音，记录美好生活！</name>
+    <desc>来源: https://www.douyin.com/video/7585936921390959921</desc>
+    <trkseg>
+      <trkpt lat="27.8297" lon="99.7008">
+        <name>香格里拉</name>
+        <desc>香格里拉 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -43,7 +43,7 @@ DEFAULT_TASK_DELAY_MIN_SECONDS = 30
 DEFAULT_TASK_DELAY_MAX_SECONDS = 60
 PLATFORM_SEARCH_DOMAINS = {
     "douyin": "douyin.com",
-    "xiaohongshu": "xiaohongshu.com",
+    "xiaohongshu": "xhslink.com",
 }
 
 TASK_SPEC = {

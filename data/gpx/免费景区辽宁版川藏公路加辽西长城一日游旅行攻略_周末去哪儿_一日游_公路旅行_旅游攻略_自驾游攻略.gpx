@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="douyin-route-gpx"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <trk>
+    <name>免费景区辽宁版川藏公路加辽西长城一日游旅行攻略 #周末去哪儿 #一日游 #公路旅行 #旅游攻略 #自驾游攻略</name>
+    <desc>来源: https://www.douyin.com/video/7645200891360522665</desc>
+    <trkseg>
+      <trkpt lat="41.1078" lon="123.7594">
+        <name>背阴汀铁路断桥</name>
+        <desc>背阴汀铁路断桥 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.1142" lon="123.7536">
+        <name>南芬音乐公路</name>
+        <desc>南芬音乐公路 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.1128" lon="123.7558">
+        <name>英雄纪念广场</name>
+        <desc>英雄纪念广场 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.0922" lon="123.7611">
+        <name>山有溪露营地</name>
+        <desc>山有溪露营地 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.119" lon="124.388">
+        <name>鸭绿江断桥</name>
+        <desc>鸭绿江断桥 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.11" lon="119.71">
+        <name>九门口长城</name>
+        <desc>九门口长城 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.228" lon="124.514">
+        <name>虎山长城</name>
+        <desc>虎山长城 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.12" lon="123.78">
+        <name>南芬区</name>
+        <desc>南芬区 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.09" lon="123.77">
+        <name>南天门</name>
+        <desc>南天门 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.0389" lon="123.6917">
+        <name>下马塘</name>
+        <desc>下马塘 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.425" lon="124.068">
+        <name>凤凰山</name>
+        <desc>凤凰山 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.132" lon="125.734">
+        <name>绿江村</name>
+        <desc>绿江村 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.85" lon="121.08">
+        <name>笔架山</name>
+        <desc>笔架山 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.828" lon="121.9926">
+        <name>红海滩</name>
+        <desc>红海滩 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.711" lon="120.837">
+        <name>葫芦岛</name>
+        <desc>葫芦岛 (精确)</desc>
+      </trkpt>
+      <trkpt lat="45.8038" lon="126.5349">
+        <name>哈尔滨</name>
+        <desc>哈尔滨 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.8057" lon="123.4315">
+        <name>沈阳</name>
+        <desc>沈阳 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.2941" lon="123.7652">
+        <name>本溪</name>
+        <desc>本溪 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.1243" lon="124.383">
+        <name>丹东</name>
+        <desc>丹东 (精确)</desc>
+      </trkpt>
+      <trkpt lat="40.7281" lon="124.7825">
+        <name>宽甸</name>
+        <desc>宽甸 (精确)</desc>
+      </trkpt>
+      <trkpt lat="41.095" lon="121.127">
+        <name>锦州</name>
+        <desc>锦州 (精确)</desc>
+      </trkpt>
+      <trkpt lat="31.49" lon="120.3119">
+        <name>无锡</name>
+        <desc>无锡 (精确)</desc>
+      </trkpt>
+      <trkpt lat="25.0389" lon="102.7183">
+        <name>昆明</name>
+        <desc>昆明 (精确)</desc>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
