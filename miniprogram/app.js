@@ -1,8 +1,8 @@
-const DEFAULT_API_BASE_URL = "http://192.168.0.119:6001/api";
-const DEFAULT_WEB_BASE_URL = "http://192.168.0.119:6001";
+const DEFAULT_API_BASE_URL = "http://127.0.0.1:6001/api";
+const DEFAULT_WEB_BASE_URL = "http://127.0.0.1:6001";
 
 function replaceLocalhostHost(value) {
-  return String(value || "").replace(/\/\/(127\.0\.0\.1|localhost)(?=[:/]|$)/i, "//192.168.0.119");
+  return String(value || "").replace(/\/\/(127\.0\.0\.1|localhost)(?=[:/]|$)/i, "//127.0.0.1");
 }
 
 function normalizeBaseUrl(rawValue) {
@@ -40,22 +40,15 @@ App({
   },
 
   onLaunch() {
-    const savedApiBaseUrl = wx.getStorageSync("apiBaseUrl");
-    const savedWebBaseUrl = wx.getStorageSync("webBaseUrl");
-    const apiBaseUrl = normalizeApiBaseUrl(savedApiBaseUrl || DEFAULT_API_BASE_URL);
-    const webBaseUrl = normalizeWebBaseUrl(savedWebBaseUrl || DEFAULT_WEB_BASE_URL);
+    const apiBaseUrl = normalizeApiBaseUrl(DEFAULT_API_BASE_URL);
+    const webBaseUrl = normalizeWebBaseUrl(DEFAULT_WEB_BASE_URL);
 
     this.globalData.apiBaseUrl = apiBaseUrl;
     this.globalData.webBaseUrl = webBaseUrl;
     this.globalData.wechatUserProfile = null;
 
-    if (savedApiBaseUrl !== apiBaseUrl) {
-      wx.setStorageSync("apiBaseUrl", apiBaseUrl);
-    }
-
-    if (savedWebBaseUrl !== webBaseUrl) {
-      wx.setStorageSync("webBaseUrl", webBaseUrl);
-    }
+    wx.setStorageSync("apiBaseUrl", apiBaseUrl);
+    wx.setStorageSync("webBaseUrl", webBaseUrl);
   },
 
   getWechatUserProfile() {

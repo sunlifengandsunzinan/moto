@@ -31,21 +31,35 @@
       bindtap="handleOpenRoute"
     >
       <view class="route-roadbar">
-        <text class="route-roadbar__label">ROADBOOK</text>
+        <text class="route-roadbar__label">行途</text>
         <view class="route-roadbar__lane"></view>
       </view>
       <view class="list-card-header">
         <view>
           <text class="list-card-title">{{route.title}}</text>
         </view>
-        <view class="route-meta-pill">
-          <text>{{route.distance_km}} km</text>
+        <view class="route-meta-column">
+          <view class="route-meta-pill">
+            <text>{{route.distance_km}} km</text>
+          </view>
+          <view class="route-heat-pill">
+            <text class="route-heat-pill__icon">🔥</text>
+            <text class="route-heat-pill__count">{{route.engagement.total_count}}</text>
+          </view>
         </view>
       </view>
       <view class="route-meta-line">
         <text class="route-meta-line__item">{{route.days}} 天</text>
         <text class="route-meta-line__divider">·</text>
         <text class="route-meta-line__item">{{route.waypoint_count}} 个途径点</text>
+      </view>
+      <view class="route-engagement-line">
+        <text class="route-engagement-line__label">收藏 / 导航</text>
+        <text class="route-engagement-line__value">{{route.engagement.favorite_count}} / {{route.engagement.navigation_count}}</text>
+      </view>
+      <view class="route-source-line">
+        <text class="route-source-line__label">来源 {{route.source_meta.label || '路线模板'}}</text>
+        <text wx:if="{{route.source_meta.author}}" class="route-source-line__author">· {{route.source_meta.author.startsWith('@') ? route.source_meta.author : '@' + route.source_meta.author}}</text>
       </view>
       <view wx:if="{{route.gpx.is_available}}" class="route-gpx-brief">
         <view class="route-gpx-brief__badges">
@@ -75,8 +89,8 @@
         </view>
       </view>
       <view class="route-card-footer">
-        <button class="button-secondary route-direct-button route-favorite-button {{route.is_favorite ? 'route-favorite-button--active' : ''}}" data-slug="{{route.slug}}" catchtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
-        <button wx:if="{{route.amap_export.is_available}}" class="button-secondary route-direct-button" data-href="{{route.amap_export.href}}" catchtap="handleDirectNavigate">直接导航</button>
+        <button class="button-secondary route-direct-button route-favorite-button {{route.is_favorite ? 'route-favorite-button--active' : ''}}" data-slug="{{route.slug}}" data-favorite-url="{{route.favorite_api_href}}" catchtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
+        <button wx:if="{{route.amap_export.is_available}}" class="button-secondary route-direct-button" data-launch-href="{{route.amap_export.launch_href}}" data-href="{{route.amap_export.href}}" data-browser-href="{{route.amap_export.browser_href}}" catchtap="handleDirectNavigate">直接导航</button>
         <button wx:if="{{route.gpx.is_available}}" class="button-secondary route-direct-button route-download-button" data-href="{{route.gpx.download_href}}" data-filename="{{route.gpx.filename}}" catchtap="handleDownloadGpx">GPX 文件下载</button>
       </view>
     </view>

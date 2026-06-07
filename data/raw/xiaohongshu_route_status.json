@@ -1,0 +1,78 @@
+{
+  "collector_name": "xiaohongshu-route-collector",
+  "state": "success",
+  "health": "ok",
+  "run_mode": "once",
+  "current_stage": "idle",
+  "current_task": "当前无采集任务",
+  "pipeline_status": "skipped",
+  "pipeline_summary": "collected xiaohongshu route notes -> filtered qualified route candidates",
+  "script_command": ".venv/bin/python scripts/collect_xiaohongshu_routes.py",
+  "output_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/xiaohongshu_route_manifest.json",
+  "raw_candidates_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/xiaohongshu_route_candidates.json",
+  "log_path": "/Users/Lifeng.Sun/workspace/Personal/data/raw/xiaohongshu_route_collection.log",
+  "cycle_count": 2,
+  "last_heartbeat": "2026-06-02T06:59:38.942741+00:00",
+  "last_success_at": "2026-06-02T06:59:38.942763+00:00",
+  "last_duration_seconds": 56.09,
+  "items_collected": 0,
+  "tasks_completed": 0,
+  "tasks_total": 0,
+  "pending_candidates_processed": 0,
+  "pending_candidates_added": 0,
+  "pending_candidates_updated": 0,
+  "pending_candidates_total": 3,
+  "cycle_entry": {
+    "cycle": 2,
+    "finished_at": "2026-06-02T06:59:38.942790+00:00",
+    "state": "success",
+    "items_collected": 0,
+    "tasks_completed": 0,
+    "tasks_total": 0,
+    "duration_seconds": 56.09,
+    "pending_candidates_processed": 0,
+    "pending_candidates_added": 0,
+    "pending_candidates_updated": 0,
+    "pending_candidates_total": 3
+  },
+  "events": [
+    {
+      "at": "2026-06-02T06:59:38.946096+00:00",
+      "level": "info",
+      "message": "小红书路线采集完成：匹配 0 条，合格路线 0 条，拒绝 0 条。"
+    },
+    {
+      "at": "2026-06-02T06:57:04.358484+00:00",
+      "level": "info",
+      "message": "小红书路线采集完成：匹配 0 条，合格路线 0 条，拒绝 0 条。"
+    }
+  ],
+  "recent_cycles": [
+    {
+      "cycle": 2,
+      "finished_at": "2026-06-02T06:59:38.942790+00:00",
+      "state": "success",
+      "items_collected": 0,
+      "tasks_completed": 0,
+      "tasks_total": 0,
+      "duration_seconds": 56.09,
+      "pending_candidates_processed": 0,
+      "pending_candidates_added": 0,
+      "pending_candidates_updated": 0,
+      "pending_candidates_total": 3
+    },
+    {
+      "cycle": 1,
+      "finished_at": "2026-06-02T06:57:04.358353+00:00",
+      "state": "success",
+      "items_collected": 0,
+      "tasks_completed": 0,
+      "tasks_total": 0,
+      "duration_seconds": 54.95,
+      "pending_candidates_processed": 0,
+      "pending_candidates_added": 0,
+      "pending_candidates_updated": 0,
+      "pending_candidates_total": 3
+    }
+  ]
+}

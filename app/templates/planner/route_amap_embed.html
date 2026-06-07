@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>{{ route_title }} 高德路线图</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #fbf7f0;
+        --card: rgba(255, 251, 245, 0.96);
+        --ink: #4a433e;
+        --muted: #8a7a6b;
+        --line: rgba(91, 83, 77, 0.1);
+        --accent: #d1aa82;
+        --accent-deep: #7a5c3c;
+        --shadow: 0 16px 40px rgba(62, 49, 39, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at top left, rgba(209, 170, 130, 0.22), transparent 38%),
+          linear-gradient(180deg, #fcf8f1 0%, #f5ede2 100%);
+        color: var(--ink);
+        font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      }
+
+      body {
+        padding: 18px;
+      }
+
+      .map-shell {
+        min-height: calc(100vh - 36px);
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 14px;
+      }
+
+      .map-topbar,
+      .map-status {
+        padding: 14px 16px;
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: var(--card);
+        box-shadow: var(--shadow);
+      }
+
+      .map-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: rgba(209, 170, 130, 0.18);
+        color: var(--accent-deep);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      .map-title {
+        margin: 10px 0 0;
+        font-size: 20px;
+        line-height: 1.35;
+      }
+
+      .map-subtle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .map-stage {
+        position: relative;
+        overflow: hidden;
+        border-radius: 28px;
+        border: 1px solid rgba(91, 83, 77, 0.12);
+        background: #efe7dc;
+        box-shadow: var(--shadow);
+      }
+
+      #map-root {
+        width: 100%;
+        height: 100%;
+        min-height: 420px;
+      }
+
+      .map-overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: linear-gradient(180deg, rgba(251, 247, 240, 0.92), rgba(245, 237, 226, 0.96));
+        text-align: center;
+      }
+
+      .map-overlay.is-visible {
+        display: flex;
+      }
+
+      .map-overlay__copy {
+        max-width: 420px;
+      }
+
+      .map-overlay__title {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .map-overlay__text {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .map-status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .map-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .map-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: rgba(79, 74, 70, 0.08);
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .map-badge--accent {
+        background: rgba(209, 170, 130, 0.18);
+        color: var(--accent-deep);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="map-shell">
+      <section class="map-topbar">
+        <span class="map-eyebrow">行途地图</span>
+        <h1 class="map-title">{{ route_title }}</h1>
+        <p class="map-subtle">当前页面会优先使用高德 JS SDK 绘制可导航路线；如果坐标不完整，则回退为点位连线预览。</p>
+      </section>
+
+      <section class="map-stage">
+        <div id="map-root" aria-label="高德路线图"></div>
+        <div id="map-overlay" class="map-overlay">
+          <div class="map-overlay__copy">
+            <h2 id="map-overlay-title" class="map-overlay__title">正在准备路线图</h2>
+            <p id="map-overlay-text" class="map-overlay__text">请稍候。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="map-status">
+        <div class="map-badges">
+          <span class="map-badge map-badge--accent">{{ amap_export.status_badge or '行途地图' }}</span>
+          <span class="map-badge">{{ amap_export.coordinate_waypoint_count }}/{{ amap_export.waypoints|length }} 点带坐标</span>
+          <span class="map-badge">{{ amap_export.navigation_mode or 'none' }}</span>
+        </div>
+        <div class="map-subtle">{{ amap_export.status_text or '当前路线会按可用坐标渲染。' }}</div>
+      </section>
+    </div>
+
+    <script>
+      const amapKey = {{ amap_web_js_api_key|tojson }};
+      const routePayload = {{ amap_export|tojson }};
+
+      const coordinateWaypoints = (routePayload.waypoints || []).filter((point) => (
+        point && point.has_coordinates && Number.isFinite(Number(point.lng)) && Number.isFinite(Number(point.lat))
+      )).map((point) => ({
+        name: point.name || "途径点",
+        lng: Number(point.lng),
+        lat: Number(point.lat),
+      }));
+
+      const mapOverlay = document.getElementById("map-overlay");
+      const mapOverlayTitle = document.getElementById("map-overlay-title");
+      const mapOverlayText = document.getElementById("map-overlay-text");
+
+      function showOverlay(title, text) {
+        mapOverlay.classList.add("is-visible");
+        mapOverlayTitle.textContent = title;
+        mapOverlayText.textContent = text;
+      }
+
+      function hideOverlay() {
+        mapOverlay.classList.remove("is-visible");
+      }
+
+      function loadAmapSdk() {
+        return new Promise((resolve, reject) => {
+          if (window.AMap) {
+            resolve(window.AMap);
+            return;
+          }
+
+          const script = document.createElement("script");
+          script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(amapKey)}&plugin=AMap.Driving,AMap.ToolBar,AMap.Scale`;
+          script.async = true;
+          script.onload = () => resolve(window.AMap);
+          script.onerror = () => reject(new Error("高德 SDK 加载失败"));
+          document.head.appendChild(script);
+        });
+      }
+
+      function createMap(AMap) {
+        const center = coordinateWaypoints[0] || { lng: 116.397428, lat: 39.90923 };
+        const map = new AMap.Map("map-root", {
+          resizeEnable: true,
+          zoom: coordinateWaypoints.length >= 2 ? 8 : 5,
+          center: [center.lng, center.lat],
+          mapStyle: "amap://styles/whitesmoke",
+        });
+
+        map.addControl(new AMap.ToolBar({ position: { right: "12px", bottom: "24px" } }));
+        map.addControl(new AMap.Scale());
+        return map;
+      }
+
+      function drawFallbackLine(AMap, map) {
+        const path = coordinateWaypoints.map((point) => [point.lng, point.lat]);
+
+        coordinateWaypoints.forEach((point, index) => {
+          const marker = new AMap.Marker({
+            position: [point.lng, point.lat],
+            title: point.name,
+            label: {
+              direction: "top",
+              content: `<div style="padding:4px 8px;border-radius:999px;background:rgba(79,74,70,0.88);color:#fbf7f0;font-size:12px;">${index + 1}. ${point.name}</div>`,
+            },
+          });
+          map.add(marker);
+        });
+
+        if (path.length >= 2) {
+          const polyline = new AMap.Polyline({
+            path,
+            strokeColor: "#D17E45",
+            strokeWeight: 6,
+            strokeOpacity: 0.92,
+            strokeStyle: "solid",
+            lineJoin: "round",
+            lineCap: "round",
+          });
+          map.add(polyline);
+          map.setFitView([polyline]);
+        } else if (path.length === 1) {
+          map.setCenter(path[0]);
+          map.setZoom(11);
+        }
+      }
+
+      function drawDrivingRoute(AMap, map) {
+        const start = coordinateWaypoints[0];
+        const end = coordinateWaypoints[coordinateWaypoints.length - 1];
+        const viaPoints = coordinateWaypoints.slice(1, -1).map((point) => new AMap.LngLat(point.lng, point.lat));
+
+        const driving = new AMap.Driving({
+          map,
+          hideMarkers: false,
+          showTraffic: false,
+          autoFitView: true,
+          policy: AMap.DrivingPolicy.LEAST_TIME,
+        });
+
+        driving.search(
+          new AMap.LngLat(start.lng, start.lat),
+          new AMap.LngLat(end.lng, end.lat),
+          { waypoints: viaPoints },
+          (status) => {
+            if (status === "complete") {
+              hideOverlay();
+              return;
+            }
+
+            drawFallbackLine(AMap, map);
+            hideOverlay();
+          }
+        );
+      }
+
+      async function boot() {
+        if (coordinateWaypoints.length < 2) {
+          showOverlay("坐标不足", "当前路线缺少足够的经纬度点位，无法在内嵌地图里计算高德路线。可以继续使用下方的直接导航按钮。 ");
+          return;
+        }
+
+        showOverlay("正在渲染高德路线", "地图已开始加载，马上展示沿途路线。 ");
+
+        try {
+          const AMap = await loadAmapSdk();
+          const map = createMap(AMap);
+
+          if (coordinateWaypoints.length === (routePayload.waypoints || []).length) {
+            drawDrivingRoute(AMap, map);
+            return;
+          }
+
+          drawFallbackLine(AMap, map);
+          hideOverlay();
+        } catch (error) {
+          showOverlay("路线图加载失败", error && error.message ? error.message : "高德 SDK 初始化失败，请稍后重试。 ");
+        }
+      }
+
+      boot();
+    </script>
+  </body>
+</html>

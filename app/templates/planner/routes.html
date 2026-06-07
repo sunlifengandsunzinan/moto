@@ -49,7 +49,13 @@
                 <p class="miniapp-list-card__title"><a href="{{ route.href }}">{{ route.title }}</a></p>
                 <p class="miniapp-card__desc">{{ route.summary }}</p>
               </div>
-              <div class="miniapp-route-meta-pill">{{ route.distance_km }} km</div>
+              <div class="miniapp-route-meta-column">
+                <div class="miniapp-route-meta-pill">{{ route.distance_km }} km</div>
+                <div class="miniapp-route-heat-pill" data-route-heat="{{ route.slug }}">
+                  <span class="miniapp-route-heat-pill__icon">🔥</span>
+                  <strong data-route-heat-count>{{ route.engagement.total_count }}</strong>
+                </div>
+              </div>
             </div>
             <div class="miniapp-route-fact-row">
               <div class="miniapp-route-fact-chip">
@@ -59,6 +65,10 @@
               <div class="miniapp-route-fact-chip">
                 <span>途径点</span>
                 <strong>{{ route.waypoint_count }} 个</strong>
+              </div>
+              <div class="miniapp-route-fact-chip miniapp-route-fact-chip--heat">
+                <span>收藏 / 导航</span>
+                <strong><span data-route-favorite-count="{{ route.slug }}">{{ route.engagement.favorite_count }}</span> / <span data-route-navigation-count="{{ route.slug }}">{{ route.engagement.navigation_count }}</span></strong>
               </div>
             </div>
             <ul class="miniapp-tag-row">
@@ -103,11 +113,12 @@
               </div>
               <div class="miniapp-actions">
                 {% if route.amap_export.is_available %}
-                  <a class="miniapp-button miniapp-button--secondary" href="{{ route.amap_export.href }}" target="_blank" rel="noreferrer">{{ route.amap_export.label }}</a>
+                  <a class="miniapp-button miniapp-button--secondary" href="{{ route.amap_export.launch_href }}" target="_blank" rel="noreferrer">{{ route.amap_export.label }}</a>
                 {% endif %}
               </div>
             </section>
             <div class="miniapp-actions">
+              <button class="miniapp-button miniapp-button--ghost" type="button" data-favorite-route="{{ route.slug }}" data-favorite-url="{{ route.favorite_api_href }}">收藏</button>
               <a class="miniapp-button miniapp-button--ghost" href="{{ route.collect_href }}">补采坐标</a>
               <a class="miniapp-button miniapp-button--ghost" href="{{ route.href }}">详情</a>
               <a class="miniapp-button" href="{{ route.replan_href }}">继续规划</a>
@@ -131,4 +142,55 @@
       </nav>
     </section>
   </main>
+  <script>
+    (() => {
+      const updateRouteEngagement = (slug, engagement) => {
+        const favoriteNode = document.querySelector(`[data-route-favorite-count="${slug}"]`);
+        const navigationNode = document.querySelector(`[data-route-navigation-count="${slug}"]`);
+        const heatNode = document.querySelector(`[data-route-heat="${slug}"] [data-route-heat-count]`);
+        if (favoriteNode) {
+          favoriteNode.textContent = String(engagement.favorite_count || 0);
+        }
+        if (navigationNode) {
+          navigationNode.textContent = String(engagement.navigation_count || 0);
+        }
+        if (heatNode) {
+          heatNode.textContent = String(engagement.total_count || 0);
+        }
+      };
+
+      document.querySelectorAll("[data-favorite-route]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const slug = button.getAttribute("data-favorite-route") || "";
+          const url = button.getAttribute("data-favorite-url") || "";
+          if (!slug || !url || button.disabled) {
+            return;
+          }
+
+          const originalText = button.textContent;
+          button.disabled = true;
+          button.textContent = "已提交...";
+
+          try {
+            const response = await fetch(url, { method: "POST" });
+            const payload = await response.json();
+            if (!response.ok || !payload.ok) {
+              throw new Error(payload.error || "收藏失败");
+            }
+            updateRouteEngagement(slug, payload.engagement || {});
+            button.textContent = "已收藏";
+          } catch (_error) {
+            button.textContent = "收藏失败";
+            window.setTimeout(() => {
+              button.textContent = originalText;
+            }, 1200);
+          } finally {
+            window.setTimeout(() => {
+              button.disabled = false;
+            }, 400);
+          }
+        });
+      });
+    })();
+  </script>
 {% endblock %}

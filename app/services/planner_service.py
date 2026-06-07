@@ -23,6 +23,7 @@ from .liaoning_spots import (
 from .candidate_spots import build_candidate_review_media, candidate_to_collection_record, get_candidate_spot_by_slug, get_candidate_spots
 from .candidate_spots import get_reviewed_spots
 from . import gpx_service
+from .route_engagement import get_route_engagement, get_route_engagement_map
 from .route_templates_config import load_route_templates
 
 
@@ -801,32 +802,32 @@ def get_home_context() -> dict[str, Any]:
         ],
         "featured_routes": [
             {
-                "slug": "jiangzhehu-2-day",
-                "title": "江浙沪 2 天轻松短途",
-                "summary": "适合周末出发，节奏轻，适合 150cc-400cc 车型。",
-                "tags": ["2 天", "轻松", "短途"],
-                "href": "/moto/routes/jiangzhehu-2-day",
-            },
-            {
-                "slug": "wannan-3-day",
-                "title": "皖南 3 天入门山路线",
-                "summary": "弯道和风景兼顾，适合有短途经验的骑手。",
-                "tags": ["3 天", "山路", "入门"],
-                "href": "/moto/routes/wannan-3-day",
-            },
-            {
-                "slug": "hainan-5-day",
-                "title": "环海南 5 天海岸线",
-                "summary": "海景路线优先，适合冬春季节出行。",
-                "tags": ["5 天", "海边", "经典"],
-                "href": "/moto/routes/hainan-5-day",
-            },
-            {
                 "slug": "liaoning-benhuan-3-day",
                 "title": "辽宁 3 天本溪到绿江边境风景线",
                 "summary": "跑山、江景和边境县道串在一起，适合辽宁省内经典摩旅。",
                 "tags": ["3 天", "辽宁", "山水边境"],
                 "href": "/moto/routes/liaoning-benhuan-3-day",
+            },
+            {
+                "slug": "liaoning-dalian-coast-2-day",
+                "title": "辽宁南部 2 天大连海岸线轻旅",
+                "summary": "滨海公路、城区补给和轻强度节奏更适合周末短途。",
+                "tags": ["2 天", "辽宁", "海岸线"],
+                "href": "/moto/routes/liaoning-dalian-coast-2-day",
+            },
+            {
+                "slug": "liaoning-liaodong-2-day",
+                "title": "辽宁东部 2 天丹东到宽甸江景线",
+                "summary": "江景、县道和沿线补给点组合，适合两天内完成的辽东骑行。",
+                "tags": ["2 天", "辽宁", "江景"],
+                "href": "/moto/routes/liaoning-liaodong-2-day",
+            },
+            {
+                "slug": "liaoning-red-beach-2-day",
+                "title": "辽宁西线 2 天红海滩与兴城海滨",
+                "summary": "平缓海滨线和湿地风景结合，适合放松型公路旅行。",
+                "tags": ["2 天", "辽宁", "湿地海滨"],
+                "href": "/moto/routes/liaoning-red-beach-2-day",
             },
         ],
         "cta": {
@@ -1258,14 +1259,14 @@ def get_route_waypoint_collection_schema() -> list[dict[str, Any]]:
             "label": "路线 slug",
             "required": True,
             "description": "和 route_templates.json 里的 slug 对齐，后续用于精确回写。",
-            "example": "jiangzhehu-2-day",
+            "example": "liaoning-benhuan-3-day",
         },
         {
             "name": "route_title",
             "label": "路线标题",
             "required": True,
             "description": "保留采集时看到的路线名，方便人工核对。",
-            "example": "江浙沪 2 天轻松短途",
+            "example": "辽宁 3 天本溪到绿江边境风景线",
         },
         {
             "name": "source.channel",
@@ -1491,6 +1492,7 @@ def build_plan_result(form_data: Mapping[str, Any]) -> dict[str, Any]:
 
 def build_routes_index_context(route_templates: list[dict[str, Any]], filters: Mapping[str, Any]) -> dict[str, Any]:
     selected_days = str(filters.get("days") or "").strip()
+    engagement_lookup = get_route_engagement_map([str(route.get("slug") or "") for route in route_templates])
     day_options = [
         {"label": "全部", "value": ""},
         *[
@@ -1502,6 +1504,14 @@ def build_routes_index_context(route_templates: list[dict[str, Any]], filters: M
         route for route in route_templates
         if not selected_days or str(route["days"]) == selected_days
     ]
+    filtered_routes.sort(
+        key=lambda route: (
+            -engagement_lookup.get(route["slug"], {}).get("total_count", 0),
+            -engagement_lookup.get(route["slug"], {}).get("navigation_count", 0),
+            -engagement_lookup.get(route["slug"], {}).get("favorite_count", 0),
+            route["title"],
+        )
+    )
 
     gpx_lookup = _build_gpx_lookup()
 
@@ -1513,9 +1523,9 @@ def build_routes_index_context(route_templates: list[dict[str, Any]], filters: M
         "featured_summary": {
             "title": "路线列表",
             "description": (
-                f"当前筛出 {len(filtered_routes)} 条路线"
+                f"当前筛出 {len(filtered_routes)} 条路线，按热度排序"
                 if selected_days
-                else f"当前共整理 {len(route_templates)} 条可直接继续规划的路线模板。"
+                else f"当前共整理 {len(route_templates)} 条可直接继续规划的路线模板，按热度排序。"
             ),
         },
         "filters": {
@@ -1541,7 +1551,7 @@ def build_routes_index_context(route_templates: list[dict[str, Any]], filters: M
             ],
         },
         "routes": [
-            _route_index_card(route, gpx_lookup=gpx_lookup)
+            _route_index_card(route, gpx_lookup=gpx_lookup, engagement_lookup=engagement_lookup)
             for route in filtered_routes
         ],
         "empty_state": {
@@ -1552,7 +1562,18 @@ def build_routes_index_context(route_templates: list[dict[str, Any]], filters: M
     }
 
 
-def _route_index_card(route: Mapping[str, Any], *, gpx_lookup: Mapping[str, Any] | None = None) -> dict[str, Any]:
+def _route_index_card(
+    route: Mapping[str, Any],
+    *,
+    gpx_lookup: Mapping[str, Any] | None = None,
+    engagement_lookup: Mapping[str, Mapping[str, int]] | None = None,
+) -> dict[str, Any]:
+    slug = str(route["slug"])
+    engagement = (
+        dict(engagement_lookup.get(slug, {}))
+        if isinstance(engagement_lookup, Mapping) and slug in engagement_lookup
+        else get_route_engagement(slug)
+    )
     navigation_waypoints = _route_navigation_waypoints(route)
     waypoints = [point["name"] for point in navigation_waypoints]
     waypoint_count = len(waypoints)
@@ -1560,15 +1581,17 @@ def _route_index_card(route: Mapping[str, Any], *, gpx_lookup: Mapping[str, Any]
     supports_coordinate_navigation = coordinate_waypoint_count > 0
     navigation_mode = _route_navigation_mode(navigation_waypoints)
     status_variant = _route_navigation_status_variant(navigation_mode)
-    amap_export_href = _route_amap_export_href(navigation_waypoints)
+    amap_export_href = _route_amap_export_href(navigation_waypoints, prefer_native=True)
+    amap_browser_href = _route_amap_export_href(navigation_waypoints, prefer_native=False)
     gpx_payload = _route_gpx_payload(route, navigation_waypoints, gpx_lookup=gpx_lookup)
+    source_meta = _route_source_meta(route, gpx_payload=gpx_payload)
     tags = [f"{route['days']} 天", route["best_season"], difficulty_label(route["difficulty"])]
     if route.get("is_navigation_state_demo"):
         tags.insert(0, "状态演示")
     if gpx_payload["is_available"]:
         tags.insert(0, "GPX")
     return {
-        "slug": route["slug"],
+        "slug": slug,
         "title": route["title"],
         "summary": route["summary"],
         "tags": tags,
@@ -1576,18 +1599,23 @@ def _route_index_card(route: Mapping[str, Any], *, gpx_lookup: Mapping[str, Any]
         "difficulty_label": difficulty_label(route["difficulty"]),
         "days": route["days"],
         "distance_km": route.get("distance_km", 0),
-        "href": f"/moto/routes/{route['slug']}",
-        "replan_href": f"/moto/planner?route={route['slug']}",
-        "collect_href": f"/moto/routes/collect?route={route['slug']}",
+        "href": f"/moto/routes/{slug}",
+        "replan_href": f"/moto/planner?route={slug}",
+        "collect_href": f"/moto/routes/collect?route={slug}",
+        "favorite_api_href": f"/api/moto/routes/{slug}/favorite",
+        "engagement": engagement,
         "is_navigation_state_demo": bool(route.get("is_navigation_state_demo")),
         "waypoints": waypoints,
         "navigation_waypoints": navigation_waypoints,
         "waypoint_count": waypoint_count,
         "amap_export": {
             "href": amap_export_href,
-            "label": "导出到高德地图",
+            "browser_href": amap_browser_href,
+            "embed_href": f"/moto/routes/{slug}/amap-embed",
+            "launch_href": f"/moto/routes/{slug}/amap-launch",
+            "label": "直接导航",
             "is_available": bool(amap_export_href),
-            "screenshot_href": f"/moto/routes/{route['slug']}/amap-route.svg",
+            "screenshot_href": f"/moto/routes/{slug}/amap-route.svg",
             "waypoint_text": " -> ".join(waypoints),
             "waypoints": navigation_waypoints,
             "coordinate_waypoint_count": coordinate_waypoint_count,
@@ -1602,6 +1630,7 @@ def _route_index_card(route: Mapping[str, Any], *, gpx_lookup: Mapping[str, Any]
             ),
         },
         "gpx": gpx_payload,
+        "source_meta": source_meta,
         "days_plan": [
             {
                 "day": day["day"],
@@ -1610,6 +1639,73 @@ def _route_index_card(route: Mapping[str, Any], *, gpx_lookup: Mapping[str, Any]
             }
             for day in route.get("days_plan", [])
         ],
+    }
+
+
+def _route_source_meta(route: Mapping[str, Any], *, gpx_payload: Mapping[str, Any]) -> dict[str, str]:
+    source_import = route.get("source_import") if isinstance(route.get("source_import"), Mapping) else {}
+
+    label = str(gpx_payload.get("source_badge") or source_import.get("platform") or "路线模板").strip()
+    author = str(gpx_payload.get("source_author") or _display_route_source_author(route.get("author") or source_import.get("author"))).strip()
+
+    detail = ""
+    if source_import:
+        detail = str(source_import.get("source_keyword") or source_import.get("type") or source_import.get("platform") or "").strip()
+    if not detail and gpx_payload.get("source_title"):
+        detail = str(gpx_payload.get("source_title") or "").strip()
+
+    return {
+        "label": label,
+        "author": author,
+        "detail": detail,
+    }
+
+
+def _build_trip_advice(route: Mapping[str, Any], *, route_card: Mapping[str, Any]) -> dict[str, Any]:
+    detail_for_whom = str(route.get("detail_for_whom") or "").strip()
+    raw_notes = route.get("detail_notes") if isinstance(route.get("detail_notes"), list) else []
+    notes = [str(item).strip() for item in raw_notes if str(item or "").strip()]
+
+    comment = ""
+    for candidate in notes:
+        if candidate.startswith("内容摘要："):
+            comment = candidate.removeprefix("内容摘要：").strip()
+            break
+
+    if not comment:
+        for candidate in notes:
+            if candidate.startswith("原始笔记："):
+                continue
+            comment = candidate
+            break
+
+    if not comment:
+        comment = detail_for_whom or str(route.get("summary") or "").strip()
+
+    suggestion_items = []
+    if detail_for_whom:
+        suggestion_items.append(detail_for_whom)
+    for note in notes:
+        if note.startswith("内容摘要：") or note.startswith("原始笔记："):
+            continue
+        if note == comment or note in suggestion_items:
+            continue
+        suggestion_items.append(note)
+
+    source_meta = route_card.get("source_meta") if isinstance(route_card.get("source_meta"), Mapping) else {}
+    source_line = ""
+    label = str(source_meta.get("label") or "").strip()
+    author = str(source_meta.get("author") or "").strip()
+    if label and author:
+        source_line = f"{label} · {author}"
+    else:
+        source_line = label or author
+
+    return {
+        "title": "行途建议",
+        "comment": comment,
+        "items": suggestion_items[:3],
+        "source_line": source_line,
     }
 
 
@@ -1936,7 +2032,7 @@ def _build_route_waypoint_collection_seed(route: Mapping[str, Any] | None) -> di
     }
 
 
-def _route_amap_export_href(waypoints: list[Mapping[str, Any]]) -> str:
+def _route_amap_export_href(waypoints: list[Mapping[str, Any]], *, prefer_native: bool) -> str:
     if len(waypoints) < 2:
         return ""
 
@@ -1951,7 +2047,7 @@ def _route_amap_export_href(waypoints: list[Mapping[str, Any]]) -> str:
     ]
     if via_points:
         params.append(f"maddr={quote('|'.join(_route_amap_point_value(point) for point in via_points), safe='|')}")
-    params.extend(["src=mypage", "callnative=0", "innersrc=uriapi"])
+    params.extend(["src=mypage", f"callnative={1 if prefer_native else 0}", "innersrc=uriapi"])
     return f"https://m.amap.com/navigation/carmap/{'&'.join(params)}"
 
 
@@ -2069,6 +2165,7 @@ def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
                     "下一步可以继续补每日行程和关键点位。",
                 ],
             ),
+            "trip_advice": _build_trip_advice(route, route_card=route_card),
             "daily_plan": [
                 {
                     "day": day["day"],

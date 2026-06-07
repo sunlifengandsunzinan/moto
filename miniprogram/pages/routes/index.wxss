@@ -37,9 +37,20 @@
 }
 
 .route-roadbar__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid rgba(209, 170, 130, 0.28);
+  background: rgba(247, 239, 228, 0.78);
   font-size: 18rpx;
-  letter-spacing: 0.14em;
-  color: #AA9D90;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: #8F7F70;
+  font-weight: 600;
+  box-sizing: border-box;
 }
 
 .route-roadbar__lane {
@@ -64,6 +75,32 @@
   box-sizing: border-box;
 }
 
+.route-meta-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12rpx;
+}
+
+.route-heat-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  min-height: 48rpx;
+  padding: 0 16rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 113, 67, 0.14);
+  color: #B4491A;
+  box-sizing: border-box;
+}
+
+.route-heat-pill__icon,
+.route-heat-pill__count {
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
 .route-meta-line {
   display: flex;
   flex-wrap: wrap;
@@ -75,6 +112,40 @@
 .route-meta-line__divider {
   font-size: 22rpx;
   color: #8A7A6B;
+}
+
+.route-engagement-line {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.route-engagement-line__label {
+  font-size: 20rpx;
+  color: #8A7A6B;
+}
+
+.route-engagement-line__value {
+  font-size: 22rpx;
+  color: #B4491A;
+  font-weight: 700;
+}
+
+.route-source-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.route-source-line__label,
+.route-source-line__author {
+  font-size: 20rpx;
+  color: #7B6E62;
+}
+
+.route-source-line__label {
+  font-weight: 600;
 }
 
 .route-stage-block {

@@ -31,6 +31,7 @@ class BaseConfig:
     PORT = 6001
     DEBUG = False
     TESTING = False
+    AMAP_WEB_JS_API_KEY = "38f53ab9f332df1392b762d6806a89f0"
 
 
 class DevelopmentConfig(BaseConfig):

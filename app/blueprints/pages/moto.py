@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from flask import Blueprint, Response, jsonify, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, send_file, url_for
 
 from ...services import (
     build_moto_tabbar,
@@ -31,6 +31,7 @@ from ...services import (
     review_candidate_spot,
     gpx_service,
 )
+from ...services.route_engagement import increment_route_navigation
 from ...services.collector_monitor import COLLECTOR_PROFILES
 
 
@@ -143,6 +144,39 @@ def moto_route_amap_screenshot(slug: str) -> Response | tuple[str, int]:
     if route is None:
         return render_template("404.html"), 404
     return Response(render_route_amap_screenshot_svg(route), mimetype="image/svg+xml")
+
+
+@moto_bp.get("/moto/routes/<slug>/amap-embed")
+def moto_route_amap_embed(slug: str) -> tuple[str, int] | str:
+    route = get_route_by_slug(slug)
+    if route is None:
+        return render_template("404.html"), 404
+
+    context = build_route_detail_context(route)
+    amap_export = context["route"]["amap_export"]
+    return render_template(
+        "planner/route_amap_embed.html",
+        route_title=context["route"]["title"],
+        amap_export=amap_export,
+        amap_web_js_api_key=current_app.config.get("AMAP_WEB_JS_API_KEY", ""),
+    )
+
+
+@moto_bp.get("/moto/routes/<slug>/amap-launch")
+def moto_route_amap_launch(slug: str) -> tuple[str, int] | str:
+    route = get_route_by_slug(slug)
+    if route is None:
+        return render_template("404.html"), 404
+
+    increment_route_navigation(slug)
+
+    context = build_route_detail_context(route)
+    amap_export = context["route"]["amap_export"]
+    return render_template(
+        "planner/route_amap_launch.html",
+        route_title=context["route"]["title"],
+        amap_export=amap_export,
+    )
 
 
 @moto_bp.get("/moto/routes/collect")

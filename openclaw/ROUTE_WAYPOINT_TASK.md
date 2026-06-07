@@ -43,8 +43,8 @@ The output file is wrapped JSON:
   },
   "items": [
     {
-      "route_slug": "jiangzhehu-2-day",
-      "route_title": "江浙沪 2 天轻松短途",
+      "route_slug": "liaoning-benhuan-3-day",
+      "route_title": "辽宁 3 天本溪到绿江边境风景线",
       "collection_status": "names",
       "source": {
         "channel": "openclaw-douyin-video-analysis",
