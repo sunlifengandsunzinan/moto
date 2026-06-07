@@ -1635,7 +1635,10 @@ def _route_index_card(
             {
                 "day": day["day"],
                 "title": day["title"],
-                "distance": day["distance"],
+                "distance": day.get("distance", 0),
+                "ride_time": day.get("ride_time", ""),
+                "highlights": day.get("highlights", []),
+                "note": day.get("note", ""),
             }
             for day in route.get("days_plan", [])
         ],
