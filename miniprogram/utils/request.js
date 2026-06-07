@@ -1,8 +1,8 @@
-const DEFAULT_API_BASE_URL = "http://192.168.0.119:6002/api";
-const DEFAULT_WEB_BASE_URL = "http://192.168.0.119:6002";
+const DEFAULT_API_BASE_URL = "http://127.0.0.1:6001/api";
+const DEFAULT_WEB_BASE_URL = "http://127.0.0.1:6001";
 
 function replaceLocalhostHost(value) {
-  return String(value || "").replace(/\/\/(127\.0\.0\.1|localhost)(?=[:/]|$)/i, "//192.168.0.119");
+  return String(value || "").replace(/\/\/(127\.0\.0\.1|localhost)(?=[:/]|$)/i, "//127.0.0.1");
 }
 
 function normalizeBaseUrl(rawValue) {

@@ -173,10 +173,7 @@ The route export payload at `/api/moto/routes` now includes:
 - `amap_export.supports_coordinate_navigation`: whether any waypoint already has coordinates
 - `amap_export.coordinate_waypoint_count`: number of waypoints that already have coordinates
 
-Two demo routes are kept in the same JSON source so you can preview all three navigation states in the UI:
-
-- `navigation-demo-partial-2-day`: partial coordinates, mixed navigation
-- `navigation-demo-names-1-day`: names only, fallback navigation
+The JSON source now keeps only retained real routes and collected route records.
 
 Behavior:
 

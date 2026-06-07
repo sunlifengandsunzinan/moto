@@ -74,9 +74,11 @@ def test_moto_routes_page_supports_day_selection_and_amap_export(client):
     html = response.get_data(as_text=True)
     assert "按骑行天数选" in html
     assert "2 天路线拆分" in html
-    assert "导出到高德地图" in html
+    assert "直接导航" in html
+    assert "🔥" in html
+    assert "收藏 / 导航" in html
     assert "采集导航点" in html
-    assert "m.amap.com/navigation/carmap/" in html
+    assert "/moto/routes/" in html
 
 
 def test_moto_gpx_page_renders_batch_workflow_and_link_rules(client):
@@ -200,6 +202,7 @@ def test_moto_routes_and_spots_api_return_miniapp_payloads(client):
     assert "day_quick_filters" in routes_payload["filters"]
     assert "navigation_waypoints" in routes_payload["routes"][0]
     assert "waypoints" in routes_payload["routes"][0]["amap_export"]
+    assert "embed_href" in routes_payload["routes"][0]["amap_export"]
     assert "navigation_mode" in routes_payload["routes"][0]["amap_export"]
     assert "supports_coordinate_navigation" in routes_payload["routes"][0]["amap_export"]
 
@@ -212,14 +215,11 @@ def test_moto_routes_and_spots_api_return_miniapp_payloads(client):
     assert "filters" in spots_payload
 
 
-def test_primary_routes_support_coordinate_navigation_and_demo_routes_cover_other_states(client):
+def test_primary_routes_support_coordinate_navigation_for_real_routes(client):
     payload = client.get("/api/moto/routes").get_json()
     routes_by_slug = {route["slug"]: route for route in payload["routes"]}
 
     primary_route_slugs = [
-        "jiangzhehu-2-day",
-        "wannan-3-day",
-        "hainan-5-day",
         "liaoning-benhuan-3-day",
         "liaoning-dalian-coast-2-day",
         "liaoning-liaodong-2-day",
@@ -232,11 +232,22 @@ def test_primary_routes_support_coordinate_navigation_and_demo_routes_cover_othe
         assert route["amap_export"]["coordinate_waypoint_count"] == route["waypoint_count"]
         assert route["amap_export"]["supports_coordinate_navigation"] is True
 
-    assert "120.1551%2C30.2741%2C%E6%9D%AD%E5%B7%9E" in routes_by_slug["jiangzhehu-2-day"]["amap_export"]["href"]
+    assert "callnative=1" in routes_by_slug["liaoning-benhuan-3-day"]["amap_export"]["href"]
+    assert "callnative=0" in routes_by_slug["liaoning-benhuan-3-day"]["amap_export"]["browser_href"]
+    assert routes_by_slug["liaoning-benhuan-3-day"]["amap_export"]["launch_href"] == "/moto/routes/liaoning-benhuan-3-day/amap-launch"
     assert "121.997%2C39.0875%2C%E9%87%91%E7%9F%B3%E6%BB%A9" in routes_by_slug["liaoning-dalian-coast-2-day"]["amap_export"]["href"]
-    assert "110.3312%2C20.031%2C%E6%B5%B7%E5%8F%A3" in routes_by_slug["hainan-5-day"]["amap_export"]["href"]
-    assert routes_by_slug["navigation-demo-partial-2-day"]["amap_export"]["status_variant"] == "partial"
-    assert routes_by_slug["navigation-demo-names-1-day"]["amap_export"]["status_variant"] == "names"
+    assert not any("demo" in slug for slug in routes_by_slug)
+
+
+def test_moto_route_amap_embed_page_renders_sdk_bootstrap(client):
+    response = client.get("/moto/routes/liaoning-benhuan-3-day/amap-embed")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "行途地图" in html
+    assert "高德路线图" in html
+    assert "高德路线图" in html
+    assert "本溪" in html
 
 
 def test_route_templates_prefer_navigation_config_layer():
@@ -247,7 +258,7 @@ def test_route_templates_prefer_navigation_config_layer():
     assert all("navigation" in route for route in routes)
     assert all(route["navigation"]["provider"] == "amap" for route in routes)
     assert all(route["navigation"]["waypoints"] for route in routes)
-    assert any(route.get("is_navigation_state_demo") for route in routes)
+    assert all(not route.get("is_navigation_state_demo") for route in routes)
 
 
 def test_moto_me_api_returns_workspace_sections(client):
@@ -296,6 +307,9 @@ def test_route_index_card_uses_coordinate_waypoints_for_amap_export():
     assert card["amap_export"]["status_badge"] == "坐标完整"
     assert card["amap_export"]["status_text"] == "3/3 个点已带坐标，可直接高德逐点导航"
     assert "120.1551%2C30.2741%2C%E6%9D%AD%E5%B7%9E" in card["amap_export"]["href"]
+    assert "callnative=1" in card["amap_export"]["href"]
+    assert "callnative=0" in card["amap_export"]["browser_href"]
+    assert card["amap_export"]["launch_href"] == "/moto/routes/coord-test/amap-launch"
     assert "119.8722%2C30.5632%2C%E8%8E%AB%E5%B9%B2%E5%B1%B1" in card["amap_export"]["href"]
     assert "119.6803%2C30.638%2C%E5%AE%89%E5%90%89" in card["amap_export"]["href"]
 
@@ -330,6 +344,64 @@ def test_route_index_card_marks_partial_coordinate_navigation():
     assert card["amap_export"]["status_text"] == "2/3 个点已带坐标，将混合坐标和地点名称导航"
 
 
+def test_route_favorite_api_persists_count(client, monkeypatch, tmp_path):
+    from app.services import route_engagement
+
+    stats_path = tmp_path / "route_engagement_stats.json"
+    monkeypatch.setattr(route_engagement, "ROUTE_ENGAGEMENT_PATH", stats_path)
+
+    response = client.post("/api/moto/routes/liaoning-benhuan-3-day/favorite")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["ok"] is True
+    assert payload["slug"] == "liaoning-benhuan-3-day"
+    assert payload["engagement"]["favorite_count"] == 1
+    assert payload["engagement"]["navigation_count"] == 0
+    assert payload["engagement"]["total_count"] == 1
+
+    saved = json.loads(stats_path.read_text(encoding="utf-8"))
+    assert saved["routes"]["liaoning-benhuan-3-day"]["favorite_count"] == 1
+
+
+def test_route_amap_launch_persists_navigation_count(client, monkeypatch, tmp_path):
+    from app.services import route_engagement
+
+    stats_path = tmp_path / "route_engagement_stats.json"
+    monkeypatch.setattr(route_engagement, "ROUTE_ENGAGEMENT_PATH", stats_path)
+
+    response = client.get("/moto/routes/liaoning-benhuan-3-day/amap-launch")
+
+    assert response.status_code == 200
+    saved = json.loads(stats_path.read_text(encoding="utf-8"))
+    assert saved["routes"]["liaoning-benhuan-3-day"]["navigation_count"] == 1
+
+
+def test_routes_api_sorts_by_engagement_total(client, monkeypatch, tmp_path):
+    from app.services import route_engagement
+
+    stats_path = tmp_path / "route_engagement_stats.json"
+    stats_path.write_text(
+        json.dumps(
+            {
+                "routes": {
+                    "liaoning-red-beach-2-day": {"favorite_count": 2, "navigation_count": 5},
+                    "liaoning-benhuan-3-day": {"favorite_count": 1, "navigation_count": 0},
+                }
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(route_engagement, "ROUTE_ENGAGEMENT_PATH", stats_path)
+
+    payload = client.get("/api/moto/routes").get_json()
+
+    assert payload["routes"][0]["slug"] == "liaoning-red-beach-2-day"
+    assert payload["routes"][0]["engagement"]["total_count"] == 7
+    assert payload["routes"][1]["slug"] == "liaoning-benhuan-3-day"
+
+
 def test_route_template_loader_validates_json_schema(tmp_path, monkeypatch):
     from app.services import route_templates_config
 
@@ -344,19 +416,19 @@ def test_route_template_loader_validates_json_schema(tmp_path, monkeypatch):
 
 
 def test_route_collection_page_and_api_expose_collection_entry(client):
-    response = client.get("/moto/routes/collect?route=navigation-demo-partial-2-day")
+    response = client.get("/moto/routes/collect?route=liaoning-benhuan-3-day")
 
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert "路线坐标采集" in html
     assert "建议先采成这份 JSON" in html
     assert "python scripts/validate_route_templates.py" in html
-    assert "部分坐标" in html
+    assert "坐标完整" in html
 
-    payload = client.get("/api/moto/routes/collect/schema?route=navigation-demo-partial-2-day").get_json()
-    assert payload["selected_route"]["slug"] == "navigation-demo-partial-2-day"
-    assert payload["selected_route"]["amap_export"]["status_variant"] == "partial"
-    assert payload["selected_route_seed"]["route_slug"] == "navigation-demo-partial-2-day"
+    payload = client.get("/api/moto/routes/collect/schema?route=liaoning-benhuan-3-day").get_json()
+    assert payload["selected_route"]["slug"] == "liaoning-benhuan-3-day"
+    assert payload["selected_route"]["amap_export"]["status_variant"] == "complete"
+    assert payload["selected_route_seed"]["route_slug"] == "liaoning-benhuan-3-day"
     assert any(field["name"] == "navigation.waypoints[]" for field in payload["schema"])
 def test_planner_form_exposes_more_routes_and_spots(client):
     from pathlib import Path

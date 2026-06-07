@@ -30,7 +30,7 @@ from scripts.run_local_social_collection import update_status
 
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "raw" / "xiaohongshu_route_manifest.json"
 DEFAULT_RAW_CANDIDATES_PATH = PROJECT_ROOT / "data" / "raw" / "xiaohongshu_route_candidates.json"
-DEFAULT_STATUS_PATH = PROJECT_ROOT / "data" / "raw" / "local_collection_status.json"
+DEFAULT_STATUS_PATH = PROJECT_ROOT / "data" / "raw" / "xiaohongshu_route_status.json"
 DEFAULT_LOG_PATH = PROJECT_ROOT / "data" / "raw" / "xiaohongshu_route_collection.log"
 DEFAULT_TIMEOUT_SECONDS = 30
 

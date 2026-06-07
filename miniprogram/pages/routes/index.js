@@ -5,6 +5,34 @@ const { routesPageFallback } = require("../../mock/routes");
 
 const EMPTY_ROUTES_STATE = routesPageFallback;
 
+function compareRouteHeat(left, right) {
+  const leftEngagement = left?.engagement || {};
+  const rightEngagement = right?.engagement || {};
+  const leftTotal = Number(leftEngagement.total_count || 0);
+  const rightTotal = Number(rightEngagement.total_count || 0);
+  if (leftTotal !== rightTotal) {
+    return rightTotal - leftTotal;
+  }
+
+  const leftNavigation = Number(leftEngagement.navigation_count || 0);
+  const rightNavigation = Number(rightEngagement.navigation_count || 0);
+  if (leftNavigation !== rightNavigation) {
+    return rightNavigation - leftNavigation;
+  }
+
+  const leftFavorite = Number(leftEngagement.favorite_count || 0);
+  const rightFavorite = Number(rightEngagement.favorite_count || 0);
+  if (leftFavorite !== rightFavorite) {
+    return rightFavorite - leftFavorite;
+  }
+
+  return String(left?.title || "").localeCompare(String(right?.title || ""), "zh-Hans-CN");
+}
+
+function sortRoutesByHeat(routes) {
+  return (Array.isArray(routes) ? routes.slice() : []).sort(compareRouteHeat);
+}
+
 function buildDurationFilters(filters, selectedDays) {
   const quickFilters = filters && Array.isArray(filters.day_quick_filters) ? filters.day_quick_filters : [];
   if (!quickFilters.length) {
@@ -22,6 +50,12 @@ function buildDurationFilters(filters, selectedDays) {
 function normalizeRoute(route) {
   const safeRoute = route || {};
   return {
+    engagement: {
+      favorite_count: 0,
+      navigation_count: 0,
+      total_count: 0,
+      ...((safeRoute && safeRoute.engagement) || {}),
+    },
     gpx: {
       is_available: false,
       filename: "",
@@ -34,8 +68,17 @@ function normalizeRoute(route) {
     amap_export: {
       is_available: false,
       href: "",
+      browser_href: "",
+      launch_href: "",
       ...((safeRoute && safeRoute.amap_export) || {}),
     },
+    source_meta: {
+      label: "",
+      author: "",
+      detail: "",
+      ...((safeRoute && safeRoute.source_meta) || {}),
+    },
+    favorite_api_href: String(safeRoute.favorite_api_href || ""),
     days_plan: Array.isArray(safeRoute.days_plan) ? safeRoute.days_plan : [],
     ...safeRoute,
   };
@@ -44,9 +87,9 @@ function normalizeRoute(route) {
 function normalizePayload(payload) {
   const safePayload = payload || EMPTY_ROUTES_STATE;
   const selectedDays = safePayload.filters && safePayload.filters.selected_days ? safePayload.filters.selected_days : "";
-  const routes = mergeRoutesWithFavorites(
+  const routes = sortRoutesByHeat(mergeRoutesWithFavorites(
     (Array.isArray(safePayload.routes) ? safePayload.routes : []).map(normalizeRoute),
-  );
+  ));
 
   return {
     page: safePayload.page || EMPTY_ROUTES_STATE.page,
@@ -82,9 +125,24 @@ Page({
 
   onShow() {
     if (this.data.allRoutes.length) {
-      const allRoutes = mergeRoutesWithFavorites(this.data.allRoutes);
-      this.setData({ allRoutes, routes: allRoutes });
+      const allRoutes = sortRoutesByHeat(mergeRoutesWithFavorites(this.data.allRoutes));
+      this.setData({ allRoutes, routes: this.filterRoutesByDuration(this.data.selectedDuration, allRoutes) });
     }
+  },
+
+  filterRoutesByDuration(selectedDuration, routes) {
+    if (!selectedDuration) {
+      return sortRoutesByHeat(routes);
+    }
+
+    return sortRoutesByHeat((routes || []).filter((route) => String(route.days || "") === String(selectedDuration)));
+  },
+
+  applyDurationFilter(selectedDuration, routes) {
+    this.setData({
+      selectedDuration,
+      routes: this.filterRoutesByDuration(selectedDuration, routes !== undefined ? routes : this.data.allRoutes),
+    });
   },
 
   onPullDownRefresh() {
@@ -102,16 +160,17 @@ Page({
 
     request({ path: "/moto/routes", data: query })
       .then((payload) => {
+        const normalized = normalizePayload(payload);
         this.setData({
           loading: false,
           error: "",
-          ...normalizePayload(payload),
+          ...normalized,
         });
       })
       .catch((error) => {
         this.setData({
           loading: false,
-          error: error?.message || "加载路线失败，已切换本地演示数据。",
+          error: error?.message || "加载路线失败，已切换本地空状态。",
           ...normalizePayload(EMPTY_ROUTES_STATE),
         });
       })
@@ -125,6 +184,25 @@ Page({
   handleDurationFilter(event) {
     const days = event.currentTarget.dataset.filterValue || "";
     this.fetchData(this.buildQuery({ days }));
+  },
+
+  updateRouteEngagement(slug, engagement) {
+    const allRoutes = sortRoutesByHeat((this.data.allRoutes || []).map((route) => (
+      route.slug === slug
+        ? {
+            ...route,
+            engagement: {
+              ...(route.engagement || {}),
+              ...(engagement || {}),
+            },
+          }
+        : route
+    )));
+
+    this.setData({
+      allRoutes,
+      routes: this.filterRoutesByDuration(this.data.selectedDuration, allRoutes),
+    });
   },
 
   openInWebView(rawHref) {
@@ -151,7 +229,10 @@ Page({
   },
 
   handleDirectNavigate(event) {
-    this.openInWebView(event.currentTarget.dataset.href);
+    const launchHref = event.currentTarget.dataset.launchHref;
+    const primaryHref = event.currentTarget.dataset.href;
+    const browserHref = event.currentTarget.dataset.browserHref;
+    this.openInWebView(launchHref || primaryHref || browserHref);
   },
 
   handleDownloadGpx(event) {
@@ -177,18 +258,35 @@ Page({
 
   handleToggleFavorite(event) {
     const slug = event.currentTarget.dataset.slug;
+    const favoriteApiHref = event.currentTarget.dataset.favoriteUrl || "";
     const route = (this.data.allRoutes || []).find((item) => item.slug === slug);
     if (!route) {
       return;
     }
 
     const result = toggleFavoriteRoute(route);
-    const allRoutes = (this.data.allRoutes || []).map((item) => (
+    const allRoutes = sortRoutesByHeat((this.data.allRoutes || []).map((item) => (
       item.slug === slug ? { ...item, is_favorite: result.isFavorite } : item
-    ));
+    )));
 
-    this.setData({ allRoutes });
-    this.applyDurationFilter(this.data.selectedDuration, allRoutes);
+    this.setData({ allRoutes, routes: this.filterRoutesByDuration(this.data.selectedDuration, allRoutes) });
+
+    if (result.isFavorite && favoriteApiHref) {
+      request({ path: favoriteApiHref.replace(/^\/api/, ""), method: "POST" })
+        .then((payload) => {
+          if (payload && payload.ok && payload.engagement) {
+            this.updateRouteEngagement(slug, payload.engagement);
+          }
+        })
+        .catch(() => {
+          wx.showToast({
+            title: "后端收藏计数失败",
+            icon: "none",
+            duration: 1800,
+          });
+        });
+    }
+
     wx.showToast({
       title: result.isFavorite ? "已加入收藏" : "已取消收藏",
       icon: "none",

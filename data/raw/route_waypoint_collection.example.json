@@ -1,0 +1,43 @@
+[
+  {
+    "route_slug": "liaoning-benhuan-3-day",
+    "route_title": "辽宁 3 天本溪到绿江边境风景线",
+    "collection_status": "complete",
+    "collection_notes": "当前示例使用已完成坐标采集的真实路线，后续可按同一结构回写新的辽宁路线。",
+    "source": {
+      "channel": "manual-map-research",
+      "reference_url": "",
+      "operator": ""
+    },
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "沈阳",
+          "lng": 123.4315,
+          "lat": 41.8057,
+          "has_coordinates": true
+        },
+        {
+          "name": "本溪大石湖",
+          "lng": 124.4188,
+          "lat": 41.3059,
+          "has_coordinates": true
+        },
+        {
+          "name": "桓仁",
+          "lng": 125.3614,
+          "lat": 41.264,
+          "has_coordinates": true
+        },
+        {
+          "name": "绿江村",
+          "lng": 126.2237,
+          "lat": 40.2193,
+          "has_coordinates": true
+        }
+      ]
+    },
+    "missing_coordinate_waypoints": []
+  }
+]

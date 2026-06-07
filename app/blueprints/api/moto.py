@@ -13,6 +13,7 @@ from ...services import (
     get_spots_index_context,
     gpx_service,
 )
+from ...services.route_engagement import increment_route_favorite
 from . import api_bp
 
 
@@ -39,6 +40,15 @@ def moto_route_detail(slug: str):
     if route is None:
         return jsonify({"message": "Route not found"}), 404
     return jsonify(build_route_detail_context(route))
+
+
+@api_bp.post("/moto/routes/<slug>/favorite")
+def moto_route_favorite(slug: str):
+    route = get_route_by_slug(slug)
+    if route is None:
+        return jsonify({"ok": False, "error": "Route not found"}), 404
+    stats = increment_route_favorite(slug)
+    return jsonify({"ok": True, "slug": slug, "engagement": stats})
 
 
 @api_bp.get("/moto/routes/collect/schema")
