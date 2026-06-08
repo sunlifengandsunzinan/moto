@@ -9,7 +9,7 @@ def test_index_page_renders(client):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert "Flask app is running" in html
-    assert "port 6001" in html
+    assert "port 5000" in html
 
 
 def test_status_page_renders_runtime_details(client):
@@ -21,7 +21,7 @@ def test_status_page_renders_runtime_details(client):
     assert "Operational overview for the current Flask runtime." in html
     assert "Environment" in html
     assert "development" in html
-    assert "http://127.0.0.1:6001" in html
+    assert "http://127.0.0.1:5000" in html
     assert "/api/status" in html
 
 
@@ -34,11 +34,11 @@ def test_status_api_returns_runtime_details(client):
         "app_name": "Flask App",
         "environment": "development",
         "host": "0.0.0.0",
-        "port": 6001,
+        "port": 5000,
         "debug": True,
         "status": "ok",
-        "local_url": "http://127.0.0.1:6001",
-        "network_url": "http://0.0.0.0:6001",
+        "local_url": "http://127.0.0.1:5000",
+        "network_url": "http://0.0.0.0:5000",
         "endpoints": [
             {"label": "Landing Page", "path": "/", "kind": "page"},
             {"label": "Status Panel", "path": "/status", "kind": "page"},

@@ -166,7 +166,9 @@ function normalizePayload(payload) {
           interactive_map: null,
           ...((amapExport && amapExport.mini_program) || {}),
         },
-        embed_url: amapExport.embed_href ? buildWebUrl(amapExport.embed_href) : "",
+        // WeChat mini program web-view does not reliably support the AMap embed page.
+        // Keep the native map preview in-page and avoid routing users into an unsupported page.
+        embed_url: "",
         map_preview_available: mapPayload.preview_available,
         map_center: mapPayload.center,
         map_include_points: mapPayload.include_points,
@@ -303,13 +305,11 @@ Page({
   },
 
   handleOpenInteractiveMap(event) {
-    const rawUrl = getMiniProgramNavigationUrl(this.data.route?.amap_export?.mini_program?.interactive_map)
-      || event.currentTarget.dataset.url;
-    if (!rawUrl) {
-      return;
-    }
-
-    wx.navigateTo({ url: rawUrl });
+    wx.showToast({
+      title: "小程序内暂不支持打开高德互动地图，请直接使用当前预览或下方直接导航",
+      icon: "none",
+      duration: 2600,
+    });
   },
 
   handleToggleFavorite() {

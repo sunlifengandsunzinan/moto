@@ -52,7 +52,7 @@ source .venv/bin/activate
 python app.py
 ```
 
-The app listens on `http://127.0.0.1:6001`.
+The app listens on `http://127.0.0.1:5000`.
 
 Port `6000` is intentionally avoided because Chromium-based browsers block it as an unsafe port (`ERR_UNSAFE_PORT`).
 
@@ -75,7 +75,7 @@ The repository now includes a real Mini Program frontend under `miniprogram/`.
 
 Default local backend addresses in the Mini Program are selected at runtime:
 
-- WeChat DevTools simulator: `http://127.0.0.1:6001` and `http://127.0.0.1:6001/api`
+- WeChat DevTools simulator: `http://127.0.0.1:5000` and `http://127.0.0.1:5000/api`
 - phone preview / real-device debugging: `https://517f3375.r8.vip.cpolar.cn` and `https://517f3375.r8.vip.cpolar.cn/api`
 
 Recommended local flow:
