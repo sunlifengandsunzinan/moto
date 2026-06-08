@@ -1,4 +1,11 @@
 const { request, buildWebUrl } = require("../../utils/request");
+const {
+  API_PATHS,
+  MINI_PROGRAM_PATHS,
+  WEB_PATHS,
+  getMiniProgramNavigationUrl,
+  getMiniProgramQuery,
+} = require("../../utils/backend-config");
 
 function findOptionIndex(options, value) {
   const index = options.findIndex((item) => item.value === value);
@@ -28,6 +35,18 @@ function parseHrefQuery(href) {
   }, {});
 }
 
+function navigateByAction(action, fallbackHref = "") {
+  const targetUrl = getMiniProgramNavigationUrl(action);
+  if (targetUrl) {
+    wx.navigateTo({ url: targetUrl });
+    return;
+  }
+
+  if (fallbackHref) {
+    wx.navigateTo({ url: MINI_PROGRAM_PATHS.webviewWithUrl(buildWebUrl(fallbackHref)) });
+  }
+}
+
 Page({
   data: {
     loading: true,
@@ -53,6 +72,9 @@ Page({
     this.fetchData();
   },
 
+  onShow() {
+  },
+
   onPullDownRefresh() {
     this.fetchData(this.buildQuery(), true);
   },
@@ -68,7 +90,7 @@ Page({
   fetchData(query = {}, stopRefresh = false) {
     this.setData({ loading: true, error: "" });
 
-    request({ path: "/moto/spots", data: query })
+    request({ path: API_PATHS.spots, data: query })
       .then((payload) => {
         const fields = payload.filters.fields || [];
         const regionField = fields[0] || { options: [], value: "" };
@@ -120,8 +142,10 @@ Page({
   },
 
   handleQuickFilter(event) {
-    const href = event.currentTarget.dataset.href;
-    this.fetchData(parseHrefQuery(href));
+    const group = this.data.quickGroups[Number(event.currentTarget.dataset.groupIndex)] || { items: [] };
+    const item = group.items[Number(event.currentTarget.dataset.itemIndex)] || {};
+    const query = getMiniProgramQuery(item.mini_program_action);
+    this.fetchData(Object.keys(query).length ? query : parseHrefQuery(event.currentTarget.dataset.href));
   },
 
   handleReset() {
@@ -129,17 +153,15 @@ Page({
   },
 
   handleOpenSpot(event) {
-    const href = event.currentTarget.dataset.href;
-    wx.navigateTo({
-      url: `/pages/webview/index?url=${encodeURIComponent(buildWebUrl(href))}`,
-    });
+    const spot = this.data.spots[Number(event.currentTarget.dataset.index)] || {};
+    navigateByAction(spot.mini_program_action, event.currentTarget.dataset.href);
   },
 
   handleOpenPlanner(event) {
     const origin = event.currentTarget.dataset.origin;
-    const path = origin ? `/moto/planner?origin=${encodeURIComponent(origin)}` : "/moto/planner";
+    const path = WEB_PATHS.planner(origin);
     wx.navigateTo({
-      url: `/pages/webview/index?url=${encodeURIComponent(buildWebUrl(path))}`,
+      url: MINI_PROGRAM_PATHS.webviewWithUrl(buildWebUrl(path)),
     });
   },
 });

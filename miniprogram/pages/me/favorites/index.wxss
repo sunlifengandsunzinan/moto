@@ -1,0 +1,35 @@
+.me-favorites-shell {
+  margin-bottom: 20rpx;
+}
+
+.me-favorite-list {
+  gap: 16rpx;
+}
+
+.me-favorite-card {
+  padding: 20rpx 0;
+  border-top: 2rpx solid rgba(91, 83, 77, 0.1);
+}
+
+.me-favorite-card:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.me-favorite-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 8rpx;
+}
+
+.me-favorite-card__distance {
+  flex: none;
+  color: #8F7D6D;
+  font-size: 22rpx;
+}
+
+.me-empty-favorite {
+  padding-top: 6rpx;
+}

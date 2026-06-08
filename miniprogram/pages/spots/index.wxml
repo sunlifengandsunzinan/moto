@@ -38,12 +38,15 @@
       <text class="inline-badge">{{stats.visible || 0}} / {{stats.total || 0}}</text>
     </view>
 
-    <view wx:for="{{quickGroups}}" wx:key="title" class="list-card">
+    <view wx:for="{{quickGroups}}" wx:for-index="groupIndex" wx:key="title" class="list-card">
       <text class="card-title">{{item.title}}</text>
       <view class="chip-row">
         <text
           wx:for="{{item.items}}"
+          wx:for-index="itemIndex"
           wx:key="href"
+          data-group-index="{{groupIndex}}"
+          data-item-index="{{itemIndex}}"
           data-href="{{item.href}}"
           bindtap="handleQuickFilter"
           class="chip {{item.is_active ? 'chip-active' : ''}}"
@@ -114,7 +117,7 @@
         </view>
 
         <view class="actions-row">
-          <button class="button-ghost" data-href="{{item.href}}" bindtap="handleOpenSpot">详情</button>
+          <button class="button-ghost" data-index="{{index}}" data-href="{{item.href}}" bindtap="handleOpenSpot">详情</button>
           <button class="button-primary" data-origin="{{item.city}}" bindtap="handleOpenPlanner">从这里出发</button>
         </view>
       </view>

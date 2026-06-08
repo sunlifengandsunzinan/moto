@@ -1,0 +1,16 @@
+<view class="page-shell">
+  <view class="card me-upload-coming-card">
+    <view class="section-header me-upload-coming-card__header">
+      <view>
+        <text class="eyebrow">上传入口</text>
+        <text class="card-title">上传我的</text>
+      </view>
+      <text class="inline-badge">开发中</text>
+    </view>
+
+    <view class="me-upload-coming-card__body">
+      <text class="me-upload-coming-card__title">功能开发中</text>
+      <text class="subtle">敬请期待，后续会在这里开放你的内容上传能力。</text>
+    </view>
+  </view>
+</view>

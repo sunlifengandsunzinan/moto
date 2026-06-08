@@ -259,6 +259,7 @@ page {
   border-top: 2rpx solid rgba(31, 42, 34, 0.08);
 }
 
+
 .entry-row:first-child {
   padding-top: 0;
   border-top: 0;

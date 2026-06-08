@@ -1,7 +1,9 @@
+const { MINI_PROGRAM_PATHS } = require("./utils/backend-config");
+
 Page({
   onLoad() {
     wx.switchTab({
-      url: "/pages/me/index",
+      url: MINI_PROGRAM_PATHS.meTab,
     });
   },
 });

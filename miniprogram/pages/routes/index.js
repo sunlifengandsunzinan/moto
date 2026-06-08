@@ -1,4 +1,13 @@
 const { request, buildWebUrl } = require("../../utils/request");
+const {
+  API_PATHS,
+  MINI_PROGRAM_PATHS,
+  WEB_PATHS,
+  getMiniProgramApiPath,
+  getMiniProgramDownloadUrl,
+  getMiniProgramNavigationUrl,
+  normalizeRequestPath,
+} = require("../../utils/backend-config");
 const { downloadRemoteFile } = require("../../utils/file-download");
 const { mergeRoutesWithFavorites, toggleFavoriteRoute } = require("../../utils/favorites");
 const { routesPageFallback } = require("../../mock/routes");
@@ -50,6 +59,13 @@ function buildDurationFilters(filters, selectedDays) {
 function normalizeRoute(route) {
   const safeRoute = route || {};
   return {
+    mini_program_action: safeRoute.mini_program_action || null,
+    mini_program: {
+      replan: null,
+      collect: null,
+      favorite: null,
+      ...((safeRoute && safeRoute.mini_program) || {}),
+    },
     engagement: {
       favorite_count: 0,
       navigation_count: 0,
@@ -63,6 +79,9 @@ function normalizeRoute(route) {
       source_badge: "",
       source_title: "",
       meta_text: "",
+      mini_program: {
+        download: null,
+      },
       ...((safeRoute && safeRoute.gpx) || {}),
     },
     amap_export: {
@@ -70,6 +89,11 @@ function normalizeRoute(route) {
       href: "",
       browser_href: "",
       launch_href: "",
+      mini_program: {
+        navigate: null,
+        browser: null,
+        interactive_map: null,
+      },
       ...((safeRoute && safeRoute.amap_export) || {}),
     },
     source_meta: {
@@ -111,7 +135,7 @@ Page({
     emptyState: {
       title: "暂无路线",
       description: "当前还没有匹配路线。",
-      action: { label: "去采集导航点", href: "/moto/routes/collect" },
+      action: { label: "去采集导航点", href: WEB_PATHS.routesCollect },
     },
     allRoutes: [],
     routes: [],
@@ -158,7 +182,7 @@ Page({
   fetchData(query = {}, stopRefresh = false) {
     this.setData({ loading: true, error: "" });
 
-    request({ path: "/moto/routes", data: query })
+    request({ path: API_PATHS.routes, data: query })
       .then((payload) => {
         const normalized = normalizePayload(payload);
         this.setData({
@@ -205,6 +229,27 @@ Page({
     });
   },
 
+  findRoute(slug) {
+    return (this.data.allRoutes || []).find((route) => route.slug === slug) || null;
+  },
+
+  navigateByAction(action, fallbackHref = "") {
+    const targetUrl = getMiniProgramNavigationUrl(action);
+    if (targetUrl) {
+      if (action && action.type === "tab") {
+        wx.switchTab({ url: targetUrl });
+        return;
+      }
+
+      wx.navigateTo({ url: targetUrl });
+      return;
+    }
+
+    if (fallbackHref) {
+      this.openInWebView(fallbackHref);
+    }
+  },
+
   openInWebView(rawHref) {
     if (!rawHref) {
       return;
@@ -212,16 +257,20 @@ Page({
 
     const href = /^https?:\/\//.test(rawHref) ? rawHref : buildWebUrl(rawHref);
     wx.navigateTo({
-      url: `/pages/webview/index?url=${encodeURIComponent(href)}`,
+      url: MINI_PROGRAM_PATHS.webviewWithUrl(href),
     });
   },
 
   handleOpenRoute(event) {
     const slug = event.currentTarget.dataset.slug;
+    const route = this.findRoute(slug);
+    if (route && route.mini_program_action) {
+      this.navigateByAction(route.mini_program_action, route.href);
+      return;
+    }
+
     if (slug) {
-      wx.navigateTo({
-        url: `/pages/routes/detail/index?slug=${encodeURIComponent(slug)}`,
-      });
+      wx.navigateTo({ url: MINI_PROGRAM_PATHS.routeDetail(slug) });
       return;
     }
 
@@ -229,15 +278,22 @@ Page({
   },
 
   handleDirectNavigate(event) {
-    const launchHref = event.currentTarget.dataset.launchHref;
-    const primaryHref = event.currentTarget.dataset.href;
-    const browserHref = event.currentTarget.dataset.browserHref;
-    this.openInWebView(launchHref || primaryHref || browserHref);
+    const route = this.findRoute(event.currentTarget.dataset.slug);
+    const launchHref = route?.amap_export?.launch_href || "";
+    if (launchHref) {
+      this.openInWebView(launchHref);
+      return;
+    }
+
+    const action = route?.amap_export?.mini_program?.navigate || route?.amap_export?.mini_program?.browser;
+    const fallbackHref = route?.amap_export?.href || route?.amap_export?.browser_href || "";
+    this.navigateByAction(action, fallbackHref);
   },
 
   handleDownloadGpx(event) {
-    const rawHref = event.currentTarget.dataset.href;
-    const filename = event.currentTarget.dataset.filename || "route.gpx";
+    const route = this.findRoute(event.currentTarget.dataset.slug);
+    const rawHref = getMiniProgramDownloadUrl(route?.gpx?.mini_program?.download) || event.currentTarget.dataset.href;
+    const filename = event.currentTarget.dataset.filename || route?.gpx?.filename || "route.gpx";
     if (!rawHref) {
       wx.showToast({ title: "当前路线没有 GPX 文件", icon: "none" });
       return;
@@ -258,7 +314,6 @@ Page({
 
   handleToggleFavorite(event) {
     const slug = event.currentTarget.dataset.slug;
-    const favoriteApiHref = event.currentTarget.dataset.favoriteUrl || "";
     const route = (this.data.allRoutes || []).find((item) => item.slug === slug);
     if (!route) {
       return;
@@ -271,8 +326,11 @@ Page({
 
     this.setData({ allRoutes, routes: this.filterRoutesByDuration(this.data.selectedDuration, allRoutes) });
 
-    if (result.isFavorite && favoriteApiHref) {
-      request({ path: favoriteApiHref.replace(/^\/api/, ""), method: "POST" })
+    const favoritePath = getMiniProgramApiPath(route?.mini_program?.favorite)
+      || normalizeRequestPath(route?.favorite_api_href || "");
+
+    if (result.isFavorite && favoritePath) {
+      request({ path: favoritePath, method: "POST" })
         .then((payload) => {
           if (payload && payload.ok && payload.engagement) {
             this.updateRouteEngagement(slug, payload.engagement);
@@ -303,7 +361,7 @@ Page({
   },
 
   handleOpenPlanner() {
-    this.openInWebView("/moto/planner");
+    this.openInWebView(WEB_PATHS.planner());
   },
 
   handleEmptyAction(event) {

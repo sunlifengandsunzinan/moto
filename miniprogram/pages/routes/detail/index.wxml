@@ -101,8 +101,8 @@
 
       <view class="route-detail-gpx-actions">
         <button class="button-secondary route-detail-action-button route-detail-favorite-button {{route.is_favorite ? 'route-detail-favorite-button--active' : ''}}" catchtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
-        <button wx:if="{{route.amap_export.is_available}}" class="button-secondary route-detail-action-button" data-launch-href="{{route.amap_export.launch_href}}" data-href="{{route.amap_export.href}}" data-browser-href="{{route.amap_export.browser_href}}" catchtap="handleDirectNavigate">直接导航</button>
-        <button class="button-secondary route-detail-action-button" data-href="{{route.gpx.download_href}}" data-filename="{{route.gpx.filename}}" catchtap="handleDownloadGpx">{{route.gpx.download_label}}</button>
+        <button wx:if="{{route.amap_export.is_available}}" class="button-secondary route-detail-action-button" catchtap="handleDirectNavigate">直接导航</button>
+        <button class="button-secondary route-detail-action-button" data-filename="{{route.gpx.filename}}" catchtap="handleDownloadGpx">{{route.gpx.download_label}}</button>
       </view>
     </view>
 

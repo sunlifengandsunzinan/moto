@@ -1,36 +1,8 @@
-const DEFAULT_API_BASE_URL = "http://127.0.0.1:6001/api";
-const DEFAULT_WEB_BASE_URL = "http://127.0.0.1:6001";
-
-function replaceLocalhostHost(value) {
-  return String(value || "").replace(/\/\/(127\.0\.0\.1|localhost)(?=[:/]|$)/i, "//127.0.0.1");
-}
-
-function normalizeBaseUrl(rawValue) {
-  const value = replaceLocalhostHost(rawValue).trim().replace(/\/+$/, "");
-  if (!/^https?:\/\//.test(value)) {
-    return "";
-  }
-
-  return value;
-}
-
-function normalizeApiBaseUrl(rawValue) {
-  const value = normalizeBaseUrl(rawValue);
-  if (!value) {
-    return DEFAULT_API_BASE_URL;
-  }
-
-  return `${value.replace(/\/api(?:\/.*)?$/, "").replace(/\/moto(?:\/.*)?$/, "")}/api`;
-}
-
-function normalizeWebBaseUrl(rawValue) {
-  const value = normalizeBaseUrl(rawValue);
-  if (!value) {
-    return DEFAULT_WEB_BASE_URL;
-  }
-
-  return value.replace(/\/api(?:\/.*)?$/, "");
-}
+const {
+  DEFAULT_API_BASE_URL,
+  DEFAULT_WEB_BASE_URL,
+  applyBackendConfig,
+} = require("./utils/backend-config");
 
 App({
   globalData: {
@@ -40,15 +12,8 @@ App({
   },
 
   onLaunch() {
-    const apiBaseUrl = normalizeApiBaseUrl(DEFAULT_API_BASE_URL);
-    const webBaseUrl = normalizeWebBaseUrl(DEFAULT_WEB_BASE_URL);
-
-    this.globalData.apiBaseUrl = apiBaseUrl;
-    this.globalData.webBaseUrl = webBaseUrl;
+    applyBackendConfig(this);
     this.globalData.wechatUserProfile = null;
-
-    wx.setStorageSync("apiBaseUrl", apiBaseUrl);
-    wx.setStorageSync("webBaseUrl", webBaseUrl);
   },
 
   getWechatUserProfile() {

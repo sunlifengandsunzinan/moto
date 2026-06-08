@@ -1,7 +1,7 @@
 {
   "appid": "wxd154f9fe121f3619",
   "compileType": "miniprogram",
-  "libVersion": "3.7.6",
+  "libVersion": "3.16.1",
   "miniprogramRoot": "./",
   "projectname": "moto-miniapp",
   "setting": {

@@ -8,7 +8,7 @@ import json
 import math
 import re
 from typing import Any, Mapping
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from .liaoning_spots import (
     ROUTE_TYPE_LABELS,
@@ -53,6 +53,68 @@ SPOT_TYPE_LABELS = {
     "moto-station": "摩托驿站",
     "support-stop": "补给点",
 }
+
+
+def _mini_program_route_detail_action(slug: str) -> dict[str, Any]:
+    return {"type": "route-detail", "slug": str(slug).strip()}
+
+
+def _mini_program_tab_action(tab: str) -> dict[str, str]:
+    return {"type": "tab", "tab": str(tab).strip()}
+
+
+def _mini_program_webview_action(path: str) -> dict[str, str]:
+    return {"type": "webview", "path": str(path).strip()}
+
+
+def _mini_program_api_action(path: str) -> dict[str, str]:
+    normalized = f"/{str(path or '').strip().lstrip('/')}"
+    if normalized.startswith("/api/"):
+        normalized = normalized.removeprefix("/api")
+    return {"type": "api", "path": normalized}
+
+
+def _mini_program_download_action(path: str) -> dict[str, str]:
+    return {"type": "download", "path": str(path).strip()}
+
+
+def _mini_program_spots_filter_action(query: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "spots-filter",
+        "query": {
+            str(key): str(value).strip()
+            for key, value in query.items()
+            if str(value or "").strip()
+        },
+    }
+
+
+def _mini_program_action_for_href(href: str) -> dict[str, Any]:
+    value = str(href or "").strip()
+    if not value:
+        return {}
+    if value.startswith("/api/"):
+        return _mini_program_api_action(value)
+    if value == "/moto/routes":
+        return _mini_program_tab_action("routes")
+    if value == "/moto/spots":
+        return _mini_program_tab_action("spots")
+    if value == "/moto/me":
+        return _mini_program_tab_action("me")
+
+    route_match = re.fullmatch(r"/moto/routes/([^/?#]+)", value)
+    if route_match:
+        return _mini_program_route_detail_action(route_match.group(1))
+
+    return _mini_program_webview_action(value)
+
+
+def _with_mini_program_action(item: Mapping[str, Any]) -> dict[str, Any]:
+    decorated = dict(item)
+    href = str(decorated.get("href") or "").strip()
+    if href:
+        decorated["mini_program_action"] = _mini_program_action_for_href(href)
+    return decorated
 
 
 def get_spot_collection_context(
@@ -450,12 +512,13 @@ def get_spots_index_context(query: Mapping[str, Any]) -> dict[str, Any]:
             "description": "把打卡点、补给节点和骑行地标压缩成一张适合手机快速浏览的清单，先选点位，再进路线规划。",
         },
         "entry_actions": [
-            {"label": "开始规划", "href": "/moto/planner", "kind": "primary"},
-            {"label": "录入点位", "href": "/moto/spots/collect", "kind": "secondary"},
+            _with_mini_program_action({"label": "开始规划", "href": "/moto/planner", "kind": "primary"}),
+            _with_mini_program_action({"label": "录入点位", "href": "/moto/spots/collect", "kind": "secondary"}),
         ],
         "filters": {
             "action": "/moto/spots",
             "reset_href": "/moto/spots",
+            "mini_program_reset_action": _mini_program_tab_action("spots"),
             "fields": [
                 {
                     "name": "region",
@@ -490,7 +553,7 @@ def get_spots_index_context(query: Mapping[str, Any]) -> dict[str, Any]:
         "empty_state": {
             "title": "当前筛选下还没有命中的点位",
             "description": "先放宽筛选条件，或者去录入页补充新的摩旅点位。",
-            "action": {"label": "去录入点位", "href": "/moto/spots/collect"},
+            "action": _with_mini_program_action({"label": "去录入点位", "href": "/moto/spots/collect"}),
         },
     }
 
@@ -510,6 +573,10 @@ def build_route_recommendations_for_spot(spot: Mapping[str, Any], limit: int = 3
                 "reasons": _spot_route_recommendation_reasons(spot, route),
                 "route_href": f"/moto/routes/{route['slug']}",
                 "planner_href": f"/moto/planner?route={route['slug']}&origin={spot['city']}",
+                "mini_program_route_action": _mini_program_route_detail_action(str(route["slug"])),
+                "mini_program_planner_action": _mini_program_webview_action(
+                    f"/moto/planner?route={route['slug']}&origin={spot['city']}"
+                ),
             }
         )
 
@@ -580,6 +647,7 @@ def _spot_card(spot: Mapping[str, Any]) -> dict[str, Any]:
         "video_summary": video_brief["summary"],
         "video_chips": video_brief["chips"],
         "href": f"/moto/spots/liaoning/{spot['slug']}",
+        "mini_program_action": _mini_program_webview_action(f"/moto/spots/liaoning/{spot['slug']}"),
         "image_url": spot["image_gallery"][0]["image_url"],
     }
 
@@ -646,6 +714,7 @@ def _spot_quick_filter_item(label: str, current: str, target: str, query: Mappin
     return {
         "label": label,
         "href": _build_spot_query_href(query),
+        "mini_program_action": _mini_program_spots_filter_action(query),
         "is_active": current == target,
     }
 
@@ -847,7 +916,7 @@ def build_moto_tabbar(active_tab: str) -> dict[str, Any]:
     return {
         "items": [
             {
-                **item,
+                **_with_mini_program_action(item),
                 "is_active": item["key"] == active_tab,
             }
             for item in items
@@ -878,44 +947,54 @@ def get_moto_me_context() -> dict[str, Any]:
             {
                 "title": "常用功能",
                 "items": [
-                    {
-                        "label": "开始路线规划",
-                        "description": "按天数、车型和偏好生成基础行程。",
-                        "href": "/moto/planner",
-                    },
-                    {
-                        "label": "查看路线库",
-                        "description": "按骑行时间快速切换路线，并直接跳转导航。",
-                        "href": "/moto/routes",
-                    },
-                    {
-                        "label": "提交定制需求",
-                        "description": "如果不想自己筛路线，可以直接提交定制行程。",
-                        "href": "/moto/custom",
-                    },
-                    {
-                        "label": "采集导航点",
-                        "description": "为路线补充经纬度、途径点顺序和来源备注。",
-                        "href": "/moto/routes/collect",
-                    },
+                    _with_mini_program_action(
+                        {
+                            "label": "开始路线规划",
+                            "description": "按天数、车型和偏好生成基础行程。",
+                            "href": "/moto/planner",
+                        }
+                    ),
+                    _with_mini_program_action(
+                        {
+                            "label": "查看路线库",
+                            "description": "按骑行时间快速切换路线，并直接跳转导航。",
+                            "href": "/moto/routes",
+                        }
+                    ),
+                    _with_mini_program_action(
+                        {
+                            "label": "提交定制需求",
+                            "description": "如果不想自己筛路线，可以直接提交定制行程。",
+                            "href": "/moto/custom",
+                        }
+                    ),
+                    _with_mini_program_action(
+                        {
+                            "label": "采集导航点",
+                            "description": "为路线补充经纬度、途径点顺序和来源备注。",
+                            "href": "/moto/routes/collect",
+                        }
+                    ),
                 ],
             },
             {
                 "title": "最近可继续",
                 "items": [
-                    {
-                        "label": route["title"],
-                        "description": route["summary"],
-                        "href": f"/moto/routes/{route['slug']}",
-                    }
+                    _with_mini_program_action(
+                        {
+                            "label": route["title"],
+                            "description": route["summary"],
+                            "href": f"/moto/routes/{route['slug']}",
+                        }
+                    )
                     for route in route_templates[:3]
                 ],
             },
         ],
         "quick_actions": [
-            {"label": "路线库", "href": "/moto/routes", "kind": "primary"},
-            {"label": "定制需求", "href": "/moto/custom", "kind": "secondary"},
-            {"label": "采集导航点", "href": "/moto/routes/collect", "kind": "secondary"},
+            _with_mini_program_action({"label": "路线库", "href": "/moto/routes", "kind": "primary"}),
+            _with_mini_program_action({"label": "定制需求", "href": "/moto/custom", "kind": "secondary"}),
+            _with_mini_program_action({"label": "采集导航点", "href": "/moto/routes/collect", "kind": "secondary"}),
         ],
     }
 
@@ -1600,9 +1679,15 @@ def _route_index_card(
         "days": route["days"],
         "distance_km": route.get("distance_km", 0),
         "href": f"/moto/routes/{slug}",
+        "mini_program_action": _mini_program_route_detail_action(slug),
         "replan_href": f"/moto/planner?route={slug}",
         "collect_href": f"/moto/routes/collect?route={slug}",
         "favorite_api_href": f"/api/moto/routes/{slug}/favorite",
+        "mini_program": {
+            "replan": _mini_program_webview_action(f"/moto/planner?route={slug}"),
+            "collect": _mini_program_webview_action(f"/moto/routes/collect?route={slug}"),
+            "favorite": _mini_program_api_action(f"/moto/routes/{slug}/favorite"),
+        },
         "engagement": engagement,
         "is_navigation_state_demo": bool(route.get("is_navigation_state_demo")),
         "waypoints": waypoints,
@@ -1613,6 +1698,11 @@ def _route_index_card(
             "browser_href": amap_browser_href,
             "embed_href": f"/moto/routes/{slug}/amap-embed",
             "launch_href": f"/moto/routes/{slug}/amap-launch",
+            "mini_program": {
+                "navigate": _mini_program_webview_action(amap_export_href) if amap_export_href else {},
+                "browser": _mini_program_webview_action(amap_browser_href) if amap_browser_href else {},
+                "interactive_map": _mini_program_webview_action(f"/moto/routes/{slug}/amap-embed"),
+            },
             "label": "直接导航",
             "is_available": bool(amap_export_href),
             "screenshot_href": f"/moto/routes/{slug}/amap-route.svg",
@@ -1793,6 +1883,9 @@ def _route_gpx_payload(
         "is_available": True,
         "filename": filename,
         "download_href": f"/api/moto/gpx/download/{quote(filename)}",
+        "mini_program": {
+            "download": _mini_program_download_action(f"/api/moto/gpx/download/{quote(filename)}"),
+        },
         "download_label": "GPX 文件下载",
         "source_badge": source_badge,
         "source_title": source_title,

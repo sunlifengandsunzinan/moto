@@ -3,6 +3,8 @@
     "pages/routes/index",
     "pages/routes/detail/index",
     "pages/me/index",
+    "pages/me/favorites/index",
+    "pages/me/upload/index",
     "pages/spots/index",
     "pages/webview/index"
   ],

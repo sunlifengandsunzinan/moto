@@ -73,10 +73,10 @@ The repository now includes a real Mini Program frontend under `miniprogram/`.
 - tabs: `pages/routes/index`, `pages/spots/index`, `pages/me/index`
 - detail bridge: `pages/webview/index`
 
-Default local backend addresses in the Mini Program are:
+Default local backend addresses in the Mini Program are selected at runtime:
 
-- API: `http://192.168.0.119:6001/api`
-- web-view pages: `http://192.168.0.119:6001`
+- WeChat DevTools simulator: `http://127.0.0.1:6001` and `http://127.0.0.1:6001/api`
+- phone preview / real-device debugging: `https://1ec971d6.r6.cpolar.cn` and `https://1ec971d6.r6.cpolar.cn/api`
 
 Recommended local flow:
 
@@ -89,9 +89,9 @@ If WeChat DevTools reports `app.json not found in root directory`, that means th
 - `miniprogram/`
 - the repository root, which now contains `project.config.json` and redirects DevTools to `miniprogram/`
 
-For local WeChat DevTools preview on this Mac, the project currently uses LAN IP `192.168.0.119` instead of `127.0.0.1`.
+The project now routes by runtime environment: devtools uses `127.0.0.1`, while phone preview and real-device debugging use the LAN IP configured in `miniprogram/utils/backend-config.js`.
 
-If the Mac changes networks and the IP changes, update these defaults in `miniprogram/app.js` and `miniprogram/utils/request.js`.
+If the Mac changes networks and the IP changes, update `DEFAULT_DEVICE_WEB_BASE_URL` in `miniprogram/utils/backend-config.js`.
 
 For a real device build, replace the LAN IP with a domain that is allowed by Mini Program request and web-view settings.
 

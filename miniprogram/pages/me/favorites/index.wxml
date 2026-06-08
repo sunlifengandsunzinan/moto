@@ -1,0 +1,26 @@
+<view class="page-shell">
+  <view class="card me-favorites-shell">
+    <view class="section-header">
+      <view>
+        <text class="eyebrow">我的路线</text>
+        <text class="card-title">我的收藏</text>
+      </view>
+      <text class="inline-badge">{{favoriteRoutes.length}} 条</text>
+    </view>
+
+    <view wx:if="{{favoriteRoutes.length}}" class="list-column me-favorite-list">
+      <view wx:for="{{favoriteRoutes}}" wx:key="slug" class="me-favorite-card" data-slug="{{item.slug}}" bindtap="handleOpenFavorite">
+        <view class="me-favorite-card__header">
+          <text class="entry-title">{{item.title}}</text>
+          <text class="me-favorite-card__distance">{{item.distance_km}} km</text>
+        </view>
+        <view><text class="subtle">{{item.days}} 天 · {{item.waypoint_count}} 个途径点</text></view>
+        <view wx:if="{{item.summary}}"><text class="card-desc">{{item.summary}}</text></view>
+      </view>
+    </view>
+
+    <view wx:else class="me-empty-favorite">
+      <text class="subtle">你还没有收藏路线。去路线页点“收藏”后，这里会直接显示。</text>
+    </view>
+  </view>
+</view>
