@@ -15,7 +15,7 @@ The Mini Program reads data from the Flask backend JSON APIs:
 Default local endpoints and request paths are centralized in `utils/backend-config.js`:
 
 - devtools simulator web base URL: `http://127.0.0.1:6001`
-- phone preview / real device web base URL: `https://1ec971d6.r6.cpolar.cn`
+- phone preview / real device web base URL: `https://35c9b805.r6.cpolar.cn`
 - API base URL follows the selected web base URL with `/api`
 - unified API paths: `routes`, `spots`, `me`
 - unified Mini Program routes: tab pages, route detail, and webview URLs
@@ -37,6 +37,6 @@ python app.py
 
 - `pages/webview/index` is used to open existing Flask HTML pages for detail and tool pages.
 - The simulator and phone now intentionally use different default hosts: `127.0.0.1` for devtools, LAN IP for preview and real-device debugging.
-- Backend base URL storage now lives under the versioned key `backendConfig.v3`; legacy `apiBaseUrl`, `webBaseUrl`, and older cached phone-side hosts are migrated automatically.
+- Backend base URL storage now lives under the single key `backendConfig`; legacy `backendConfig.v2`, `backendConfig.v3`, `backendConfig.v4`, `apiBaseUrl`, and `webBaseUrl` are migrated and cleared automatically.
 - If the Mac changes networks, update `DEFAULT_DEVICE_WEB_BASE_URL` in `utils/backend-config.js`.
 - On a real device outside the local network, replace the LAN IP with a domain allowed by Mini Program request and web-view settings.
