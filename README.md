@@ -76,7 +76,7 @@ The repository now includes a real Mini Program frontend under `miniprogram/`.
 Default local backend addresses in the Mini Program are selected at runtime:
 
 - WeChat DevTools simulator: `http://127.0.0.1:6001` and `http://127.0.0.1:6001/api`
-- phone preview / real-device debugging: `https://35c9b805.r6.cpolar.cn` and `https://35c9b805.r6.cpolar.cn/api`
+- phone preview / real-device debugging: `https://517f3375.r8.vip.cpolar.cn` and `https://517f3375.r8.vip.cpolar.cn/api`
 
 Recommended local flow:
 

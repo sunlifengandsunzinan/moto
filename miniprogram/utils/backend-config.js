@@ -1,12 +1,6 @@
 const DEFAULT_WEB_BASE_URL = "http://127.0.0.1:6001";
-const DEFAULT_DEVICE_WEB_BASE_URL = "https://35c9b805.r6.cpolar.cn";
+const DEFAULT_DEVICE_WEB_BASE_URL = "https://517f3375.r8.vip.cpolar.cn";
 const DEFAULT_API_BASE_URL = `${DEFAULT_WEB_BASE_URL}/api`;
-const LEGACY_DEVICE_WEB_BASE_URLS = [
-  "http://8.141.4.69:6001",
-  "https://8.141.4.69:6001",
-  "https://1ec971d6.r6.cpolar.cn",
-  "http://35c9b805.r6.cpolar.cn",
-];
 
 const STORAGE_KEYS = {
   backendConfig: "backendConfig",
@@ -151,26 +145,12 @@ function getDefaultApiBaseUrl() {
   return `${getDefaultWebBaseUrl()}/api`;
 }
 
-function replaceLegacyDeviceOrigin(value) {
-  const rawValue = String(value || "").trim();
-  if (!rawValue || getRuntimePlatform() === "devtools") {
-    return rawValue;
-  }
-
-  const matchedOrigin = LEGACY_DEVICE_WEB_BASE_URLS.find((origin) => rawValue.startsWith(origin));
-  if (!matchedOrigin) {
-    return rawValue;
-  }
-
-  return `${DEFAULT_DEVICE_WEB_BASE_URL}${rawValue.slice(matchedOrigin.length)}`;
-}
-
 function isLoopbackUrl(value) {
   return /^https?:\/\/(127\.0\.0\.1|localhost)(?::\d+)?(?=\/|$)/i.test(String(value || "").trim());
 }
 
 function normalizeRuntimeHost(value) {
-  const rawValue = replaceLegacyDeviceOrigin(value);
+  const rawValue = String(value || "").trim();
   if (!rawValue) {
     return "";
   }
