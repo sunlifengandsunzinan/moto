@@ -1,7 +1,7 @@
 const DEFAULT_WEB_BASE_URL = "http://127.0.0.1:5000";
-const DEFAULT_DEVICE_WEB_BASE_URL = "https://517f3375.r8.vip.cpolar.cn";
+const DEFAULT_DEVICE_WEB_BASE_URL = "https://www.xingtu.ltd";
 const DEFAULT_API_BASE_URL = `${DEFAULT_WEB_BASE_URL}/api`;
-const BACKEND_CONFIG_STORAGE_VERSION = 2;
+const BACKEND_CONFIG_STORAGE_VERSION = 3;
 
 const STORAGE_KEYS = {
   backendConfig: "backendConfig",

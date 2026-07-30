@@ -25,6 +25,17 @@ function normalizeCoordinatePoint(point) {
   };
 }
 
+function getRouteNavigationTarget(route) {
+  const coordinatePoints = (route?.amap_export?.waypoints || [])
+    .map(normalizeCoordinatePoint)
+    .filter(Boolean);
+  if (!coordinatePoints.length) {
+    return null;
+  }
+
+  return coordinatePoints[coordinatePoints.length - 1];
+}
+
 function buildMarkerCallout(point, index, totalCount) {
   const isStart = index === 0;
   const isEnd = index === totalCount - 1;
@@ -134,8 +145,10 @@ function normalizePayload(payload) {
       slug,
       is_favorite: slug ? isFavoriteRoute(slug) : false,
       favorite_api_href: String(route.favorite_api_href || ""),
+      navigation_api_href: String(route.navigation_api_href || ""),
       mini_program: {
         favorite: null,
+        navigation: null,
         ...((route && route.mini_program) || {}),
       },
       engagement: {
@@ -282,26 +295,46 @@ Page({
   },
 
   handleDirectNavigate(event) {
-    const launchHref = this.data.route?.amap_export?.launch_href || "";
-    if (launchHref) {
-      wx.navigateTo({ url: MINI_PROGRAM_PATHS.webviewWithUrl(buildWebUrl(launchHref)) });
+    const route = this.data.route || {};
+    const target = getRouteNavigationTarget(route);
+    if (!target) {
+      wx.showToast({ title: "当前路线缺少可导航坐标", icon: "none" });
       return;
     }
 
-    const action = this.data.route?.amap_export?.mini_program?.navigate
-      || this.data.route?.amap_export?.mini_program?.browser;
-    const fallbackHref = this.data.route?.amap_export?.href
-      || this.data.route?.amap_export?.browser_href
-      || "";
-    const targetUrl = getMiniProgramNavigationUrl(action);
-    if (targetUrl) {
-      wx.navigateTo({ url: targetUrl });
-      return;
-    }
+    wx.openLocation({
+      latitude: target.latitude,
+      longitude: target.longitude,
+      name: target.name,
+      address: target.name,
+      scale: 12,
+      success: () => {
+        const navigationPath = getMiniProgramApiPath(route?.mini_program?.navigation)
+          || normalizeRequestPath(route?.navigation_api_href || "");
+        if (!navigationPath) {
+          return;
+        }
 
-    if (fallbackHref) {
-      wx.navigateTo({ url: MINI_PROGRAM_PATHS.webviewWithUrl(buildWebUrl(fallbackHref)) });
-    }
+        request({ path: navigationPath, method: "POST" })
+          .then((payload) => {
+            if (payload && payload.ok && payload.engagement) {
+              this.setData({
+                route: {
+                  ...this.data.route,
+                  engagement: {
+                    ...(this.data.route.engagement || {}),
+                    ...payload.engagement,
+                  },
+                },
+              });
+            }
+          })
+          .catch(() => {});
+      },
+      fail: () => {
+        wx.showToast({ title: "无法打开系统地图", icon: "none", duration: 2200 });
+      },
+    });
   },
 
   handleOpenInteractiveMap(event) {

@@ -1683,10 +1683,12 @@ def _route_index_card(
         "replan_href": f"/moto/planner?route={slug}",
         "collect_href": f"/moto/routes/collect?route={slug}",
         "favorite_api_href": f"/api/moto/routes/{slug}/favorite",
+        "navigation_api_href": f"/api/moto/routes/{slug}/navigation",
         "mini_program": {
             "replan": _mini_program_webview_action(f"/moto/planner?route={slug}"),
             "collect": _mini_program_webview_action(f"/moto/routes/collect?route={slug}"),
             "favorite": _mini_program_api_action(f"/moto/routes/{slug}/favorite"),
+            "navigation": _mini_program_api_action(f"/moto/routes/{slug}/navigation"),
         },
         "engagement": engagement,
         "is_navigation_state_demo": bool(route.get("is_navigation_state_demo")),

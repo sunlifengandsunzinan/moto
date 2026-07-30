@@ -73,10 +73,10 @@ The repository now includes a real Mini Program frontend under `miniprogram/`.
 - tabs: `pages/routes/index`, `pages/spots/index`, `pages/me/index`
 - detail bridge: `pages/webview/index`
 
-Default local backend addresses in the Mini Program are selected at runtime:
+Default backend addresses in the Mini Program are selected at runtime:
 
 - WeChat DevTools simulator: `http://127.0.0.1:5000` and `http://127.0.0.1:5000/api`
-- phone preview / real-device debugging: `https://517f3375.r8.vip.cpolar.cn` and `https://517f3375.r8.vip.cpolar.cn/api`
+- phone preview / real-device debugging: `https://www.xingtu.ltd` and `https://www.xingtu.ltd/api`
 
 Recommended local flow:
 
@@ -91,9 +91,9 @@ If WeChat DevTools reports `app.json not found in root directory`, that means th
 
 The project now routes by runtime environment: devtools uses `127.0.0.1`, while phone preview and real-device debugging use the device-side domain configured in `miniprogram/utils/backend-config.js`.
 
-If the Mac changes networks and the IP changes, update `DEFAULT_DEVICE_WEB_BASE_URL` in `miniprogram/utils/backend-config.js`.
+The production domain `https://www.xingtu.ltd` is served by Aliyun Nginx over HTTPS and reverse-proxied to the Flask process on `127.0.0.1:6001`.
 
-For a real device build, replace the LAN IP with a domain that is allowed by Mini Program request and web-view settings.
+For a real device build, ensure the Mini Program request domain and web-view business domain both include `https://www.xingtu.ltd`.
 
 ## Page Entry Overview
 

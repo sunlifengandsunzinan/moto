@@ -56,6 +56,31 @@ function buildDurationFilters(filters, selectedDays) {
   }));
 }
 
+function normalizeCoordinatePoint(point) {
+  const lng = Number(point?.lng);
+  const lat = Number(point?.lat);
+  if (!point?.has_coordinates || !Number.isFinite(lng) || !Number.isFinite(lat)) {
+    return null;
+  }
+
+  return {
+    name: String(point.name || "途径点"),
+    longitude: lng,
+    latitude: lat,
+  };
+}
+
+function getRouteNavigationTarget(route) {
+  const coordinatePoints = (route?.amap_export?.waypoints || [])
+    .map(normalizeCoordinatePoint)
+    .filter(Boolean);
+  if (!coordinatePoints.length) {
+    return null;
+  }
+
+  return coordinatePoints[coordinatePoints.length - 1];
+}
+
 function normalizeRoute(route) {
   const safeRoute = route || {};
   return {
@@ -103,6 +128,7 @@ function normalizeRoute(route) {
       ...((safeRoute && safeRoute.source_meta) || {}),
     },
     favorite_api_href: String(safeRoute.favorite_api_href || ""),
+    navigation_api_href: String(safeRoute.navigation_api_href || ""),
     days_plan: Array.isArray(safeRoute.days_plan) ? safeRoute.days_plan : [],
     ...safeRoute,
   };
@@ -279,15 +305,37 @@ Page({
 
   handleDirectNavigate(event) {
     const route = this.findRoute(event.currentTarget.dataset.slug);
-    const launchHref = route?.amap_export?.launch_href || "";
-    if (launchHref) {
-      this.openInWebView(launchHref);
+    const target = getRouteNavigationTarget(route);
+    if (!target) {
+      wx.showToast({ title: "当前路线缺少可导航坐标", icon: "none" });
       return;
     }
 
-    const action = route?.amap_export?.mini_program?.navigate || route?.amap_export?.mini_program?.browser;
-    const fallbackHref = route?.amap_export?.href || route?.amap_export?.browser_href || "";
-    this.navigateByAction(action, fallbackHref);
+    wx.openLocation({
+      latitude: target.latitude,
+      longitude: target.longitude,
+      name: target.name,
+      address: target.name,
+      scale: 12,
+      success: () => {
+        const navigationPath = getMiniProgramApiPath(route?.mini_program?.navigation)
+          || normalizeRequestPath(route?.navigation_api_href || "");
+        if (!navigationPath) {
+          return;
+        }
+
+        request({ path: navigationPath, method: "POST" })
+          .then((payload) => {
+            if (payload && payload.ok && payload.engagement) {
+              this.updateRouteEngagement(route.slug, payload.engagement);
+            }
+          })
+          .catch(() => {});
+      },
+      fail: () => {
+        wx.showToast({ title: "无法打开系统地图", icon: "none", duration: 2200 });
+      },
+    });
   },
 
   handleDownloadGpx(event) {

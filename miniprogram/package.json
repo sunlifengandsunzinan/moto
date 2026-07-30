@@ -1,0 +1,7 @@
+{
+  "name": "moto-miniapp",
+  "private": true,
+  "dependencies": {
+    "vconsole.miniprogram": "latest"
+  }
+}

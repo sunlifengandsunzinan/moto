@@ -3,6 +3,7 @@ const {
   DEFAULT_WEB_BASE_URL,
   applyBackendConfig,
 } = require("./utils/backend-config");
+const { initDebugConsole } = require("./utils/debug-console");
 
 App({
   globalData: {
@@ -13,6 +14,7 @@ App({
 
   onLaunch() {
     applyBackendConfig(this);
+    initDebugConsole();
     this.globalData.wechatUserProfile = null;
   },
 
