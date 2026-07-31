@@ -88,6 +88,14 @@ function formatWechatLocation(profile) {
   return parts.join(" · ");
 }
 
+function resolveAuthorizeErrorMessage(error) {
+  const errMsg = String(error?.errMsg || "");
+  if (errMsg.includes("auth deny") || errMsg.includes("auth denied") || errMsg.includes("cancel")) {
+    return "已取消授权";
+  }
+  return "登录失败，请重试";
+}
+
 Page({
   data: {
     isAuthorizing: false,
@@ -184,36 +192,59 @@ Page({
       return;
     }
 
-    if (typeof wx.getUserProfile !== "function") {
-      wx.showToast({
-        title: "当前基础库不支持",
-        icon: "none",
+    this.setData({ isAuthorizing: true });
+
+    const finishAuthorize = (profile) => {
+      const app = getApp();
+      const storedProfile = typeof app?.setWechatUserProfile === "function"
+        ? app.setWechatUserProfile(profile)
+        : profile;
+      const displayProfile = buildDisplayProfile(storedProfile);
+
+      this.setData({
+        isAuthorizing: false,
+        wechatUserProfile: storedProfile,
+        wechatProfileLocation: formatWechatLocation(storedProfile),
+        displayName: displayProfile.displayName,
+        avatarText: displayProfile.avatarText,
       });
+
+      if (storedProfile) {
+        wx.showToast({ title: "登录成功", icon: "none" });
+      }
+    };
+
+    const fallbackAuthorize = (originError) => {
+      if (typeof wx.getUserInfo !== "function") {
+        this.setData({ isAuthorizing: false });
+        wx.showToast({ title: resolveAuthorizeErrorMessage(originError), icon: "none" });
+        return;
+      }
+
+      wx.getUserInfo({
+        lang: "zh_CN",
+        success: (result) => {
+          finishAuthorize(result && result.userInfo ? result.userInfo : null);
+        },
+        fail: (error) => {
+          this.setData({ isAuthorizing: false });
+          wx.showToast({ title: resolveAuthorizeErrorMessage(error || originError), icon: "none" });
+        },
+      });
+    };
+
+    if (typeof wx.getUserProfile !== "function") {
+      fallbackAuthorize({ errMsg: "getUserProfile unavailable" });
       return;
     }
-
-    this.setData({ isAuthorizing: true });
 
     wx.getUserProfile({
       desc: "用于在我的页面展示微信头像和昵称",
       success: (result) => {
-        const profile = result && result.userInfo ? result.userInfo : null;
-        const app = getApp();
-        const storedProfile = typeof app?.setWechatUserProfile === "function"
-          ? app.setWechatUserProfile(profile)
-          : profile;
-        const displayProfile = buildDisplayProfile(storedProfile);
-
-        this.setData({
-          isAuthorizing: false,
-          wechatUserProfile: storedProfile,
-          wechatProfileLocation: formatWechatLocation(storedProfile),
-          displayName: displayProfile.displayName,
-          avatarText: displayProfile.avatarText,
-        });
+        finishAuthorize(result && result.userInfo ? result.userInfo : null);
       },
-      fail: () => {
-        this.setData({ isAuthorizing: false });
+      fail: (error) => {
+        fallbackAuthorize(error);
       },
     });
   },

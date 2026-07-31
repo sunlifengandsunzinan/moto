@@ -52,11 +52,16 @@ App({
         }
       : null;
 
-    this.globalData.wechatUserProfile = normalizedProfile;
+    const sanitizedProfile = normalizedProfile
+      && (normalizedProfile.nickName || normalizedProfile.avatarUrl)
+      ? normalizedProfile
+      : null;
 
-    if (normalizedProfile) {
-      wx.setStorageSync("wechatUserProfile", normalizedProfile);
-      return normalizedProfile;
+    this.globalData.wechatUserProfile = sanitizedProfile;
+
+    if (sanitizedProfile) {
+      wx.setStorageSync("wechatUserProfile", sanitizedProfile);
+      return sanitizedProfile;
     }
 
     wx.removeStorageSync("wechatUserProfile");
