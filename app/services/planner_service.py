@@ -1150,6 +1150,79 @@ def get_route_templates() -> list[RouteDict]:
     return routes
 
 
+def get_liaoning_route_templates() -> list[RouteDict]:
+    liaoning_spot_slugs = {str(spot.get("slug") or "").strip() for spot in get_liaoning_moto_spots()}
+    return [route for route in get_route_templates() if _is_liaoning_route(route, liaoning_spot_slugs)]
+
+
+def _is_liaoning_route(route: Mapping[str, Any], liaoning_spot_slugs: set[str]) -> bool:
+    route_spot_slugs = {
+        str(value).strip()
+        for value in (route.get("spot_slugs") or [])
+        if str(value).strip()
+    }
+    if route_spot_slugs.intersection(liaoning_spot_slugs):
+        return True
+
+    text_fields = [
+        str(route.get("slug") or ""),
+        str(route.get("title") or ""),
+        str(route.get("summary") or ""),
+    ]
+
+    tags = route.get("tags")
+    if isinstance(tags, list):
+        text_fields.extend(str(item) for item in tags)
+
+    merged_text = " ".join(text_fields).lower()
+    non_liaoning_keywords = [
+        "北京", "天津", "河北", "山西", "内蒙古", "吉林", "黑龙江", "上海", "江苏", "浙江", "安徽", "福建", "江西",
+        "山东", "河南", "湖北", "湖南", "广东", "广西", "海南", "重庆", "四川", "贵州", "云南", "西藏", "陕西",
+        "甘肃", "青海", "宁夏", "新疆", "香港", "澳门", "台湾", "ji lin", "heilongjiang", "beijing", "tianjin",
+    ]
+    has_non_liaoning_keyword = any(keyword in merged_text for keyword in non_liaoning_keywords)
+
+    waypoints = route.get("navigation", {}).get("waypoints") if isinstance(route.get("navigation"), Mapping) else []
+    if isinstance(waypoints, list):
+        coordinate_points = [
+            item for item in waypoints
+            if isinstance(item, Mapping) and item.get("lat") not in {None, ""} and item.get("lng") not in {None, ""}
+        ]
+        if coordinate_points:
+            if all(_is_liaoning_coordinate(item.get("lat"), item.get("lng")) for item in coordinate_points):
+                return True
+            return False
+
+        waypoint_text = " ".join(str(item.get("name") or "") for item in waypoints if isinstance(item, Mapping))
+        non_liaoning_place_keywords = [
+            "集安", "通化", "临江", "长白山", "延吉", "长春", "吉林市", "松原", "白城", "四平",
+            "哈尔滨", "齐齐哈尔", "牡丹江", "佳木斯", "大庆", "伊春", "漠河", "加格达奇",
+            "赤峰", "承德", "秦皇岛", "北京", "天津",
+        ]
+        if any(keyword in waypoint_text for keyword in non_liaoning_place_keywords):
+            return False
+
+        liaoning_city_keywords = ["沈阳", "大连", "丹东", "本溪", "盘锦", "葫芦岛", "锦州", "营口", "鞍山", "抚顺", "辽阳", "铁岭", "阜新", "朝阳", "宽甸", "桓仁"]
+        city_hit_count = sum(1 for keyword in liaoning_city_keywords if keyword in waypoint_text)
+        if city_hit_count >= 2 and not has_non_liaoning_keyword:
+            return True
+
+    if ("liaoning" in merged_text or "辽宁" in merged_text) and not has_non_liaoning_keyword:
+        return True
+
+    return False
+
+
+def _is_liaoning_coordinate(raw_lat: Any, raw_lng: Any) -> bool:
+    try:
+        lat = float(raw_lat)
+        lng = float(raw_lng)
+    except (TypeError, ValueError):
+        return False
+
+    return 38.7 <= lat <= 43.6 and 118.8 <= lng <= 125.8
+
+
 def get_route_by_slug(slug: str) -> dict[str, Any] | None:
     return next((route for route in get_route_templates() if route["slug"] == slug), None)
 

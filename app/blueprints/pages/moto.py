@@ -27,7 +27,7 @@ from ...services import (
     get_route_by_slug,
     get_spots_index_context,
     get_spot_collection_context,
-    get_route_templates,
+    get_liaoning_route_templates,
     review_candidate_spot,
     gpx_service,
 )
@@ -125,7 +125,7 @@ def moto_planner_result() -> str:
 
 @moto_bp.get("/moto/routes")
 def moto_routes() -> str:
-    context = build_routes_index_context(get_route_templates(), request.args)
+    context = build_routes_index_context(get_liaoning_route_templates(), request.args)
     context["tabbar"] = build_moto_tabbar("routes")
     return render_template("planner/routes.html", **context)
 

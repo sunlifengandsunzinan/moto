@@ -7,8 +7,8 @@ from ...services import (
     build_route_detail_context,
     build_routes_index_context,
     get_moto_me_context,
+    get_liaoning_route_templates,
     get_route_by_slug,
-    get_route_templates,
     get_route_waypoint_collection_api_payload,
     get_spots_index_context,
     gpx_service,
@@ -19,7 +19,7 @@ from . import api_bp
 
 @api_bp.get("/moto/routes")
 def moto_routes():
-    context = build_routes_index_context(get_route_templates(), request.args)
+    context = build_routes_index_context(get_liaoning_route_templates(), request.args)
     return jsonify(context)
 
 

@@ -46,5 +46,6 @@ from .planner_service import (
 	get_route_waypoint_collection_schema,
 	get_spots_index_context,
 	get_spot_collection_context,
+	get_liaoning_route_templates,
 	get_route_templates,
 )

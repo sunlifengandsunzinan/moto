@@ -42,6 +42,21 @@ function sortRoutesByHeat(routes) {
   return (Array.isArray(routes) ? routes.slice() : []).sort(compareRouteHeat);
 }
 
+function sortRoutes(routes, sortMode) {
+  if (sortMode === "distance") {
+    return (Array.isArray(routes) ? routes.slice() : []).sort((left, right) => {
+      const leftDistance = Number(left?.distance_km || 0);
+      const rightDistance = Number(right?.distance_km || 0);
+      if (leftDistance !== rightDistance) {
+        return rightDistance - leftDistance;
+      }
+      return compareRouteHeat(left, right);
+    });
+  }
+
+  return sortRoutesByHeat(routes);
+}
+
 function buildDurationFilters(filters, selectedDays) {
   const quickFilters = filters && Array.isArray(filters.day_quick_filters) ? filters.day_quick_filters : [];
   if (!quickFilters.length) {
@@ -81,9 +96,28 @@ function getRouteNavigationTarget(route) {
   return coordinatePoints[coordinatePoints.length - 1];
 }
 
+function buildEstimatedDurationLabel(route) {
+  const distance = Number(route?.distance_km || 0);
+  if (!Number.isFinite(distance) || distance <= 0) {
+    return "--";
+  }
+
+  const estimatedHours = Math.max(1, Math.round(distance / 55));
+  return `${estimatedHours}H`;
+}
+
+function buildRouteCoverImage(route) {
+  const screenshotHref = String(route?.amap_export?.screenshot_href || "").trim();
+  if (screenshotHref) {
+    return buildWebUrl(screenshotHref);
+  }
+
+  return "";
+}
+
 function normalizeRoute(route) {
   const safeRoute = route || {};
-  return {
+  const normalizedRoute = {
     mini_program_action: safeRoute.mini_program_action || null,
     mini_program: {
       replan: null,
@@ -132,6 +166,13 @@ function normalizeRoute(route) {
     days_plan: Array.isArray(safeRoute.days_plan) ? safeRoute.days_plan : [],
     ...safeRoute,
   };
+
+  return {
+    ...normalizedRoute,
+    cover_image_url: buildRouteCoverImage(normalizedRoute),
+    estimated_duration_label: buildEstimatedDurationLabel(normalizedRoute),
+    reward_points_label: `${Number(normalizedRoute?.engagement?.favorite_count || 0)}分`,
+  };
 }
 
 function normalizePayload(payload) {
@@ -152,6 +193,26 @@ function normalizePayload(payload) {
   };
 }
 
+function applyRouteFilters(allRoutes, selectedDuration, keyword, sortMode) {
+  const normalizedKeyword = String(keyword || "").trim().toLowerCase();
+  const filtered = (Array.isArray(allRoutes) ? allRoutes : []).filter((route) => {
+    if (selectedDuration && String(route.days || "") !== String(selectedDuration)) {
+      return false;
+    }
+
+    if (!normalizedKeyword) {
+      return true;
+    }
+
+    const title = String(route.title || "").toLowerCase();
+    const summary = String(route.summary || "").toLowerCase();
+    const sourceLabel = String(route?.source_meta?.label || "").toLowerCase();
+    return title.includes(normalizedKeyword) || summary.includes(normalizedKeyword) || sourceLabel.includes(normalizedKeyword);
+  });
+
+  return sortRoutes(filtered, sortMode);
+}
+
 Page({
   data: {
     loading: true,
@@ -166,6 +227,9 @@ Page({
     allRoutes: [],
     routes: [],
     selectedDuration: "",
+    keyword: "",
+    sortMode: "heat",
+    sortLabel: "热度",
     durationFilters: [{ key: "", label: "全部", value: "", is_active: true }],
   },
 
@@ -175,23 +239,19 @@ Page({
 
   onShow() {
     if (this.data.allRoutes.length) {
-      const allRoutes = sortRoutesByHeat(mergeRoutesWithFavorites(this.data.allRoutes));
-      this.setData({ allRoutes, routes: this.filterRoutesByDuration(this.data.selectedDuration, allRoutes) });
+      const allRoutes = mergeRoutesWithFavorites(this.data.allRoutes);
+      this.setData({
+        allRoutes,
+        routes: applyRouteFilters(allRoutes, this.data.selectedDuration, this.data.keyword, this.data.sortMode),
+      });
     }
-  },
-
-  filterRoutesByDuration(selectedDuration, routes) {
-    if (!selectedDuration) {
-      return sortRoutesByHeat(routes);
-    }
-
-    return sortRoutesByHeat((routes || []).filter((route) => String(route.days || "") === String(selectedDuration)));
   },
 
   applyDurationFilter(selectedDuration, routes) {
+    const sourceRoutes = routes !== undefined ? routes : this.data.allRoutes;
     this.setData({
       selectedDuration,
-      routes: this.filterRoutesByDuration(selectedDuration, routes !== undefined ? routes : this.data.allRoutes),
+      routes: applyRouteFilters(sourceRoutes, selectedDuration, this.data.keyword, this.data.sortMode),
     });
   },
 
@@ -215,6 +275,7 @@ Page({
           loading: false,
           error: "",
           ...normalized,
+          routes: applyRouteFilters(normalized.allRoutes, normalized.selectedDuration, this.data.keyword, this.data.sortMode),
         });
       })
       .catch((error) => {
@@ -236,8 +297,32 @@ Page({
     this.fetchData(this.buildQuery({ days }));
   },
 
+  handleSearchInput(event) {
+    const keyword = String(event.detail.value || "");
+    this.setData({
+      keyword,
+      routes: applyRouteFilters(this.data.allRoutes, this.data.selectedDuration, keyword, this.data.sortMode),
+    });
+  },
+
+  handleSearchClear() {
+    this.setData({
+      keyword: "",
+      routes: applyRouteFilters(this.data.allRoutes, this.data.selectedDuration, "", this.data.sortMode),
+    });
+  },
+
+  handleToggleSort() {
+    const nextSortMode = this.data.sortMode === "heat" ? "distance" : "heat";
+    this.setData({
+      sortMode: nextSortMode,
+      sortLabel: nextSortMode === "heat" ? "热度" : "里程",
+      routes: applyRouteFilters(this.data.allRoutes, this.data.selectedDuration, this.data.keyword, nextSortMode),
+    });
+  },
+
   updateRouteEngagement(slug, engagement) {
-    const allRoutes = sortRoutesByHeat((this.data.allRoutes || []).map((route) => (
+    const allRoutes = (this.data.allRoutes || []).map((route) => (
       route.slug === slug
         ? {
             ...route,
@@ -247,11 +332,11 @@ Page({
             },
           }
         : route
-    )));
+    ));
 
     this.setData({
       allRoutes,
-      routes: this.filterRoutesByDuration(this.data.selectedDuration, allRoutes),
+      routes: applyRouteFilters(allRoutes, this.data.selectedDuration, this.data.keyword, this.data.sortMode),
     });
   },
 
@@ -368,11 +453,14 @@ Page({
     }
 
     const result = toggleFavoriteRoute(route);
-    const allRoutes = sortRoutesByHeat((this.data.allRoutes || []).map((item) => (
+    const allRoutes = (this.data.allRoutes || []).map((item) => (
       item.slug === slug ? { ...item, is_favorite: result.isFavorite } : item
-    )));
+    ));
 
-    this.setData({ allRoutes, routes: this.filterRoutesByDuration(this.data.selectedDuration, allRoutes) });
+    this.setData({
+      allRoutes,
+      routes: applyRouteFilters(allRoutes, this.data.selectedDuration, this.data.keyword, this.data.sortMode),
+    });
 
     const favoritePath = getMiniProgramApiPath(route?.mini_program?.favorite)
       || normalizeRequestPath(route?.favorite_api_href || "");

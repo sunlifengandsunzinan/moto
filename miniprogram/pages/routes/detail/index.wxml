@@ -1,18 +1,14 @@
-<view class="page-shell route-detail-page">
-  <view class="topbar">
-    <view class="topbar-copy">
-      <text class="eyebrow">{{page.eyebrow}}</text>
-      <text class="page-title">{{page.title}}</text>
-      <view class="route-detail-heat-row">
-        <view class="route-detail-heat-pill">
-          <text class="route-detail-heat-pill__icon">🔥</text>
-          <text class="route-detail-heat-pill__count">{{route.engagement.total_count}}</text>
-        </view>
-        <text class="route-detail-heat-meta">收藏 / 导航 {{route.engagement.favorite_count}} / {{route.engagement.navigation_count}}</text>
-      </view>
+<view class="page-shell route-detail-reference-page">
+  <view class="route-detail-topbar">
+    <view class="route-detail-back" bindtap="handleBack">
+      <text class="route-detail-back__icon">〈</text>
     </view>
-    <view class="topbar-action" bindtap="handleBack">
-      <text>返回路线</text>
+  </view>
+
+  <view class="route-detail-kpi-strip">
+    <view wx:for="{{overviewStats}}" wx:key="key" class="route-detail-kpi-item">
+      <text class="route-detail-kpi-item__label">{{item.label}}</text>
+      <text class="route-detail-kpi-item__value" wx:if="{{false}}">{{item.value}}</text>
     </view>
   </view>
 
@@ -21,135 +17,56 @@
   </view>
 
   <block wx:else>
-    <view class="card route-detail-shot-card">
-      <view class="section-header">
-        <view>
-          <text class="eyebrow">途径点路线图</text>
-          <text class="route-detail-section-title">路线地图预览</text>
-        </view>
-      </view>
-      <block wx:if="{{route.amap_export.map_preview_available}}">
-        <view class="route-detail-map-shell">
-          <map
-            class="route-detail-map"
-            longitude="{{route.amap_export.map_center.longitude}}"
-            latitude="{{route.amap_export.map_center.latitude}}"
-            scale="{{route.amap_export.map_scale}}"
-            include-points="{{route.amap_export.map_include_points}}"
-            markers="{{route.amap_export.map_markers}}"
-            polyline="{{route.amap_export.map_polyline}}"
-            enable-zoom="{{true}}"
-            enable-scroll="{{true}}"
-          ></map>
-        </view>
-        <view wx:if="{{route.amap_export.embed_url}}" class="route-detail-map-inline-actions">
-            <button class="button-secondary route-detail-action-button route-detail-favorite-button {{route.is_favorite ? 'route-detail-favorite-button--active' : ''}}" bindtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
-          <button class="button-secondary route-detail-action-button route-detail-map-primary-action" data-url="{{route.amap_export.embed_url}}" bindtap="handleOpenInteractiveMap">打开高德互动地图</button>
-        </view>
-      </block>
-      <block wx:elif="{{route.amap_export.screenshot_url}}">
-        <image
-          class="route-detail-shot-image"
-          src="{{route.amap_export.screenshot_url}}"
-          mode="widthFix"
-        />
-        <view wx:if="{{route.amap_export.embed_url}}" class="route-detail-map-inline-actions">
-          <button class="button-secondary route-detail-action-button route-detail-favorite-button {{route.is_favorite ? 'route-detail-favorite-button--active' : ''}}" bindtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
-          <button class="button-secondary route-detail-action-button route-detail-map-primary-action" data-url="{{route.amap_export.embed_url}}" bindtap="handleOpenInteractiveMap">打开高德互动地图</button>
-        </view>
-      </block>
-      <block wx:elif="{{route.amap_export.embed_url}}">
-        <view class="route-detail-map-placeholder">
-          <text class="route-detail-map-placeholder__title">当前路线支持高德互动查看</text>
-          <text class="subtle route-detail-map-placeholder__copy">当前详情页会先显示小程序地图预览，也可以继续进入完整的高德路线页面查看沿途路线。</text>
-        </view>
-        <view class="route-detail-map-inline-actions">
-          <button class="button-secondary route-detail-action-button route-detail-favorite-button {{route.is_favorite ? 'route-detail-favorite-button--active' : ''}}" bindtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
-          <button class="button-secondary route-detail-action-button route-detail-map-primary-action" data-url="{{route.amap_export.embed_url}}" bindtap="handleOpenInteractiveMap">打开高德互动地图</button>
-        </view>
-      </block>
-      <block wx:else>
-        <view class="route-detail-shot-placeholder">
-          <text class="subtle">当前路线还没有可展示的高德预览。</text>
-        </view>
-      </block>
-    </view>
+    <view class="route-overview-title">路线概览</view>
 
-    <view wx:if="{{route.gpx.is_available}}" class="card route-detail-gpx-card">
-      <view class="section-header">
-        <view>
-          <text class="eyebrow">行途轨迹</text>
-          <text class="route-detail-section-title">沿途轨迹附记</text>
-        </view>
-        <view class="route-detail-gpx-badges">
-          <text class="inline-badge">GPX</text>
-          <text wx:if="{{route.gpx.source_badge}}" class="route-detail-source-badge">{{route.gpx.source_badge}}</text>
-        </view>
+    <view class="route-map-panel">
+      <map
+        wx:if="{{route.amap_export.map_preview_available}}"
+        class="route-detail-map"
+        longitude="{{route.amap_export.map_center.longitude}}"
+        latitude="{{route.amap_export.map_center.latitude}}"
+        scale="{{route.amap_export.map_scale}}"
+        include-points="{{route.amap_export.map_include_points}}"
+        markers="{{route.amap_export.map_markers}}"
+        polyline="{{route.amap_export.map_polyline}}"
+        enable-zoom="{{true}}"
+        enable-scroll="{{true}}"
+      ></map>
+      <image wx:elif="{{route.amap_export.screenshot_url}}" class="route-detail-map" src="{{route.amap_export.screenshot_url}}" mode="aspectFill"></image>
+      <view wx:else class="route-detail-map route-detail-map--placeholder">
+        <text>暂无地图预览</text>
       </view>
 
-      <view class="route-detail-gpx-copy">
-        <text class="route-detail-gpx-title">{{route.gpx.source_title}}</text>
-        <view wx:if="{{route.gpx.meta_text}}"><text class="subtle">{{route.gpx.meta_text}}</text></view>
-      </view>
-
-      <view wx:if="{{route.gpx.facts.length}}" class="route-detail-gpx-strip-list">
-        <view wx:for="{{route.gpx.facts}}" wx:key="label" class="route-detail-gpx-strip-item">
-          <text class="route-detail-gpx-strip-item__label">{{item.label}}</text>
-          <text class="route-detail-gpx-strip-item__value">{{item.value}}</text>
-        </view>
-      </view>
-
-      <view class="route-detail-gpx-actions">
-        <button class="button-secondary route-detail-action-button route-detail-favorite-button {{route.is_favorite ? 'route-detail-favorite-button--active' : ''}}" catchtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
-        <button wx:if="{{route.amap_export.is_available}}" class="button-secondary route-detail-action-button" catchtap="handleDirectNavigate">直接导航</button>
-        <button class="button-secondary route-detail-action-button" data-filename="{{route.gpx.filename}}" catchtap="handleDownloadGpx">{{route.gpx.download_label}}</button>
+      <view class="route-map-panel__cta" bindtap="handleDirectNavigate">
+        <text class="route-map-panel__cta-text">查看路线地图</text>
       </view>
     </view>
 
-    <view wx:if="{{detailSections.trip_advice.comment || detailSections.trip_advice.items.length}}" class="card route-detail-advice-card">
-      <view class="section-header route-detail-advice-header">
-        <view>
-          <text class="eyebrow">{{detailSections.trip_advice.title}}</text>
-          <text class="route-detail-section-title">这一段路更适合怎么走</text>
-        </view>
-        <text wx:if="{{detailSections.trip_advice.source_line}}" class="route-detail-advice-source">{{detailSections.trip_advice.source_line}}</text>
-      </view>
-
-      <view wx:if="{{detailSections.trip_advice.comment}}" class="route-detail-advice-hero">
-        <text class="route-detail-advice-quote">“</text>
-        <text class="route-detail-advice-comment">{{detailSections.trip_advice.comment}}</text>
-      </view>
-
-      <view wx:if="{{detailSections.trip_advice.items.length}}" class="list-column route-detail-advice-list">
-        <view wx:for="{{detailSections.trip_advice.items}}" wx:key="*this" class="route-detail-advice-item">
-          <text class="route-detail-advice-item__dot"></text>
-          <text class="route-detail-advice-item__text">{{item}}</text>
-        </view>
-      </view>
+    <view class="route-detail-actions-row" wx:if="{{false}}">
+      <button class="button-secondary route-detail-action-button route-detail-favorite-button {{route.is_favorite ? 'route-detail-favorite-button--active' : ''}}" bindtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
+      <button wx:if="{{route.amap_export.is_available}}" class="button-secondary route-detail-action-button" bindtap="handleDirectNavigate">直接导航</button>
+      <button wx:if="{{route.gpx.is_available}}" class="button-secondary route-detail-action-button" data-filename="{{route.gpx.filename}}" bindtap="handleDownloadGpx">下载GPX</button>
     </view>
 
-    <view class="card route-detail-schedule-card">
-      <view class="section-header">
-        <view>
-          <text class="eyebrow">行途安排</text>
-          <text class="route-detail-section-title">{{route.days}} 天沿途节奏</text>
+    <view class="checkpoint-list">
+      <view wx:for="{{checkpointTimeline}}" wx:key="index" class="checkpoint-item">
+        <view class="checkpoint-left">
+          <view class="checkpoint-dot"></view>
+          <view wx:if="{{!item.is_last}}" class="checkpoint-line"></view>
         </view>
-        <text class="inline-badge">沿途节奏</text>
-      </view>
 
-      <view class="list-column route-stage-list-detail">
-        <view wx:for="{{detailSections.daily_plan}}" wx:key="day" class="route-stage-item-detail">
-          <text class="route-stage-day-detail">Day {{item.day}}</text>
-          <view class="route-stage-track-detail">
-            <view class="route-stage-marker-detail"></view>
-            <view class="route-day-card-detail">
-              <text class="route-stage-title-detail">{{item.title}}</text>
-              <view><text class="subtle">{{item.ride_time}} · {{item.distance}}</text></view>
-              <view class="tag-row route-day-tag-row">
-                <text wx:for="{{item.highlights}}" wx:key="*this" class="tag">{{item}}</text>
-              </view>
-              <view><text class="card-desc">{{item.note}}</text></view>
-            </view>
+        <view class="checkpoint-main">
+          <view class="checkpoint-title-row">
+            <text class="checkpoint-index">打卡点{{item.index}} ·</text>
+            <text class="checkpoint-duration" wx:if="{{item.duration_text}}">{{item.duration_text}}</text>
+          </view>
+          <view class="checkpoint-name-row">
+            <text class="checkpoint-title">{{item.name}}</text>
+          </view>
+          <text class="checkpoint-score">{{item.score_text}}</text>
+          <view class="checkpoint-meta-row">
+            <text class="checkpoint-distance">{{item.distance_text}}</text>
+            <text class="checkpoint-hit">打卡{{item.hit_count_text}}</text>
           </view>
         </view>
       </view>

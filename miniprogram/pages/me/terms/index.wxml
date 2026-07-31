@@ -1,0 +1,30 @@
+<view class="terms-page">
+  <view class="terms-title">用户服务协议</view>
+  <view class="terms-date">更新日期：{{updatedAt}}</view>
+
+  <view class="terms-paragraph">欢迎使用“行途”微信小程序（以下简称“本小程序”）。本小程序由行途团队（以下简称“我们”）运营和管理。在使用本小程序前，请您仔细阅读本《用户服务协议》（以下简称“本协议”）。当您注册、登录或使用本小程序时，即表示您已阅读、理解并同意接受本协议的所有条款。</view>
+
+  <view class="terms-section-title">一、服务内容</view>
+  <view class="terms-paragraph">本小程序为摩托车骑行爱好者提供以下服务：1.骑行活动信息浏览和报名；2.骑行路线查看和导航；3.骑行驿站信息查询；4.俱乐部管理及团队排名；5.个人骑行档案和打卡记录；6.活动票券管理；7.其他与骑行相关的服务。</view>
+
+  <view class="terms-section-title">二、用户注册与账号</view>
+  <view class="terms-paragraph">1.您需通过微信授权登录使用本小程序。2.您在报名活动时需提供真实、准确的个人信息，包括但不限于姓名、手机号、证件号码等。3.您应妥善保管账号信息，因自身原因导致的账号安全问题应由您自行承担。4.您不得将账号转让、出借给他人使用。</view>
+
+  <view class="terms-section-title">三、用户行为规范</view>
+  <view class="terms-paragraph">您在使用本小程序时应遵守以下规范：1.遵守中华人民共和国相关法律法规；2.不得利用本小程序从事违法违规活动；3.不得发布虚假信息或冒用他人身份信息；4.不得干扰本小程序的正常运行；5.参加摩托车活动时，应遵守交通法规，佩戴安全头盔和防护装备，确保自身及他人安全。</view>
+
+  <view class="terms-section-title">四、活动报名与参与</view>
+  <view class="terms-paragraph">1.报名活动时，您需提供真实有效的个人信息，用于购买意外保险和向公安部门进行活动报备。2.报名成功后，如需取消请按活动方的相关规定办理。3.参加活动时，您应遵守活动规则和安全须知，服从主办方的安全管理。4.因个人原因违反活动规则导致的后果由您自行承担。</view>
+
+  <view class="terms-section-title">五、知识产权</view>
+  <view class="terms-paragraph">1.本小程序中的所有内容（包括但不限于文字、图片、logo、界面设计、程序代码等）的知识产权归我们所有。2.未经我们书面许可，您不得以任何方式复制、传播或使用本小程序中的上述内容。</view>
+
+  <view class="terms-section-title">六、免责声明</view>
+  <view class="terms-paragraph">1.摩托车骑行具有一定风险性，参与活动的安全责任由参与者个人承担。2.因不可抗力（包括但不限于自然灾害、政府行为、网络故障等）导致的服务中断，我们不承担责任。3.本小程序提供的路线信息仅供参考，实际骑行时请根据道路实际情况判断。</view>
+
+  <view class="terms-section-title">七、协议的修改</view>
+  <view class="terms-paragraph">我们有权根据需要修改本协议内容，修改后的协议将通过本小程序公布。如您在修改后继续使用本小程序，即表示您同意接受修改后的协议。</view>
+
+  <view class="terms-section-title">八、联系我们</view>
+  <view class="terms-paragraph">如您对本协议有任何疑问，请通过本小程序内的联系方式与我们取得联系。</view>
+</view>

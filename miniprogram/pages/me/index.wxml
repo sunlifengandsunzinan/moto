@@ -1,67 +1,42 @@
-<view class="page-shell">
-  <view class="card me-profile-card">
-    <view class="section-header me-profile-card__header">
-      <view>
-        <text class="eyebrow">微信信息</text>
-        <text class="card-title">授权资料</text>
-      </view>
-      <text class="inline-badge">{{wechatUserProfile ? '已授权' : '未授权'}}</text>
+<view class="page-shell me-reference-page">
+  <view class="me-hero" bindtap="handleHeroTap">
+    <view wx:if="{{wechatUserProfile && wechatUserProfile.avatarUrl}}" class="me-hero__avatar-shell">
+      <image class="me-hero__avatar" src="{{wechatUserProfile.avatarUrl}}" mode="aspectFill" />
     </view>
-
-    <view class="me-profile-card__body">
-      <view wx:if="{{wechatUserProfile && wechatUserProfile.avatarUrl}}" class="me-profile-card__avatar-shell">
-        <image class="me-profile-card__avatar" src="{{wechatUserProfile.avatarUrl}}" mode="aspectFill" />
-      </view>
-      <view wx:else class="me-profile-card__avatar-shell me-profile-card__avatar-shell--placeholder">
-        <text class="me-profile-card__avatar-placeholder">微</text>
-      </view>
-
-      <view class="me-profile-card__copy">
-        <text class="me-profile-card__name">{{wechatUserProfile.nickName || '还没有获取微信昵称'}}</text>
-        <text class="subtle">{{wechatUserProfile ? '当前展示的是你已授权给小程序的微信头像与昵称。' : '授权后这里会展示你的微信头像和昵称，仅用于当前小程序内展示。'}}</text>
-        <text wx:if="{{wechatProfileLocation}}" class="me-profile-card__meta">{{wechatProfileLocation}}</text>
-      </view>
+    <view wx:else class="me-hero__avatar-shell me-hero__avatar-shell--placeholder">
+      <text class="me-hero__avatar-placeholder">{{avatarText}}</text>
     </view>
-
-    <view class="actions-row me-profile-card__actions">
-      <button class="button-primary me-profile-card__button" loading="{{isAuthorizing}}" bindtap="handleAuthorizeWechatProfile">获取微信资料</button>
-      <button wx:if="{{wechatUserProfile}}" class="button-ghost me-profile-card__button" bindtap="handleClearWechatProfile">清除资料</button>
+    <view class="me-hero__copy">
+      <text class="me-hero__name">{{displayName}}</text>
+      <text wx:if="{{wechatProfileLocation}}" class="me-hero__meta">{{wechatProfileLocation}}</text>
     </view>
   </view>
 
-  <view class="card me-favorite-entry" bindtap="handleOpenFavorites">
-    <view class="section-header me-favorite-entry__header">
-      <view>
-        <text class="eyebrow">路线入口</text>
-        <text class="card-title">我的收藏</text>
-      </view>
-      <text class="inline-badge">{{favoriteRouteCount}} 条</text>
-    </view>
-
-    <view class="me-favorite-entry__body">
-      <view class="me-favorite-entry__copy">
-        <text class="subtle">点击进入详细页面，查看你收藏过的全部路线。</text>
-        <text class="me-favorite-entry__meta">收藏路线会按当前本地数据实时展示</text>
-      </view>
-      <text class="me-favorite-entry__chevron">查看</text>
+  <view class="me-stats-card">
+    <view wx:for="{{metrics}}" wx:key="key" class="me-stats-card__item">
+      <text class="me-stats-card__value">{{item.value}}</text>
+      <text class="me-stats-card__label">{{item.label}}</text>
     </view>
   </view>
 
-  <view class="card me-favorite-entry" bindtap="handleOpenUpload">
-    <view class="section-header me-favorite-entry__header">
-      <view>
-        <text class="eyebrow">内容入口</text>
-        <text class="card-title">上传我的</text>
-      </view>
-      <text class="inline-badge">敬请期待</text>
+  <view class="me-club-banner">
+    <view class="me-club-banner__pattern"></view>
+    <view class="me-club-banner__copy">
+      <text class="me-club-banner__line">您还未绑定俱乐部</text>
+      <text class="me-club-banner__line">点击绑定俱乐部</text>
     </view>
+  </view>
 
-    <view class="me-favorite-entry__body">
-      <view class="me-favorite-entry__copy">
-        <text class="subtle">点击进入上传页，后续会在这里开放你的路线、照片或内容上传能力。</text>
-        <text class="me-favorite-entry__meta">当前先保留入口，便于后续扩展</text>
-      </view>
-      <text class="me-favorite-entry__chevron">进入</text>
+  <view class="me-grid-card">
+    <view wx:for="{{quickActions}}" wx:key="key" class="me-grid-card__item" data-index="{{index}}" bindtap="handleQuickAction">
+      <text class="me-grid-card__icon">{{item.icon}}</text>
+      <text class="me-grid-card__label">{{item.label}}</text>
     </view>
+  </view>
+
+  <view class="me-legal-row">
+    <text class="me-legal-row__link" bindtap="handleOpenUserTerms">用户服务协议</text>
+    <text class="me-legal-row__divider">|</text>
+    <text class="me-legal-row__link" bindtap="handleOpenPrivacyPolicy">隐私政策</text>
   </view>
 </view>

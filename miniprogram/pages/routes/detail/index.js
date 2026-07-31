@@ -4,8 +4,8 @@ const {
   MINI_PROGRAM_PATHS,
   getMiniProgramApiPath,
   getMiniProgramDownloadUrl,
-  getMiniProgramNavigationUrl,
   normalizeRequestPath,
+  TENCENT_MAP_SUBKEY,
 } = require("../../../utils/backend-config");
 const { downloadRemoteFile } = require("../../../utils/file-download");
 const { getRouteDetailFallback } = require("../../../mock/route-detail");
@@ -42,24 +42,24 @@ function buildMarkerCallout(point, index, totalCount) {
 
   if (isStart) {
     return {
-      content: `起 · ${point.name}`,
-      bgColor: "#D17E45",
-      color: "#FBF7F0",
+      content: "起点",
+      bgColor: "#7AC943",
+      color: "#111111",
     };
   }
 
   if (isEnd) {
     return {
-      content: `终 · ${point.name}`,
-      bgColor: "#4F4A46",
-      color: "#FBF7F0",
+      content: "终点",
+      bgColor: "#FFB347",
+      color: "#111111",
     };
   }
 
   return {
-    content: `${index + 1}. ${point.name}`,
-    bgColor: "#8F7F70",
-    color: "#FBF7F0",
+    content: `${index + 1}`,
+    bgColor: "#37A8E0",
+    color: "#FFFFFF",
   };
 }
 
@@ -97,15 +97,15 @@ function buildMapPayload(amapExport) {
         id: index + 1,
         longitude: point.longitude,
         latitude: point.latitude,
-        width: 26,
-        height: 34,
+        width: 28,
+        height: 36,
         anchor: { x: 0.5, y: 1 },
         zIndex: index === 0 || index === coordinatePoints.length - 1 ? 20 : 10,
         callout: {
           content: callout.content,
           display: "ALWAYS",
           padding: 6,
-          borderRadius: 999,
+          borderRadius: 8,
           bgColor: callout.bgColor,
           color: callout.color,
           fontSize: 11,
@@ -119,87 +119,134 @@ function buildMapPayload(amapExport) {
             longitude: point.longitude,
             latitude: point.latitude,
           })),
-          color: "#D17E45",
-          width: 6,
+          color: "#1f87bd",
+          width: 5,
           dottedLine: false,
           arrowLine: false,
-          borderColor: "#F7EFE4",
+          borderColor: "#f3f7f8",
           borderWidth: 1,
         }]
       : [],
-    scale: coordinatePoints.length >= 4 ? 7 : 9,
+    scale: coordinatePoints.length >= 4 ? 8 : 10,
   };
+}
+
+function buildOverviewStats(route) {
+  const distance = Number(route?.distance_km || 0);
+  const estimatedHours = distance > 0 ? Math.max(1, Math.round(distance / 55)) : 0;
+  const engagement = route?.engagement || {};
+
+  return [
+    { key: "distance", label: "里程", value: distance > 0 ? `${distance}km` : "--" },
+    { key: "duration", label: "时长", value: estimatedHours > 0 ? `${estimatedHours}H` : "--" },
+    { key: "points", label: "积分", value: `${Number(engagement.total_count || 0)}` },
+    { key: "reward", label: "跑完奖励积分", value: `${Number(engagement.favorite_count || 0)}` },
+  ];
+}
+
+function buildCheckpointTimeline(route, dailyPlan) {
+  const waypoints = Array.isArray(route?.amap_export?.waypoints) ? route.amap_export.waypoints : [];
+  const routeDistance = Number(route?.distance_km || 0);
+
+  if (waypoints.length) {
+    const segmentDistance = waypoints.length > 1
+      ? Math.max(1, Math.round(routeDistance / (waypoints.length - 1)))
+      : routeDistance;
+
+    return waypoints.map((waypoint, index) => ({
+      index: index + 1,
+      name: String(waypoint?.name || `打卡点${index + 1}`),
+      score_text: "可获得打卡积分0点",
+      distance_text: index === 0 ? "起点" : `${segmentDistance}km`,
+      duration_text: index === 0 ? "" : `00小时${String(10 + index * 2).padStart(2, "0")}分钟`,
+      hit_count_text: `${Math.max(0, Number(route?.engagement?.navigation_count || 0) - index * 3)}次`,
+      is_last: index === waypoints.length - 1,
+    }));
+  }
+
+  const fallbackDailyPlan = Array.isArray(dailyPlan) ? dailyPlan : [];
+  if (!fallbackDailyPlan.length) {
+    return [];
+  }
+
+  return fallbackDailyPlan.map((day, index) => ({
+    index: index + 1,
+    name: String(day?.title || `打卡点${index + 1}`),
+    score_text: "可获得打卡积分0点",
+    distance_text: String(day?.distance || "--"),
+    duration_text: String(day?.ride_time || ""),
+    hit_count_text: "--",
+    is_last: index === fallbackDailyPlan.length - 1,
+  }));
 }
 
 function normalizePayload(payload) {
   const route = payload?.route || {};
   const amapExport = route.amap_export || {};
   const mapPayload = buildMapPayload(amapExport);
-  const tripAdvice = payload?.detail_sections?.trip_advice || {};
   const slug = String(route.slug || "").trim();
+
+  const normalizedRoute = {
+    ...route,
+    tencentMapSubkey: TENCENT_MAP_SUBKEY,
+    slug,
+    is_favorite: slug ? isFavoriteRoute(slug) : false,
+    favorite_api_href: String(route.favorite_api_href || ""),
+    navigation_api_href: String(route.navigation_api_href || ""),
+    mini_program: {
+      favorite: null,
+      navigation: null,
+      ...((route && route.mini_program) || {}),
+    },
+    engagement: {
+      favorite_count: 0,
+      navigation_count: 0,
+      total_count: 0,
+      ...(route.engagement || {}),
+    },
+    gpx: {
+      is_available: false,
+      filename: "",
+      download_href: "",
+      download_label: "GPX 文件下载",
+      source_badge: "",
+      source_title: "",
+      meta_text: "",
+      facts: [],
+      mini_program: {
+        download: null,
+      },
+      ...(route.gpx || {}),
+    },
+    amap_export: {
+      ...amapExport,
+      mini_program: {
+        navigate: null,
+        browser: null,
+        interactive_map: null,
+        ...((amapExport && amapExport.mini_program) || {}),
+      },
+      map_preview_available: mapPayload.preview_available,
+      map_center: mapPayload.center,
+      map_include_points: mapPayload.include_points,
+      map_markers: mapPayload.markers,
+      map_polyline: mapPayload.polyline,
+      map_scale: mapPayload.scale,
+      screenshot_url: amapExport.screenshot_href ? buildWebUrl(amapExport.screenshot_href) : "",
+    },
+  };
+
+  const dailyPlan = payload?.detail_sections?.daily_plan || [];
 
   return {
     page: payload?.page || { title: route.title || "路线详情", eyebrow: "路线详情" },
-    route: {
-      ...route,
-      slug,
-      is_favorite: slug ? isFavoriteRoute(slug) : false,
-      favorite_api_href: String(route.favorite_api_href || ""),
-      navigation_api_href: String(route.navigation_api_href || ""),
-      mini_program: {
-        favorite: null,
-        navigation: null,
-        ...((route && route.mini_program) || {}),
-      },
-      engagement: {
-        favorite_count: 0,
-        navigation_count: 0,
-        total_count: 0,
-        ...(route.engagement || {}),
-      },
-      gpx: {
-        is_available: false,
-        filename: "",
-        download_href: "",
-        download_label: "GPX 文件下载",
-        source_badge: "",
-        source_title: "",
-        meta_text: "",
-        facts: [],
-        mini_program: {
-          download: null,
-        },
-        ...(route.gpx || {}),
-      },
-      amap_export: {
-        ...amapExport,
-        mini_program: {
-          navigate: null,
-          browser: null,
-          interactive_map: null,
-          ...((amapExport && amapExport.mini_program) || {}),
-        },
-        // WeChat mini program web-view does not reliably support the AMap embed page.
-        // Keep the native map preview in-page and avoid routing users into an unsupported page.
-        embed_url: "",
-        map_preview_available: mapPayload.preview_available,
-        map_center: mapPayload.center,
-        map_include_points: mapPayload.include_points,
-        map_markers: mapPayload.markers,
-        map_polyline: mapPayload.polyline,
-        map_scale: mapPayload.scale,
-        screenshot_url: amapExport.screenshot_href ? buildWebUrl(amapExport.screenshot_href) : "",
-      },
-    },
+    route: normalizedRoute,
     detail_sections: {
-      daily_plan: payload?.detail_sections?.daily_plan || [],
-      trip_advice: {
-        title: tripAdvice.title || "行途建议",
-        comment: tripAdvice.comment || "",
-        items: Array.isArray(tripAdvice.items) ? tripAdvice.items : [],
-        source_line: tripAdvice.source_line || "",
-      },
+      daily_plan: dailyPlan,
+      trip_advice: payload?.detail_sections?.trip_advice || { title: "行途建议", comment: "", items: [], source_line: "" },
     },
+    overview_stats: buildOverviewStats(normalizedRoute),
+    checkpoint_timeline: buildCheckpointTimeline(normalizedRoute, dailyPlan),
   };
 }
 
@@ -211,8 +258,8 @@ Page({
     route: {
       title: "",
       days: 0,
+      tencentMapSubkey: TENCENT_MAP_SUBKEY,
       amap_export: {
-        embed_url: "",
         screenshot_url: "",
         map_preview_available: false,
         map_center: { longitude: 0, latitude: 0 },
@@ -223,6 +270,8 @@ Page({
       },
     },
     detailSections: { daily_plan: [], trip_advice: { title: "行途建议", comment: "", items: [], source_line: "" } },
+    overviewStats: [],
+    checkpointTimeline: [],
   },
 
   onLoad(options) {
@@ -251,6 +300,8 @@ Page({
           page: normalized.page,
           route: normalized.route,
           detailSections: normalized.detail_sections,
+          overviewStats: normalized.overview_stats,
+          checkpointTimeline: normalized.checkpoint_timeline,
         });
       })
       .catch(() => {
@@ -271,6 +322,8 @@ Page({
       page: fallback.page,
       route: fallback.route,
       detailSections: fallback.detail_sections,
+      overviewStats: fallback.overview_stats,
+      checkpointTimeline: fallback.checkpoint_timeline,
     });
 
     if (!stopRefresh && setLoading) {
@@ -294,7 +347,7 @@ Page({
     });
   },
 
-  handleDirectNavigate(event) {
+  handleDirectNavigate() {
     const route = this.data.route || {};
     const target = getRouteNavigationTarget(route);
     if (!target) {
@@ -318,14 +371,17 @@ Page({
         request({ path: navigationPath, method: "POST" })
           .then((payload) => {
             if (payload && payload.ok && payload.engagement) {
-              this.setData({
-                route: {
-                  ...this.data.route,
-                  engagement: {
-                    ...(this.data.route.engagement || {}),
-                    ...payload.engagement,
-                  },
+              const nextRoute = {
+                ...this.data.route,
+                engagement: {
+                  ...(this.data.route.engagement || {}),
+                  ...payload.engagement,
                 },
+              };
+              this.setData({
+                route: nextRoute,
+                overviewStats: buildOverviewStats(nextRoute),
+                checkpointTimeline: buildCheckpointTimeline(nextRoute, this.data.detailSections.daily_plan),
               });
             }
           })
@@ -334,14 +390,6 @@ Page({
       fail: () => {
         wx.showToast({ title: "无法打开系统地图", icon: "none", duration: 2200 });
       },
-    });
-  },
-
-  handleOpenInteractiveMap(event) {
-    wx.showToast({
-      title: "小程序内暂不支持打开高德互动地图，请直接使用当前预览或下方直接导航",
-      icon: "none",
-      duration: 2600,
     });
   },
 
@@ -358,7 +406,10 @@ Page({
       is_favorite: result.isFavorite,
     };
 
-    this.setData({ route: nextRoute });
+    this.setData({
+      route: nextRoute,
+      overviewStats: buildOverviewStats(nextRoute),
+    });
 
     const favoritePath = getMiniProgramApiPath(route?.mini_program?.favorite)
       || normalizeRequestPath(route.favorite_api_href);
@@ -367,14 +418,17 @@ Page({
       request({ path: favoritePath, method: "POST" })
         .then((payload) => {
           if (payload && payload.ok && payload.engagement) {
-            this.setData({
-              route: {
-                ...this.data.route,
-                engagement: {
-                  ...(this.data.route.engagement || {}),
-                  ...payload.engagement,
-                },
+            const updatedRoute = {
+              ...this.data.route,
+              engagement: {
+                ...(this.data.route.engagement || {}),
+                ...payload.engagement,
               },
+            };
+            this.setData({
+              route: updatedRoute,
+              overviewStats: buildOverviewStats(updatedRoute),
+              checkpointTimeline: buildCheckpointTimeline(updatedRoute, this.data.detailSections.daily_plan),
             });
           }
         })
