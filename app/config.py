@@ -28,7 +28,7 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
 class BaseConfig:
     SECRET_KEY = "change-me-in-production"
     HOST = "0.0.0.0"
-    PORT = 5000
+    PORT = 6001
     DEBUG = False
     TESTING = False
     AMAP_WEB_JS_API_KEY = "38f53ab9f332df1392b762d6806a89f0"
