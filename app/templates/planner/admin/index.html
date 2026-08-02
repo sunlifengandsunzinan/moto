@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}后台管理{% endblock %}
+
+{% block content %}
+  <main class="planner-shell admin-shell">
+    <section class="panel">
+      <div class="planner-nav">
+        <a class="planner-brand" href="/moto">行途管理台</a>
+        <div class="planner-nav__links">
+          <a class="button-secondary" href="/moto/routes">查看路线前台</a>
+          <a class="button-secondary" href="/moto/spots">查看点位前台</a>
+        </div>
+      </div>
+      <p class="eyebrow">后台管理</p>
+      <h1>{{ page.title }}</h1>
+      <p class="subtitle">{{ page.description }}</p>
+      {% if feedback.message %}
+        <div class="planner-status-strip planner-status-strip--{{ feedback.kind }}">{{ feedback.message }}</div>
+      {% endif %}
+      <div class="metrics-grid admin-metrics-grid">
+        {% for item in stats %}
+          <article class="metric-card">
+            <span class="metric-label">{{ item.label }}</span>
+            <strong class="metric-value">{{ item.value }}</strong>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-hero__header">
+        <div>
+          <p class="eyebrow">{{ route_section.title }}</p>
+          <h2>维护路线模板</h2>
+          <p class="subtitle">{{ route_section.description }}</p>
+        </div>
+        <a class="button-primary" href="{{ route_section.create_href }}">新增路线</a>
+      </div>
+      <div class="admin-card-list">
+        {% for item in route_section["items"] %}
+          <article class="admin-record-card">
+            <div class="admin-record-card__body">
+              <div>
+                <p class="admin-record-card__title">{{ item.title }}</p>
+                <p class="admin-record-card__slug">{{ item.slug }}</p>
+              </div>
+              <p class="admin-record-card__summary">{{ item.summary }}</p>
+              <ul class="planner-chip-list">
+                {% for meta in item.meta %}
+                  <li>{{ meta }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+            <div class="planner-actions">
+              <a class="button-secondary" href="{{ item.preview_href }}">前台预览</a>
+              <a class="button-primary" href="{{ item.edit_href }}">编辑</a>
+            </div>
+          </article>
+        {% else %}
+          <article class="admin-record-card">
+            <p class="admin-record-card__summary">当前还没有路线模板。</p>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-hero__header">
+        <div>
+          <p class="eyebrow">{{ spot_section.title }}</p>
+          <h2>维护打卡点</h2>
+          <p class="subtitle">{{ spot_section.description }}</p>
+        </div>
+        <a class="button-primary" href="{{ spot_section.create_href }}">新增点位</a>
+      </div>
+      <div class="admin-card-list">
+        {% for item in spot_section["items"] %}
+          <article class="admin-record-card admin-record-card--with-media">
+            {% if item.image_url %}
+              <img class="admin-record-card__image" src="{{ item.image_url }}" alt="{{ item.title }}">
+            {% endif %}
+            <div class="admin-record-card__body">
+              <div>
+                <p class="admin-record-card__title">{{ item.title }}</p>
+                <p class="admin-record-card__slug">{{ item.slug }}</p>
+              </div>
+              <p class="admin-record-card__summary">{{ item.summary }}</p>
+              <ul class="planner-chip-list">
+                {% for meta in item.meta %}
+                  <li>{{ meta }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+            <div class="planner-actions">
+              <a class="button-secondary" href="{{ item.preview_href }}">前台预览</a>
+              <a class="button-primary" href="{{ item.edit_href }}">编辑</a>
+            </div>
+          </article>
+        {% else %}
+          <article class="admin-record-card">
+            <p class="admin-record-card__summary">当前还没有已批准点位。</p>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+{% endblock %}

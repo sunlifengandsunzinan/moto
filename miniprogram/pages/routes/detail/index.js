@@ -8,8 +8,26 @@ const {
   TENCENT_MAP_SUBKEY,
 } = require("../../../utils/backend-config");
 const { downloadRemoteFile } = require("../../../utils/file-download");
-const { getRouteDetailFallback } = require("../../../mock/route-detail");
 const { isFavoriteRoute, toggleFavoriteRoute } = require("../../../utils/favorites");
+
+function getRouteDetailFallback() {
+  return {
+    page: {
+      title: "路线详情暂不可用",
+      eyebrow: "路线详情",
+    },
+    route: {
+      title: "暂无可展示路线",
+      days: 0,
+      amap_export: {
+        screenshot_href: "",
+      },
+    },
+    detail_sections: {
+      daily_plan: [],
+    },
+  };
+}
 
 function normalizeCoordinatePoint(point) {
   const lng = Number(point?.lng);

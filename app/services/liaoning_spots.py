@@ -192,6 +192,12 @@ def get_approved_moto_spots() -> list[SpotDict]:
     return [_enrich_spot(spot) for spot in _approved_spots_raw()]
 
 
+def get_approved_moto_spot_by_slug(slug: str) -> SpotDict | None:
+    target_slug = str(slug or "").strip()
+    spot = next((item for item in _approved_spots_raw() if str(item.get("slug") or "") == target_slug), None)
+    return _enrich_spot(spot) if spot is not None else None
+
+
 def get_moto_spot_collection_schema() -> list[dict[str, Any]]:
     return [field.copy() for field in MOTO_SPOT_COLLECTION_SCHEMA]
 
@@ -438,12 +444,72 @@ def _approved_spots_raw() -> list[SpotDict]:
     ]
 
 
+def save_approved_moto_spot(spot: dict[str, Any], *, original_slug: str | None = None) -> SpotDict:
+    slug = str(spot.get("slug") or "").strip()
+    name = str(spot.get("name") or "").strip()
+    if not slug:
+        raise ValueError("spot.slug must be a non-empty string")
+    if not name:
+        raise ValueError("spot.name must be a non-empty string")
+
+    normalized_original_slug = str(original_slug or slug).strip()
+    existing_spots = _approved_spots_raw()
+    duplicate = next(
+        (
+            item for item in existing_spots
+            if str(item.get("slug") or "").strip() == slug
+            and str(item.get("slug") or "").strip() != normalized_original_slug
+        ),
+        None,
+    )
+    if duplicate is not None:
+        raise ValueError(f"spot.slug '{slug}' already exists")
+
+    replacement = {
+        key: value.copy() if isinstance(value, dict | list) else value
+        for key, value in spot.items()
+    }
+
+    replaced = False
+    updated_spots: list[SpotDict] = []
+    for item in existing_spots:
+        if str(item.get("slug") or "").strip() == normalized_original_slug and not replaced:
+            updated_spots.append(replacement)
+            replaced = True
+            continue
+        updated_spots.append(item)
+
+    if not replaced:
+        updated_spots.append(replacement)
+
+    _write_approved_spots(updated_spots)
+    return _enrich_spot(replacement)
+
+
+def delete_approved_moto_spot(slug: str) -> bool:
+    target_slug = str(slug or "").strip()
+    existing_spots = _approved_spots_raw()
+    remaining = [item for item in existing_spots if str(item.get("slug") or "").strip() != target_slug]
+    if len(remaining) == len(existing_spots):
+        return False
+    _write_approved_spots(remaining)
+    return True
+
+
+def _write_approved_spots(spots: list[SpotDict]) -> None:
+    APPROVED_SPOTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = APPROVED_SPOTS_PATH.with_suffix(".json.tmp")
+    temp_path.write_text(json.dumps(spots, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temp_path.replace(APPROVED_SPOTS_PATH)
+
+
 def build_liaoning_spot_detail_context(spot: SpotDict) -> dict[str, Any]:
     video_analysis = _detail_video_analysis(spot)
     fixed_spot_info = _detail_fixed_spot_info(spot)
     keyframe_paths = _detail_keyframes(spot)
     return {
         "spot": {
+            "slug": spot["slug"],
             "name": spot["name"],
             "city": spot["city"],
             "region": spot["region"],

@@ -5,6 +5,9 @@
 {% block content %}
   <main class="planner-shell planner-shell--narrow">
     <section class="panel">
+      <div class="planner-actions">
+        <a class="button-secondary" href="/moto/admin/spots/{{ spot.slug }}/edit">编辑当前点位</a>
+      </div>
       <p class="eyebrow">辽宁打卡点</p>
       <h1>{{ spot.name }}</h1>
       <p class="subtitle">{{ spot.summary }}</p>

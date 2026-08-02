@@ -12,7 +12,10 @@
           <p class="miniapp-topbar__eyebrow">打卡点</p>
           <h1>{{ page.title }}</h1>
         </div>
-        <a class="miniapp-topbar__action" href="/moto/spots/collect">录入</a>
+        <div class="miniapp-actions miniapp-actions--compact">
+          <a class="miniapp-topbar__action" href="/moto/admin">后台管理</a>
+          <a class="miniapp-topbar__action" href="/moto/spots/collect">录入</a>
+        </div>
       </header>
 
       <section class="miniapp-card miniapp-card--hero">
@@ -117,6 +120,7 @@
                 <p class="miniapp-card__subtle">{{ spot.video_summary }}</p>
               {% endif %}
               <div class="miniapp-actions">
+                <a class="miniapp-button miniapp-button--secondary" href="/moto/admin/spots/{{ spot.slug }}/edit">编辑</a>
                 <a class="miniapp-button miniapp-button--ghost" href="{{ spot.href }}">详情</a>
                 <a class="miniapp-button" href="/moto/planner?origin={{ spot.city }}">从这里出发</a>
               </div>

@@ -1,12 +1,23 @@
 from pathlib import Path
+from typing import Mapping
+from uuid import uuid4
 
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, send_file, url_for
+from werkzeug.datastructures import FileStorage
+from werkzeug.utils import secure_filename
 
 from ...services import (
+    delete_route_admin_record,
+    delete_spot_admin_record,
     build_moto_tabbar,
     build_liaoning_spot_detail_context,
     get_collection_monitor_context,
+    get_admin_dashboard_context,
+    get_admin_route_form_context,
+    get_admin_spot_form_context,
     render_route_amap_screenshot_svg,
+    save_route_from_form,
+    save_spot_from_form,
     start_local_collector,
     stop_local_collector,
     build_plan_result,
@@ -38,6 +49,11 @@ from ...services.collector_monitor import COLLECTOR_PROFILES
 moto_bp = Blueprint("moto", __name__)
 KEYFRAME_ROOT = Path(__file__).resolve().parents[3] / "data" / "raw" / "openclaw_keyframes"
 LOCAL_VIDEO_ROOT = Path(__file__).resolve().parents[3] / "data" / "raw" / "douyin_videos"
+ADMIN_SPOT_UPLOAD_SLOTS = {
+    "image_upload_cover": 0,
+    "image_upload_route": 1,
+    "image_upload_photo": 2,
+}
 
 
 @moto_bp.get("/moto")
@@ -215,6 +231,137 @@ def moto_me() -> str:
     context = get_moto_me_context()
     context["tabbar"] = build_moto_tabbar("me")
     return render_template("planner/me.html", **context)
+
+
+@moto_bp.get("/moto/admin")
+def moto_admin() -> str:
+    feedback = {
+        "message": request.args.get("message", ""),
+        "kind": request.args.get("kind", "info"),
+    }
+    return render_template("planner/admin/index.html", **get_admin_dashboard_context(feedback))
+
+
+@moto_bp.get("/moto/admin/routes/new")
+def moto_admin_route_new() -> str:
+    feedback = {
+        "message": request.args.get("message", ""),
+        "kind": request.args.get("kind", "info"),
+    }
+    return render_template("planner/admin/form.html", **get_admin_route_form_context(feedback=feedback))
+
+
+@moto_bp.get("/moto/admin/routes/<slug>/edit")
+def moto_admin_route_edit(slug: str) -> str:
+    feedback = {
+        "message": request.args.get("message", ""),
+        "kind": request.args.get("kind", "info"),
+    }
+    return render_template("planner/admin/form.html", **get_admin_route_form_context(slug, feedback=feedback))
+
+
+@moto_bp.post("/moto/admin/routes/save")
+def moto_admin_route_save():
+    form_data = request.form
+    try:
+        saved = save_route_from_form(form_data)
+    except ValueError as error:
+        status_code = 400
+        return render_template(
+            "planner/admin/form.html",
+            **get_admin_route_form_context(
+                str(form_data.get("original_slug") or "") or None,
+                form_data=form_data,
+                errors=[str(error)],
+            ),
+        ), status_code
+
+    return redirect(url_for("moto.moto_admin_route_edit", slug=saved["slug"], message="路线已保存", kind="info"))
+
+
+@moto_bp.post("/moto/admin/routes/<slug>/delete")
+def moto_admin_route_delete(slug: str):
+    deleted = delete_route_admin_record(slug)
+    return redirect(
+        url_for(
+            "moto.moto_admin",
+            message="路线已删除" if deleted else "路线不存在或已删除",
+            kind="info" if deleted else "warning",
+        )
+    )
+
+
+@moto_bp.get("/moto/admin/spots/new")
+def moto_admin_spot_new() -> str:
+    feedback = {
+        "message": request.args.get("message", ""),
+        "kind": request.args.get("kind", "info"),
+    }
+    return render_template("planner/admin/form.html", **get_admin_spot_form_context(feedback=feedback))
+
+
+@moto_bp.get("/moto/admin/spots/<slug>/edit")
+def moto_admin_spot_edit(slug: str) -> str:
+    feedback = {
+        "message": request.args.get("message", ""),
+        "kind": request.args.get("kind", "info"),
+    }
+    return render_template("planner/admin/form.html", **get_admin_spot_form_context(slug, feedback=feedback))
+
+
+@moto_bp.post("/moto/admin/spots/save")
+def moto_admin_spot_save():
+    form_data = request.form
+    try:
+        uploaded_image_urls = _save_uploaded_spot_images(request.files, str(form_data.get("slug") or form_data.get("original_slug") or ""))
+        saved = save_spot_from_form(form_data, uploaded_image_urls)
+    except ValueError as error:
+        status_code = 400
+        return render_template(
+            "planner/admin/form.html",
+            **get_admin_spot_form_context(
+                str(form_data.get("original_slug") or "") or None,
+                form_data=form_data,
+                errors=[str(error)],
+            ),
+        ), status_code
+
+    return redirect(url_for("moto.moto_admin_spot_edit", slug=saved["slug"], message="点位已保存", kind="info"))
+
+
+@moto_bp.post("/moto/admin/spots/<slug>/delete")
+def moto_admin_spot_delete(slug: str):
+    deleted = delete_spot_admin_record(slug)
+    return redirect(
+        url_for(
+            "moto.moto_admin",
+            message="点位已删除" if deleted else "点位不存在或已删除",
+            kind="info" if deleted else "warning",
+        )
+    )
+
+
+def _save_uploaded_spot_images(files: Mapping[str, FileStorage], slug: str) -> dict[int, str]:
+    normalized_slug = secure_filename(str(slug or "spot").strip()) or "spot"
+    upload_dir = Path(current_app.static_folder or "") / "uploads" / "spots"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    uploaded_urls: dict[int, str] = {}
+    for field_name, index in ADMIN_SPOT_UPLOAD_SLOTS.items():
+        file = files.get(field_name)
+        if file is None or not file.filename:
+            continue
+
+        extension = Path(file.filename).suffix.lower()
+        if extension not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+            raise ValueError("上传图片只支持 jpg、jpeg、png、webp、gif")
+
+        filename = f"{normalized_slug}-{index + 1}-{uuid4().hex[:8]}{extension}"
+        destination = upload_dir / filename
+        file.save(destination)
+        uploaded_urls[index] = f"/static/uploads/spots/{filename}"
+
+    return uploaded_urls
 
 
 @moto_bp.get("/moto/mini-preview")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
 import json
 from functools import lru_cache
 from pathlib import Path
@@ -16,11 +17,76 @@ def load_route_templates() -> list[RouteTemplate]:
     return validate_route_templates_file(ROUTE_TEMPLATES_JSON_PATH)
 
 
+def get_route_template_by_slug(slug: str) -> RouteTemplate | None:
+    target_slug = str(slug or "").strip()
+    return next((deepcopy(route) for route in load_route_templates() if str(route.get("slug") or "") == target_slug), None)
+
+
 def validate_route_templates_file(path: str | Path) -> list[RouteTemplate]:
     route_path = Path(path)
     with route_path.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
     return _validate_route_templates(data)
+
+
+def validate_route_templates_data(data: Any) -> list[RouteTemplate]:
+    return _validate_route_templates(data)
+
+
+def save_route_template(route: Mapping[str, Any], *, original_slug: str | None = None) -> RouteTemplate:
+    target_slug = str(route.get("slug") or "").strip()
+    if not target_slug:
+        raise ValueError("route.slug must be a non-empty string")
+
+    existing_routes = [deepcopy(item) for item in load_route_templates()]
+    normalized_original_slug = str(original_slug or target_slug).strip()
+    replacement = deepcopy(dict(route))
+
+    duplicate_slug = next(
+        (
+            item for item in existing_routes
+            if str(item.get("slug") or "").strip() == target_slug
+            and str(item.get("slug") or "").strip() != normalized_original_slug
+        ),
+        None,
+    )
+    if duplicate_slug is not None:
+        raise ValueError(f"route.slug '{target_slug}' already exists")
+
+    replaced = False
+    updated_routes: list[RouteTemplate] = []
+    for item in existing_routes:
+        if str(item.get("slug") or "").strip() == normalized_original_slug and not replaced:
+            updated_routes.append(replacement)
+            replaced = True
+            continue
+        updated_routes.append(item)
+
+    if not replaced:
+        updated_routes.append(replacement)
+
+    validated = validate_route_templates_data(updated_routes)
+    _write_route_templates(validated)
+    return deepcopy(replacement)
+
+
+def delete_route_template(slug: str) -> bool:
+    target_slug = str(slug or "").strip()
+    existing_routes = [deepcopy(item) for item in load_route_templates()]
+    remaining = [item for item in existing_routes if str(item.get("slug") or "").strip() != target_slug]
+    if len(remaining) == len(existing_routes):
+        return False
+
+    validated = validate_route_templates_data(remaining)
+    _write_route_templates(validated)
+    return True
+
+
+def _write_route_templates(routes: list[RouteTemplate]) -> None:
+    temp_path = ROUTE_TEMPLATES_JSON_PATH.with_suffix(".json.tmp")
+    temp_path.write_text(json.dumps(routes, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temp_path.replace(ROUTE_TEMPLATES_JSON_PATH)
+    load_route_templates.cache_clear()
 
 
 def _validate_route_templates(data: Any) -> list[RouteTemplate]:

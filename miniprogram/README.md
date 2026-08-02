@@ -14,12 +14,13 @@ The Mini Program reads data from the Flask backend JSON APIs:
 
 Default local endpoints and request paths are centralized in `utils/backend-config.js`:
 
-- devtools simulator web base URL: `http://127.0.0.1:5000`
+- devtools simulator web base URL: `http://127.0.0.1:6001`
 - phone preview / real device web base URL: `https://www.xingtu.ltd`
 - API base URL follows the selected web base URL with `/api`
 - unified API paths: `routes`, `spots`, `me`
 - unified Mini Program routes: tab pages, route detail, and webview URLs
 - backend route and spot payloads now expose structured `mini_program_action` / `mini_program` fields so the frontend can avoid parsing raw href strings
+- route and spot business data no longer ship inside the Mini Program package; content changes should be maintained on the Flask backend so data updates do not require a Mini Program version bump
 
 ## Run locally
 

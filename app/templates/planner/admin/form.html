@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.title }}{% endblock %}
+
+{% block content %}
+  <main class="planner-shell admin-shell admin-shell--form">
+    <section class="panel">
+      <div class="planner-nav">
+        <a class="planner-brand" href="{{ back_href }}">返回后台管理</a>
+        <div class="planner-nav__links">
+          {% if preview_href %}
+            <a class="button-secondary" href="{{ preview_href }}">前台预览</a>
+          {% endif %}
+        </div>
+      </div>
+      <p class="eyebrow">{{ page.eyebrow }}</p>
+      <h1>{{ page.title }}</h1>
+      <p class="subtitle">{{ page.description }}</p>
+      {% if feedback.message %}
+        <div class="planner-status-strip planner-status-strip--{{ feedback.kind }}">{{ feedback.message }}</div>
+      {% endif %}
+      {% if errors %}
+        <div class="planner-status-strip planner-status-strip--error">
+          <ul class="planner-note-list admin-error-list">
+            {% for error in errors %}
+              <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="panel planner-form-panel">
+      <form action="{{ form.action }}" method="{{ form.method }}" class="planner-form admin-form"{% if form.enctype %} enctype="{{ form.enctype }}"{% endif %}>
+        {% for hidden in form.hidden_fields %}
+          <input type="hidden" name="{{ hidden.name }}" value="{{ hidden.value }}">
+        {% endfor %}
+
+        {% if form.image_uploads %}
+          <section class="admin-form-group">
+            <div class="planner-section-heading">
+              <p class="eyebrow">图片上传</p>
+              <p class="planner-footnote">上传后会自动写入当前点位的图片列表，仍可继续用下方文本区补充更多图片 URL。</p>
+            </div>
+            <div class="admin-upload-grid">
+              {% for item in form.image_uploads %}
+                <label class="planner-field admin-upload-card">
+                  <span>{{ item.label }}</span>
+                  {% if item.current_url %}
+                    <img class="admin-upload-card__preview" src="{{ item.current_url }}" alt="{{ item.label }}">
+                  {% else %}
+                    <div class="admin-upload-card__empty">当前还没有图片</div>
+                  {% endif %}
+                  <input id="{{ item.name }}" name="{{ item.name }}" type="file" accept="image/*">
+                  <span class="planner-field__example">{{ item.help }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          </section>
+        {% endif %}
+
+        {% for group in form.groups %}
+          <section class="admin-form-group">
+            <div class="planner-section-heading">
+              <p class="eyebrow">{{ group.title }}</p>
+              <p class="planner-footnote">{{ group.description }}</p>
+            </div>
+            <div class="admin-form-grid">
+              {% for field in group.fields %}
+                <label class="planner-field {% if field.component == 'textarea' %}admin-form-grid__wide{% endif %}">
+                  <span>{{ field.label }}</span>
+                  {% if field.component == 'textarea' %}
+                    <textarea id="{{ field.name }}" name="{{ field.name }}">{{ field.value }}</textarea>
+                  {% else %}
+                    <input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.component }}" value="{{ field.value }}">
+                  {% endif %}
+                  <span class="planner-field__example">{{ field.help }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          </section>
+        {% endfor %}
+
+        <div class="planner-actions admin-form-actions">
+          <button class="button-primary" type="submit">{{ form.submit_label }}</button>
+          {% if delete_action %}
+            <button class="button-secondary" type="submit" formaction="{{ delete_action }}" formmethod="post" onclick="return window.confirm('确认删除这条记录？');">删除当前记录</button>
+          {% endif %}
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <p class="eyebrow">填写提示</p>
+      <h2>避免改坏前台展示</h2>
+      <ul class="planner-note-list">
+        {% for tip in tips %}
+          <li>{{ tip }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </main>
+{% endblock %}

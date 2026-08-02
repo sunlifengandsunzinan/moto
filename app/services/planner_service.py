@@ -627,6 +627,7 @@ def _spot_card(spot: Mapping[str, Any]) -> dict[str, Any]:
     support_labels = spot["support_labels"]
     summary_tags = [item for item in [spot["route_type_label"], spot["ride_level_label"], *support_labels[:1]] if item]
     return {
+        "slug": spot["slug"],
         "name": spot["name"],
         "city": spot["city"],
         "region": spot["region"],

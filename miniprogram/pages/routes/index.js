@@ -10,9 +10,23 @@ const {
 } = require("../../utils/backend-config");
 const { downloadRemoteFile } = require("../../utils/file-download");
 const { mergeRoutesWithFavorites, toggleFavoriteRoute } = require("../../utils/favorites");
-const { routesPageFallback } = require("../../mock/routes");
 
-const EMPTY_ROUTES_STATE = routesPageFallback;
+const EMPTY_ROUTES_STATE = {
+  page: {
+    title: "热门摩旅路线",
+    description: "当前路线数据需要从后端加载。",
+  },
+  featured_summary: {
+    title: "路线列表",
+    description: "当前没有可展示的路线数据。",
+  },
+  empty_state: {
+    title: "暂无路线",
+    description: "请检查后端接口或在后台管理中补充路线数据。",
+    action: { label: "去后台管理", href: "/moto/admin" },
+  },
+  routes: [],
+};
 
 function compareRouteHeat(left, right) {
   const leftEngagement = left?.engagement || {};
