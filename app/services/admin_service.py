@@ -19,6 +19,7 @@ from .route_templates_config import (
     save_route_template,
     delete_route_template,
 )
+from .planner_service import get_liaoning_route_templates
 
 
 ROUTE_FORM_GROUPS = [
@@ -129,6 +130,7 @@ SPOT_FORM_GROUPS = [
 
 def get_admin_dashboard_context(feedback: Mapping[str, str] | None = None) -> dict[str, Any]:
     routes = load_route_templates()
+    visible_frontend_routes = get_liaoning_route_templates()
     spots = get_approved_moto_spots()
     route_regions = sorted({str(route.get("region") or "") for route in routes if str(route.get("region") or "").strip()})
     spot_regions = sorted({str(spot.get("region") or "") for spot in spots if str(spot.get("region") or "").strip()})
@@ -143,7 +145,8 @@ def get_admin_dashboard_context(feedback: Mapping[str, str] | None = None) -> di
             "kind": str((feedback or {}).get("kind") or "info").strip() or "info",
         },
         "stats": [
-            {"label": "路线总数", "value": len(routes)},
+            {"label": "路线总库", "value": len(routes)},
+            {"label": "前台显示路线", "value": len(visible_frontend_routes)},
             {"label": "点位总数", "value": len(spots)},
             {"label": "路线区域", "value": len(route_regions)},
             {"label": "点位区域", "value": len(spot_regions)},

@@ -252,13 +252,7 @@ Page({
   },
 
   onShow() {
-    if (this.data.allRoutes.length) {
-      const allRoutes = mergeRoutesWithFavorites(this.data.allRoutes);
-      this.setData({
-        allRoutes,
-        routes: applyRouteFilters(allRoutes, this.data.selectedDuration, this.data.keyword, this.data.sortMode),
-      });
-    }
+    this.fetchData(this.buildQuery());
   },
 
   applyDurationFilter(selectedDuration, routes) {
@@ -282,7 +276,12 @@ Page({
   fetchData(query = {}, stopRefresh = false) {
     this.setData({ loading: true, error: "" });
 
-    request({ path: API_PATHS.routes, data: query })
+    const requestData = {
+      ...query,
+      _t: Date.now(),
+    };
+
+    request({ path: API_PATHS.routes, data: requestData })
       .then((payload) => {
         const normalized = normalizePayload(payload);
         this.setData({
