@@ -25,6 +25,7 @@ from .candidate_spots import get_reviewed_spots
 from . import gpx_service
 from .route_engagement import get_route_engagement, get_route_engagement_map
 from .route_templates_config import load_route_templates
+from .user_me_state import get_user_me_metrics
 
 
 RouteDict = dict[str, Any]
@@ -925,8 +926,11 @@ def build_moto_tabbar(active_tab: str) -> dict[str, Any]:
     }
 
 
-def get_moto_me_context() -> dict[str, Any]:
+def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
     route_templates = get_route_templates()
+    user_metrics = get_user_me_metrics(user_id)
+    favorite_count = int(user_metrics.get("favorite_count") or 0)
+    checkin_count = favorite_count
 
     return {
         "page": {
@@ -939,10 +943,9 @@ def get_moto_me_context() -> dict[str, Any]:
             "summary": "当前版本聚焦路线选择和出发决策，先让小程序更像一个轻量的摩旅路线工具。",
         },
         "metrics": [
-            {"label": "路线模板", "value": len(route_templates)},
-            {"label": "时长分档", "value": 4},
-            {"label": "可直接导航", "value": len(route_templates)},
-            {"label": "近期推荐", "value": min(3, len(route_templates))},
+            {"label": "我收藏的", "value": favorite_count},
+            {"label": "我的积分", "value": 0},
+            {"label": "我打卡过的", "value": checkin_count},
         ],
         "sections": [
             {
@@ -1151,12 +1154,12 @@ def get_route_templates() -> list[RouteDict]:
     return routes
 
 
-def get_liaoning_route_templates() -> list[RouteDict]:
+def get_liaoning_route_templates(*, include_hidden: bool = False) -> list[RouteDict]:
     liaoning_spot_slugs = {str(spot.get("slug") or "").strip() for spot in get_liaoning_moto_spots()}
-    return [
-        route for route in get_route_templates()
-        if _is_route_visible(route) and _is_liaoning_route(route, liaoning_spot_slugs)
-    ]
+    routes = get_route_templates()
+    if not include_hidden:
+        routes = [route for route in routes if _is_route_visible(route)]
+    return [route for route in routes if _is_liaoning_route(route, liaoning_spot_slugs)]
 
 
 def _is_route_visible(route: Mapping[str, Any]) -> bool:

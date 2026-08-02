@@ -240,7 +240,8 @@ def moto_admin() -> str:
         "message": request.args.get("message", ""),
         "kind": request.args.get("kind", "info"),
     }
-    return render_template("planner/admin/index.html", **get_admin_dashboard_context(feedback))
+    route_page = request.args.get("route_page", 1, type=int) or 1
+    return render_template("planner/admin/index.html", **get_admin_dashboard_context(feedback, route_page=route_page))
 
 
 @moto_bp.get("/moto/admin/routes/new")

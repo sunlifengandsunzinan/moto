@@ -643,7 +643,8 @@
         "timing": "Day 3 · 下午收官",
         "image": "route-liaoning-dandong.svg"
       }
-    ]
+    ],
+    "is_visible": false
   },
   {
     "slug": "liaoning-dalian-coast-2-day",
@@ -771,7 +772,8 @@
           "meta": "沿线最近城市医疗支援"
         }
       ]
-    }
+    },
+    "is_visible": false
   },
   {
     "slug": "liaoning-liaodong-2-day",
@@ -899,7 +901,8 @@
           "meta": "Day 1 · 山区应急支援"
         }
       ]
-    }
+    },
+    "is_visible": true
   },
   {
     "slug": "liaoning-red-beach-2-day",
@@ -1027,7 +1030,8 @@
           "meta": "Day 1 · 城区医疗支援"
         }
       ]
-    }
+    },
+    "is_visible": false
   },
   {
     "slug": "navigation-demo-partial-2-day",
@@ -1351,7 +1355,8 @@
       "emergency": []
     },
     "source": "douyin",
-    "video_id": "7504511024373239080"
+    "video_id": "7504511024373239080",
+    "is_visible": false
   },
   {
     "slug": "douyin-分享一条从沈阳出发当天往返本溪的轻自驾线-18",
@@ -1414,7 +1419,8 @@
       "emergency": []
     },
     "source": "douyin",
-    "video_id": "7646266141790293291"
+    "video_id": "7646266141790293291",
+    "is_visible": false
   },
   {
     "slug": "douyin-辽宁本溪保姆级赏枫旅行攻略-19",
@@ -1491,7 +1497,8 @@
       "emergency": []
     },
     "source": "douyin",
-    "video_id": "7550629947527187771"
+    "video_id": "7550629947527187771",
+    "is_visible": false
   },
   {
     "slug": "douyin-沈阳周边一百五十公里短途骑行进阶路线-21",
@@ -1671,7 +1678,8 @@
       "emergency": []
     },
     "source": "douyin",
-    "video_id": "7616939719939878565"
+    "video_id": "7616939719939878565",
+    "is_visible": false
   },
   {
     "slug": "douyin-沈阳南骑行路线分享灯塔粮仓文创园和广佑寺-24",
@@ -1795,7 +1803,8 @@
       "emergency": []
     },
     "source": "douyin",
-    "video_id": "7493822454457027866"
+    "video_id": "7493822454457027866",
+    "is_visible": true
   },
   {
     "slug": "douyin-辽宁省内沿海观光大道228国道大连段自驾-26",
@@ -1860,7 +1869,8 @@
       "emergency": []
     },
     "source": "douyin",
-    "video_id": "7639328434611221691"
+    "video_id": "7639328434611221691",
+    "is_visible": false
   },
   {
     "slug": "douyin-沈阳辽阳骑行路线180公里免费打卡-27",
@@ -1920,7 +1930,8 @@
       "emergency": []
     },
     "source": "douyin",
-    "video_id": "7624318744873060691"
+    "video_id": "7624318744873060691",
+    "is_visible": false
   },
   {
     "slug": "douyin-五辆125踏板组队山东泰安出发四天时间摩-1",

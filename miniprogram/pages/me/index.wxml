@@ -9,6 +9,7 @@
     <view class="me-hero__copy">
       <text class="me-hero__name">{{displayName}}</text>
       <text wx:if="{{wechatProfileLocation}}" class="me-hero__meta">{{wechatProfileLocation}}</text>
+      <button wx:if="{{isWechatLoggedIn}}" class="me-hero__logout" bindtap="handleLogout">退出登录</button>
     </view>
   </view>
 

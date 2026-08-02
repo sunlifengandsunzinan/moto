@@ -1,11 +1,4 @@
 <view class="page-shell route-detail-reference-page">
-  <view class="route-detail-kpi-strip">
-    <view wx:for="{{overviewStats}}" wx:key="key" class="route-detail-kpi-item">
-      <text class="route-detail-kpi-item__label">{{item.label}}</text>
-      <text class="route-detail-kpi-item__value" wx:if="{{false}}">{{item.value}}</text>
-    </view>
-  </view>
-
   <view wx:if="{{loading}}" class="card loading">
     <text class="subtle">正在加载路线详情...</text>
   </view>

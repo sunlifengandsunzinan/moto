@@ -8,7 +8,6 @@ const {
   TENCENT_MAP_SUBKEY,
 } = require("../../../utils/backend-config");
 const { downloadRemoteFile } = require("../../../utils/file-download");
-const { isFavoriteRoute, toggleFavoriteRoute } = require("../../../utils/favorites");
 
 function getRouteDetailFallback() {
   return {
@@ -208,7 +207,7 @@ function normalizePayload(payload) {
     ...route,
     tencentMapSubkey: TENCENT_MAP_SUBKEY,
     slug,
-    is_favorite: slug ? isFavoriteRoute(slug) : false,
+    is_favorite: Boolean(route.is_favorite),
     favorite_api_href: String(route.favorite_api_href || ""),
     navigation_api_href: String(route.navigation_api_href || ""),
     mini_program: {
@@ -418,10 +417,10 @@ Page({
       return;
     }
 
-    const result = toggleFavoriteRoute(route);
+    const nextFavoriteState = !route.is_favorite;
     const nextRoute = {
       ...route,
-      is_favorite: result.isFavorite,
+      is_favorite: nextFavoriteState,
     };
 
     this.setData({
@@ -432,38 +431,47 @@ Page({
     const favoritePath = getMiniProgramApiPath(route?.mini_program?.favorite)
       || normalizeRequestPath(route.favorite_api_href);
 
-    if (result.isFavorite && favoritePath) {
-      request({ path: favoritePath, method: "POST" })
-        .then((payload) => {
-          if (payload && payload.ok && payload.engagement) {
-            const updatedRoute = {
-              ...this.data.route,
-              engagement: {
-                ...(this.data.route.engagement || {}),
-                ...payload.engagement,
-              },
-            };
-            this.setData({
-              route: updatedRoute,
-              overviewStats: buildOverviewStats(updatedRoute),
-              checkpointTimeline: buildCheckpointTimeline(updatedRoute, this.data.detailSections.daily_plan),
-            });
-          }
-        })
-        .catch(() => {
-          wx.showToast({
-            title: "后端收藏计数失败",
-            icon: "none",
-            duration: 1800,
-          });
-        });
+    if (!favoritePath) {
+      wx.showToast({ title: "收藏功能暂不可用", icon: "none" });
+      return;
     }
 
-    wx.showToast({
-      title: result.isFavorite ? "已加入收藏" : "已取消收藏",
-      icon: "none",
-      duration: 1600,
-    });
+    request({ path: favoritePath, method: nextFavoriteState ? "POST" : "DELETE" })
+      .then((payload) => {
+        const confirmedState = typeof payload?.is_favorite === "boolean"
+          ? payload.is_favorite
+          : nextFavoriteState;
+        const updatedRoute = {
+          ...this.data.route,
+          is_favorite: confirmedState,
+          engagement: {
+            ...(this.data.route.engagement || {}),
+            ...(payload?.engagement || {}),
+          },
+        };
+        this.setData({
+          route: updatedRoute,
+          overviewStats: buildOverviewStats(updatedRoute),
+          checkpointTimeline: buildCheckpointTimeline(updatedRoute, this.data.detailSections.daily_plan),
+        });
+
+        wx.showToast({
+          title: confirmedState ? "已加入收藏" : "已取消收藏",
+          icon: "none",
+          duration: 1600,
+        });
+      })
+      .catch(() => {
+        this.setData({
+          route,
+          overviewStats: buildOverviewStats(route),
+        });
+        wx.showToast({
+          title: "收藏失败，请重试",
+          icon: "none",
+          duration: 1800,
+        });
+      });
   },
 
   handleDownloadGpx(event) {

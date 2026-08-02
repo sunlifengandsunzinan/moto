@@ -4,6 +4,7 @@ const {
   buildWebUrl,
   normalizeRequestPath,
 } = require("./backend-config");
+const { getOrCreateUserId } = require("./user-session");
 
 function request({ path, data = {}, method = "GET" }) {
   return new Promise((resolve, reject) => {
@@ -14,6 +15,9 @@ function request({ path, data = {}, method = "GET" }) {
         url,
         data,
         method,
+        header: {
+          "X-Moto-User-Id": getOrCreateUserId(),
+        },
         success: (response) => {
           const { statusCode, data: payload } = response;
 

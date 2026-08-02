@@ -6,20 +6,40 @@ from flask import jsonify, request, send_file
 from ...services import (
     build_route_detail_context,
     build_routes_index_context,
+    get_user_favorite_slugs,
     get_moto_me_context,
     get_liaoning_route_templates,
+    mark_user_route_checkin,
     get_route_by_slug,
     get_route_waypoint_collection_api_payload,
+    set_user_route_favorite,
     get_spots_index_context,
     gpx_service,
 )
-from ...services.route_engagement import increment_route_favorite, increment_route_navigation
+from ...services.route_engagement import get_route_engagement, increment_route_favorite, increment_route_navigation
 from . import api_bp
+
+
+def _resolve_user_id() -> str:
+    return str(
+        request.headers.get("X-Moto-User-Id")
+        or request.args.get("user_id")
+        or ""
+    ).strip()
 
 
 @api_bp.get("/moto/routes")
 def moto_routes():
+    user_id = _resolve_user_id()
+    favorite_slugs = get_user_favorite_slugs(user_id)
     context = build_routes_index_context(get_liaoning_route_templates(), request.args)
+    context["routes"] = [
+        {
+            **route,
+            "is_favorite": str(route.get("slug") or "").strip() in favorite_slugs,
+        }
+        for route in context.get("routes", [])
+    ]
     return jsonify(context)
 
 
@@ -31,7 +51,7 @@ def moto_spots():
 
 @api_bp.get("/moto/me")
 def moto_me():
-    return jsonify(get_moto_me_context())
+    return jsonify(get_moto_me_context(_resolve_user_id()))
 
 
 @api_bp.get("/moto/routes/<slug>")
@@ -39,16 +59,41 @@ def moto_route_detail(slug: str):
     route = get_route_by_slug(slug)
     if route is None:
         return jsonify({"message": "Route not found"}), 404
-    return jsonify(build_route_detail_context(route))
+    payload = build_route_detail_context(route)
+    favorite_slugs = get_user_favorite_slugs(_resolve_user_id())
+    payload["route"] = {
+        **payload.get("route", {}),
+        "is_favorite": str(slug).strip() in favorite_slugs,
+    }
+    return jsonify(payload)
 
 
-@api_bp.post("/moto/routes/<slug>/favorite")
+@api_bp.route("/moto/routes/<slug>/favorite", methods=["POST", "DELETE"])
 def moto_route_favorite(slug: str):
     route = get_route_by_slug(slug)
     if route is None:
         return jsonify({"ok": False, "error": "Route not found"}), 404
-    stats = increment_route_favorite(slug)
-    return jsonify({"ok": True, "slug": slug, "engagement": stats})
+
+    user_id = _resolve_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "error": "Missing user id"}), 400
+
+    is_favorite = request.method == "POST"
+    favorite_result = set_user_route_favorite(user_id, slug, is_favorite)
+    if not favorite_result.get("ok"):
+        return jsonify({"ok": False, "error": "Failed to update favorite state"}), 400
+
+    if is_favorite and favorite_result.get("changed"):
+        increment_route_favorite(slug)
+
+    stats = get_route_engagement(slug)
+    return jsonify({
+        "ok": True,
+        "slug": slug,
+        "is_favorite": bool(favorite_result.get("is_favorite")),
+        "favorite_count": int(favorite_result.get("favorite_count") or 0),
+        "engagement": stats,
+    })
 
 
 @api_bp.post("/moto/routes/<slug>/navigation")
@@ -57,7 +102,14 @@ def moto_route_navigation(slug: str):
     if route is None:
         return jsonify({"ok": False, "error": "Route not found"}), 404
     stats = increment_route_navigation(slug)
-    return jsonify({"ok": True, "slug": slug, "engagement": stats})
+
+    user_id = _resolve_user_id()
+    checkin_count = 0
+    if user_id:
+        checkin_result = mark_user_route_checkin(user_id, slug)
+        checkin_count = int(checkin_result.get("checkin_count") or 0)
+
+    return jsonify({"ok": True, "slug": slug, "engagement": stats, "checkin_count": checkin_count})
 
 
 @api_bp.get("/moto/routes/collect/schema")

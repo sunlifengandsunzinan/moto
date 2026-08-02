@@ -1,27 +1,18 @@
 const { API_PATHS, MINI_PROGRAM_PATHS } = require("../../utils/backend-config");
 const { request } = require("../../utils/request");
-const { getFavoriteRoutes } = require("../../utils/favorites");
 
 const DEFAULT_AVATAR_TEXT = "行途";
 
-function normalizeMetricList(metrics, favoriteRouteCount) {
+function normalizeMetricList(metrics) {
   const sourceMetrics = Array.isArray(metrics) ? metrics : [];
   const defaults = [
-    { key: "ranking", value: "27", label: "我的排名" },
+    { key: "favorites", value: "0", label: "我收藏的" },
     { key: "points", value: "0", label: "我的积分" },
-    { key: "cards", value: "0", label: "我的卡券" },
+    { key: "checkins", value: "0", label: "我打卡过的" },
   ];
 
   return defaults.map((fallback, index) => {
     const source = sourceMetrics[index] || {};
-    if (index === 1) {
-      return {
-        key: fallback.key,
-        value: String(favoriteRouteCount || 0),
-        label: fallback.label,
-      };
-    }
-
     return {
       key: fallback.key,
       value: String(source.value ?? fallback.value),
@@ -61,12 +52,12 @@ function normalizeQuickActions(sections) {
   });
 }
 
-function normalizeMePayload(payload, favoriteRouteCount) {
+function normalizeMePayload(payload) {
   const safePayload = payload || {};
   return {
     page: safePayload.page || { title: "我的" },
     profile: safePayload.profile || {},
-    metrics: normalizeMetricList(safePayload.metrics, favoriteRouteCount),
+    metrics: normalizeMetricList(safePayload.metrics),
     quickActions: normalizeQuickActions(safePayload.sections),
   };
 }
@@ -168,7 +159,6 @@ Page({
     showWechatProfileEditor: false,
     draftWechatNickName: "",
     draftWechatAvatarUrl: "",
-    favoriteRouteCount: 0,
     wechatProfileLocation: "",
     wechatUserProfile: null,
     page: { title: "我的" },
@@ -184,32 +174,17 @@ Page({
 
   onLoad() {
     this.syncWechatProfile();
-    this.syncFavoriteRoutes();
     this.fetchMePage();
   },
 
   onShow() {
     this.syncWechatProfile();
-    this.syncFavoriteRoutes();
+    this.fetchMePage();
   },
 
   onPullDownRefresh() {
     this.syncWechatProfile();
-    this.syncFavoriteRoutes();
     this.fetchMePage(true);
-  },
-
-  syncFavoriteRoutes(stopRefresh = false) {
-    const favoriteRoutes = getFavoriteRoutes();
-    const favoriteRouteCount = favoriteRoutes.length;
-    this.setData({
-      favoriteRouteCount,
-      metrics: normalizeMetricList(this.data.metrics, favoriteRouteCount),
-    });
-
-    if (stopRefresh) {
-      wx.stopPullDownRefresh();
-    }
   },
 
   fetchMePage(stopRefresh = false) {
@@ -217,7 +192,7 @@ Page({
 
     request({ path: API_PATHS.me })
       .then((payload) => {
-        const normalized = normalizeMePayload(payload, this.data.favoriteRouteCount);
+        const normalized = normalizeMePayload(payload);
         this.setData({
           loading: false,
           error: "",
@@ -231,7 +206,7 @@ Page({
         this.setData({
           loading: false,
           error: error?.message || "加载我的页面失败",
-          metrics: normalizeMetricList([], this.data.favoriteRouteCount),
+          metrics: normalizeMetricList([]),
           quickActions: normalizeQuickActions([]),
         });
       })
@@ -433,6 +408,36 @@ Page({
     wx.showToast({
       title: "已清除资料",
       icon: "none",
+    });
+  },
+
+  handleLogout() {
+    wx.showModal({
+      title: "退出登录",
+      content: "确认退出当前微信登录状态？",
+      success: (result) => {
+        if (!result.confirm) {
+          return;
+        }
+
+        const app = getApp();
+        if (typeof app?.setWechatUserProfile === "function") {
+          app.setWechatUserProfile(null);
+        }
+
+        this.setData({
+          wechatUserProfile: null,
+          wechatProfileLocation: "",
+          displayName: "点击登录",
+          avatarText: DEFAULT_AVATAR_TEXT,
+          isWechatLoggedIn: false,
+          showWechatProfileEditor: false,
+          draftWechatNickName: "",
+          draftWechatAvatarUrl: "",
+        });
+
+        wx.showToast({ title: "已退出登录", icon: "none" });
+      },
     });
   },
 

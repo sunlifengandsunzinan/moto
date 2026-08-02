@@ -9,7 +9,6 @@ const {
   normalizeRequestPath,
 } = require("../../utils/backend-config");
 const { downloadRemoteFile } = require("../../utils/file-download");
-const { mergeRoutesWithFavorites, toggleFavoriteRoute } = require("../../utils/favorites");
 
 const EMPTY_ROUTES_STATE = {
   page: {
@@ -192,9 +191,9 @@ function normalizeRoute(route) {
 function normalizePayload(payload) {
   const safePayload = payload || EMPTY_ROUTES_STATE;
   const selectedDays = safePayload.filters && safePayload.filters.selected_days ? safePayload.filters.selected_days : "";
-  const routes = sortRoutesByHeat(mergeRoutesWithFavorites(
+  const routes = sortRoutesByHeat(
     (Array.isArray(safePayload.routes) ? safePayload.routes : []).map(normalizeRoute),
-  ));
+  );
 
   return {
     page: safePayload.page || EMPTY_ROUTES_STATE.page,
@@ -465,9 +464,9 @@ Page({
       return;
     }
 
-    const result = toggleFavoriteRoute(route);
+    const nextFavoriteState = !route.is_favorite;
     const allRoutes = (this.data.allRoutes || []).map((item) => (
-      item.slug === slug ? { ...item, is_favorite: result.isFavorite } : item
+      item.slug === slug ? { ...item, is_favorite: nextFavoriteState } : item
     ));
 
     this.setData({
@@ -478,27 +477,50 @@ Page({
     const favoritePath = getMiniProgramApiPath(route?.mini_program?.favorite)
       || normalizeRequestPath(route?.favorite_api_href || "");
 
-    if (result.isFavorite && favoritePath) {
-      request({ path: favoritePath, method: "POST" })
-        .then((payload) => {
-          if (payload && payload.ok && payload.engagement) {
-            this.updateRouteEngagement(slug, payload.engagement);
-          }
-        })
-        .catch(() => {
-          wx.showToast({
-            title: "后端收藏计数失败",
-            icon: "none",
-            duration: 1800,
-          });
-        });
+    if (!favoritePath) {
+      wx.showToast({ title: "收藏功能暂不可用", icon: "none" });
+      return;
     }
 
-    wx.showToast({
-      title: result.isFavorite ? "已加入收藏" : "已取消收藏",
-      icon: "none",
-      duration: 1600,
-    });
+    request({ path: favoritePath, method: nextFavoriteState ? "POST" : "DELETE" })
+      .then((payload) => {
+        const confirmedState = typeof payload?.is_favorite === "boolean"
+          ? payload.is_favorite
+          : nextFavoriteState;
+
+        const syncedRoutes = (this.data.allRoutes || []).map((item) => (
+          item.slug === slug ? { ...item, is_favorite: confirmedState } : item
+        ));
+        this.setData({
+          allRoutes: syncedRoutes,
+          routes: applyRouteFilters(syncedRoutes, this.data.selectedDuration, this.data.keyword, this.data.sortMode),
+        });
+
+        if (payload && payload.ok && payload.engagement) {
+          this.updateRouteEngagement(slug, payload.engagement);
+        }
+
+        wx.showToast({
+          title: confirmedState ? "已加入收藏" : "已取消收藏",
+          icon: "none",
+          duration: 1600,
+        });
+      })
+      .catch(() => {
+        const revertedRoutes = (this.data.allRoutes || []).map((item) => (
+          item.slug === slug ? { ...item, is_favorite: route.is_favorite } : item
+        ));
+        this.setData({
+          allRoutes: revertedRoutes,
+          routes: applyRouteFilters(revertedRoutes, this.data.selectedDuration, this.data.keyword, this.data.sortMode),
+        });
+
+        wx.showToast({
+          title: "收藏失败，请重试",
+          icon: "none",
+          duration: 1800,
+        });
+      });
   },
 
   handleOpenCollect(event) {

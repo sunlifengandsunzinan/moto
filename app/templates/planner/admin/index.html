@@ -54,9 +54,15 @@
               {% for item in route_section["items"] %}
                 <tr>
                   <td>
-                    <label class="admin-visibility-toggle">
-                      <input type="checkbox" name="visible_route_slugs" value="{{ item.slug }}" {% if item.is_visible %}checked{% endif %}>
-                      <span>{{ "显示" if item.is_visible else "隐藏" }}</span>
+                    <label class="admin-visibility-toggle {% if not item.scope_eligible %}admin-visibility-toggle--disabled{% endif %}">
+                      <input type="checkbox" {% if item.scope_eligible %}name="visible_route_slugs"{% else %}disabled{% endif %} value="{{ item.slug }}" {% if item.is_frontend_visible %}checked{% endif %}>
+                      <span>
+                        {% if item.scope_eligible %}
+                          {{ "显示" if item.is_frontend_visible else "隐藏" }}
+                        {% else %}
+                          非辽宁范围
+                        {% endif %}
+                      </span>
                     </label>
                   </td>
                   <td>
@@ -94,6 +100,18 @@
         <div class="planner-actions admin-route-list-actions">
           <button class="button-primary" type="submit">保存路线显示设置</button>
         </div>
+        {% if route_section.pagination.total_pages > 1 %}
+          <div class="admin-pagination" role="navigation" aria-label="路线分页">
+            <a class="button-secondary {% if not route_section.pagination.has_prev %}is-disabled{% endif %}" href="{{ route_section.pagination.prev_href if route_section.pagination.has_prev else '#' }}">上一页</a>
+            <div class="admin-pagination__pages">
+              {% for item in route_section.pagination.pages %}
+                <a class="admin-pagination__page {% if item.is_current %}is-current{% endif %}" href="{{ item.href }}">{{ item.page }}</a>
+              {% endfor %}
+            </div>
+            <a class="button-secondary {% if not route_section.pagination.has_next %}is-disabled{% endif %}" href="{{ route_section.pagination.next_href if route_section.pagination.has_next else '#' }}">下一页</a>
+          </div>
+          <p class="planner-footnote">共 {{ route_section.pagination.total }} 条，第 {{ route_section.pagination.page }} / {{ route_section.pagination.total_pages }} 页</p>
+        {% endif %}
       </form>
     </section>
 

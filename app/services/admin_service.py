@@ -128,12 +128,48 @@ SPOT_FORM_GROUPS = [
 ]
 
 
-def get_admin_dashboard_context(feedback: Mapping[str, str] | None = None) -> dict[str, Any]:
+def get_admin_dashboard_context(
+    feedback: Mapping[str, str] | None = None,
+    *,
+    route_page: int = 1,
+    route_per_page: int = 20,
+) -> dict[str, Any]:
     routes = load_route_templates()
     visible_frontend_routes = get_liaoning_route_templates()
+    frontend_scope_slugs = {
+        str(route.get("slug") or "").strip()
+        for route in get_liaoning_route_templates(include_hidden=True)
+        if str(route.get("slug") or "").strip()
+    }
+    visible_frontend_slugs = {
+        str(route.get("slug") or "").strip()
+        for route in visible_frontend_routes
+        if str(route.get("slug") or "").strip()
+    }
     spots = get_approved_moto_spots()
     route_regions = sorted({str(route.get("region") or "") for route in routes if str(route.get("region") or "").strip()})
     spot_regions = sorted({str(spot.get("region") or "") for spot in spots if str(spot.get("region") or "").strip()})
+
+    route_items = [
+        {
+            "slug": str(route.get("slug") or ""),
+            "scope_eligible": str(route.get("slug") or "") in frontend_scope_slugs,
+            "is_frontend_visible": str(route.get("slug") or "") in visible_frontend_slugs,
+            "is_visible": _parse_route_visibility(route.get("is_visible")),
+            "title": route.get("title") or str(route.get("slug") or "未命名路线"),
+            "summary": str(route.get("summary") or ""),
+            "meta": [
+                f"{int(route.get('days') or 0)} 天",
+                f"{route.get('distance_km') or 0} km",
+                str(route.get("region") or "未分类"),
+            ],
+            "preview_href": f"/moto/routes/{route.get('slug')}",
+            "edit_href": f"/moto/admin/routes/{route.get('slug')}/edit",
+            "delete_href": f"/moto/admin/routes/{route.get('slug')}/delete",
+        }
+        for route in routes
+    ]
+    route_pagination = _paginate_items(route_items, route_page, route_per_page)
 
     return {
         "page": {
@@ -155,23 +191,8 @@ def get_admin_dashboard_context(feedback: Mapping[str, str] | None = None) -> di
             "title": "路线模板",
             "description": "编辑路线列表、详情页、高德地图、日程和 POI 数据。",
             "create_href": "/moto/admin/routes/new",
-            "items": [
-                {
-                    "title": route.get("title") or str(route.get("slug") or "未命名路线"),
-                    "slug": str(route.get("slug") or ""),
-                    "summary": str(route.get("summary") or ""),
-                    "meta": [
-                        f"{int(route.get('days') or 0)} 天",
-                        f"{route.get('distance_km') or 0} km",
-                        str(route.get("region") or "未分类"),
-                    ],
-                    "is_visible": _parse_route_visibility(route.get("is_visible")),
-                    "preview_href": f"/moto/routes/{route.get('slug')}",
-                    "edit_href": f"/moto/admin/routes/{route.get('slug')}/edit",
-                    "delete_href": f"/moto/admin/routes/{route.get('slug')}/delete",
-                }
-                for route in routes
-            ],
+            "items": route_pagination["items"],
+            "pagination": route_pagination,
         },
         "spot_section": {
             "title": "辽宁打卡点",
@@ -194,6 +215,38 @@ def get_admin_dashboard_context(feedback: Mapping[str, str] | None = None) -> di
                 for spot in spots
             ],
         },
+    }
+
+
+def _paginate_items(items: list[dict[str, Any]], page: int, per_page: int) -> dict[str, Any]:
+    total = len(items)
+    safe_per_page = max(1, min(int(per_page or 20), 100))
+    total_pages = max(1, (total + safe_per_page - 1) // safe_per_page)
+    safe_page = max(1, min(int(page or 1), total_pages))
+    start = (safe_page - 1) * safe_per_page
+    end = start + safe_per_page
+    page_items = items[start:end]
+
+    pages = [
+        {
+            "page": number,
+            "href": f"/moto/admin?route_page={number}",
+            "is_current": number == safe_page,
+        }
+        for number in range(1, total_pages + 1)
+    ]
+
+    return {
+        "items": page_items,
+        "page": safe_page,
+        "per_page": safe_per_page,
+        "total": total,
+        "total_pages": total_pages,
+        "has_prev": safe_page > 1,
+        "has_next": safe_page < total_pages,
+        "prev_href": f"/moto/admin?route_page={safe_page - 1}",
+        "next_href": f"/moto/admin?route_page={safe_page + 1}",
+        "pages": pages,
     }
 
 
@@ -426,10 +479,17 @@ def delete_route_admin_record(slug: str) -> bool:
 def update_route_visibility(visible_route_slugs: list[str]) -> dict[str, int]:
     visible_set = {str(slug or "").strip() for slug in visible_route_slugs if str(slug or "").strip()}
     routes = [deepcopy(route) for route in load_route_templates()]
+    frontend_scope_slugs = {
+        str(route.get("slug") or "").strip()
+        for route in get_liaoning_route_templates(include_hidden=True)
+        if str(route.get("slug") or "").strip()
+    }
 
     updated_count = 0
     for route in routes:
         slug = str(route.get("slug") or "").strip()
+        if slug not in frontend_scope_slugs:
+            continue
         should_be_visible = slug in visible_set
         previous_value = _parse_route_visibility(route.get("is_visible"))
         route["is_visible"] = should_be_visible
@@ -437,7 +497,15 @@ def update_route_visibility(visible_route_slugs: list[str]) -> dict[str, int]:
             updated_count += 1
 
     save_route_templates(routes)
-    return {"updated": updated_count, "total": len(routes), "visible": len(visible_set)}
+    actual_visible = sum(
+        1 for route in routes
+        if str(route.get("slug") or "").strip() in frontend_scope_slugs and _parse_route_visibility(route.get("is_visible"))
+    )
+    return {
+        "updated": updated_count,
+        "total": len(frontend_scope_slugs),
+        "visible": actual_visible,
+    }
 
 
 def delete_spot_admin_record(slug: str) -> bool:
