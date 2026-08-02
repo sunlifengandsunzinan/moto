@@ -18,32 +18,22 @@ function isDevtoolsPlatform() {
   }
 }
 
+function isVConsoleEnabledByFlag() {
+  try {
+    return wx.getStorageSync("enableVConsole") === true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function initDebugConsole() {
   if (initAttempted) {
-    return vConsoleInstance;
+    return null;
   }
 
   initAttempted = true;
-
-  // Keep vConsole for local DevTools debugging only.
-  if (!isDevtoolsPlatform()) {
-    return null;
-  }
-
-  const VConsole = tryRequireVConsole();
-  if (!VConsole) {
-    return null;
-  }
-
-  try {
-    vConsoleInstance = new VConsole({
-      theme: isDevtoolsPlatform() ? "light" : "dark",
-    });
-  } catch (_) {
-    vConsoleInstance = null;
-  }
-
-  return vConsoleInstance;
+  vConsoleInstance = null;
+  return null;
 }
 
 module.exports = {

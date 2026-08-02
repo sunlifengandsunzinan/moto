@@ -79,6 +79,46 @@ function buildDisplayProfile(wechatUserProfile) {
   };
 }
 
+function normalizeWechatProfileForDisplay(rawProfile) {
+  if (!rawProfile || typeof rawProfile !== "object") {
+    return null;
+  }
+
+  const source = rawProfile.userInfo && typeof rawProfile.userInfo === "object"
+    ? rawProfile.userInfo
+    : rawProfile;
+
+  const nickName = String(
+    source.nickName || source.nickname || source.nick_name || source.name || "",
+  ).trim();
+  const avatarUrl = String(
+    source.avatarUrl || source.avatar || source.avatar_url || source.headImgUrl || "",
+  ).trim();
+
+  if (!nickName && !avatarUrl) {
+    return null;
+  }
+
+  return {
+    nickName: nickName || "微信用户",
+    avatarUrl,
+    city: String(source.city || "").trim(),
+    province: String(source.province || "").trim(),
+    country: String(source.country || "").trim(),
+    gender: Number(source.gender || 0),
+  };
+}
+
+function hasLoggedWechatProfile(profile) {
+  if (!profile || typeof profile !== "object") {
+    return false;
+  }
+
+  const nickName = String(profile.nickName || "").trim();
+  const avatarUrl = String(profile.avatarUrl || "").trim();
+  return Boolean(nickName || avatarUrl);
+}
+
 function formatWechatLocation(profile) {
   if (!profile || typeof profile !== "object") {
     return "";
@@ -139,6 +179,7 @@ Page({
     error: "",
     displayName: "点击登录",
     avatarText: DEFAULT_AVATAR_TEXT,
+    isWechatLoggedIn: false,
   },
 
   onLoad() {
@@ -203,9 +244,16 @@ Page({
 
   syncWechatProfile() {
     const app = getApp();
-    const profile = typeof app?.getWechatUserProfile === "function"
+    const storedProfile = typeof app?.getWechatUserProfile === "function"
       ? app.getWechatUserProfile()
       : null;
+    const profile = normalizeWechatProfileForDisplay(storedProfile);
+    const isWechatLoggedIn = hasLoggedWechatProfile(profile);
+
+    if (!profile && storedProfile && typeof app?.setWechatUserProfile === "function") {
+      app.setWechatUserProfile(null);
+    }
+
     const displayProfile = buildDisplayProfile(profile);
 
     this.setData({
@@ -213,14 +261,15 @@ Page({
       wechatProfileLocation: formatWechatLocation(profile),
       displayName: displayProfile.displayName,
       avatarText: displayProfile.avatarText,
-      showWechatProfileEditor: !profile && this.data.showWechatProfileEditor,
+      isWechatLoggedIn,
+      showWechatProfileEditor: !isWechatLoggedIn && this.data.showWechatProfileEditor,
       draftWechatNickName: profile?.nickName || this.data.draftWechatNickName,
       draftWechatAvatarUrl: profile?.avatarUrl || this.data.draftWechatAvatarUrl,
     });
   },
 
   handleShowWechatProfileEditor() {
-    if (this.data.wechatUserProfile) {
+    if (this.data.isWechatLoggedIn) {
       return;
     }
 
@@ -272,13 +321,16 @@ Page({
           nickName,
           avatarUrl,
         };
+    const normalizedProfile = normalizeWechatProfileForDisplay(storedProfile);
+    const isWechatLoggedIn = hasLoggedWechatProfile(normalizedProfile);
 
-    const displayProfile = buildDisplayProfile(storedProfile);
+    const displayProfile = buildDisplayProfile(normalizedProfile);
     this.setData({
-      wechatUserProfile: storedProfile,
-      wechatProfileLocation: formatWechatLocation(storedProfile),
+      wechatUserProfile: normalizedProfile,
+      wechatProfileLocation: formatWechatLocation(normalizedProfile),
       displayName: displayProfile.displayName,
       avatarText: displayProfile.avatarText,
+      isWechatLoggedIn,
       showWechatProfileEditor: false,
       draftWechatNickName: "",
       draftWechatAvatarUrl: "",
@@ -315,6 +367,7 @@ Page({
         wechatProfileLocation: formatWechatLocation(storedProfile),
         displayName: displayProfile.displayName,
         avatarText: displayProfile.avatarText,
+        isWechatLoggedIn: hasLoggedWechatProfile(storedProfile),
       });
 
       // Read back from app storage to keep UI and persisted state consistent.
@@ -374,6 +427,7 @@ Page({
       wechatProfileLocation: "",
       displayName: "点击登录",
       avatarText: DEFAULT_AVATAR_TEXT,
+      isWechatLoggedIn: false,
     });
 
     wx.showToast({
@@ -407,7 +461,7 @@ Page({
   },
 
   handleHeroTap() {
-    if (this.data.wechatUserProfile) {
+    if (this.data.isWechatLoggedIn) {
       wx.showToast({ title: "已登录", icon: "none" });
       return;
     }
@@ -427,7 +481,7 @@ Page({
     }
 
     if (action.label === "个人档案") {
-      if (this.data.wechatUserProfile) {
+      if (this.data.isWechatLoggedIn) {
         wx.showToast({ title: "已登录", icon: "none" });
         return;
       }

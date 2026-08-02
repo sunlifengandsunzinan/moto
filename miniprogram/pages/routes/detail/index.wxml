@@ -31,7 +31,7 @@
         <text>暂无地图预览</text>
       </view>
 
-      <view class="route-map-panel__cta" bindtap="handleOpenRouteMap">
+      <view class="route-map-panel__cta" bindtap="handleDirectNavigate">
         <text class="route-map-panel__cta-text">查看路线地图</text>
       </view>
     </view>

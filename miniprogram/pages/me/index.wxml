@@ -1,6 +1,6 @@
 <view class="page-shell me-reference-page">
   <view class="me-hero" bindtap="handleHeroTap">
-    <view wx:if="{{wechatUserProfile && wechatUserProfile.avatarUrl}}" class="me-hero__avatar-shell">
+    <view wx:if="{{isWechatLoggedIn && wechatUserProfile && wechatUserProfile.avatarUrl}}" class="me-hero__avatar-shell">
       <image class="me-hero__avatar" src="{{wechatUserProfile.avatarUrl}}" mode="aspectFill" />
     </view>
     <view wx:else class="me-hero__avatar-shell me-hero__avatar-shell--placeholder">
@@ -12,7 +12,7 @@
     </view>
   </view>
 
-  <view wx:if="{{showWechatProfileEditor && !wechatUserProfile}}" class="me-login-editor">
+  <view wx:if="{{showWechatProfileEditor && !isWechatLoggedIn}}" class="me-login-editor">
     <view class="me-login-editor__header">
       <text class="me-login-editor__title">登录行途</text>
       <text class="me-login-editor__hint">请设置头像与昵称</text>
@@ -29,6 +29,7 @@
         class="me-login-editor__nickname-input"
         type="nickname"
         placeholder="请输入微信昵称"
+        placeholder-class="me-login-editor__nickname-placeholder"
         value="{{draftWechatNickName}}"
         bindinput="handleWechatNicknameInput"
       />
@@ -36,10 +37,16 @@
 
     <view class="me-login-editor__actions">
       <view class="me-login-editor__actions-row">
-        <button class="me-login-editor__button me-login-editor__button--half me-login-editor__button--ghost" open-type="chooseAvatar" bindchooseavatar="handleChooseWechatAvatar">选择微信头像</button>
-        <button class="me-login-editor__button me-login-editor__button--half" bindtap="handleSaveWechatProfileFromEditor">保存并登录</button>
+        <button class="me-login-editor__button me-login-editor__button--half me-login-editor__button--ghost" open-type="chooseAvatar" bindchooseavatar="handleChooseWechatAvatar">
+          <text class="me-login-editor__button-label">选择微信头像</text>
+        </button>
+        <button class="me-login-editor__button me-login-editor__button--half" bindtap="handleSaveWechatProfileFromEditor">
+          <text class="me-login-editor__button-label">保存并登录</text>
+        </button>
       </view>
-      <button class="me-login-editor__button me-login-editor__button--subtle" bindtap="handleCancelWechatProfileEditor">取消</button>
+      <button class="me-login-editor__button me-login-editor__button--subtle" bindtap="handleCancelWechatProfileEditor">
+        <text class="me-login-editor__button-label me-login-editor__button-label--subtle">取消</text>
+      </button>
     </view>
   </view>
 

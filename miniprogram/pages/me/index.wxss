@@ -126,7 +126,15 @@
   border: 1rpx solid #e0d7c8;
   padding: 0 20rpx;
   font-size: 24rpx;
+  line-height: 74rpx;
+  font-weight: 500;
   color: #1a1a1a;
+  box-sizing: border-box;
+}
+
+.me-login-editor__nickname-placeholder {
+  color: #a89d8f;
+  font-size: 24rpx;
 }
 
 .me-login-editor__actions {
@@ -149,18 +157,36 @@
   border: 1rpx solid #1f1f1f;
   background: #171717;
   color: #fff;
-  font-size: 28rpx;
-  font-weight: 600;
-  line-height: 74rpx;
+  padding: 0 16rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .me-login-editor__button--half {
   flex: 1;
   width: auto;
+  min-width: 0;
 }
 
 .me-login-editor__button::after {
   border: 0;
+}
+
+.me-login-editor__button-label {
+  display: block;
+  font-size: 28rpx;
+  line-height: 1.2;
+  font-weight: 600;
+  white-space: nowrap;
+  transform: translateY(1rpx);
+}
+
+.me-login-editor__button-label--subtle {
+  font-size: 24rpx;
+  font-weight: 500;
 }
 
 .me-login-editor__button--ghost {
@@ -170,11 +196,11 @@
 }
 
 .me-login-editor__button--subtle {
+  height: 62rpx;
+  padding: 0;
   background: transparent;
   border-color: transparent;
   color: #7b746a;
-  font-size: 24rpx;
-  font-weight: 500;
 }
 
 .me-stats-card {
