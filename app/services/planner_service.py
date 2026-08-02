@@ -1153,7 +1153,26 @@ def get_route_templates() -> list[RouteDict]:
 
 def get_liaoning_route_templates() -> list[RouteDict]:
     liaoning_spot_slugs = {str(spot.get("slug") or "").strip() for spot in get_liaoning_moto_spots()}
-    return [route for route in get_route_templates() if _is_liaoning_route(route, liaoning_spot_slugs)]
+    return [
+        route for route in get_route_templates()
+        if _is_route_visible(route) and _is_liaoning_route(route, liaoning_spot_slugs)
+    ]
+
+
+def _is_route_visible(route: Mapping[str, Any]) -> bool:
+    value = route.get("is_visible")
+    if value is None:
+        return True
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    raw = str(value).strip().lower()
+    if raw in {"", "1", "true", "yes", "y"}:
+        return True
+    if raw in {"0", "false", "no", "n"}:
+        return False
+    return True
 
 
 def _is_liaoning_route(route: Mapping[str, Any], liaoning_spot_slugs: set[str]) -> bool:

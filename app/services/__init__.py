@@ -7,6 +7,7 @@ from .admin_service import (
 	get_admin_spot_form_context,
 	save_route_from_form,
 	save_spot_from_form,
+	update_route_visibility,
 )
 from .candidate_spots import (
 	clear_spot_review_data,

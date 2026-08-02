@@ -15,6 +15,7 @@ from .liaoning_spots import (
 from .route_templates_config import (
     get_route_template_by_slug,
     load_route_templates,
+    save_route_templates,
     save_route_template,
     delete_route_template,
 )
@@ -34,6 +35,7 @@ ROUTE_FORM_GROUPS = [
             ("best_season", "最佳季节", "text", "例如 春秋"),
             ("budget_range", "预算范围", "text", "例如 1000-2000"),
             ("summary", "摘要", "textarea", "路线列表与详情摘要"),
+            ("is_visible", "是否在路线页显示", "text", "true / false，默认 true"),
             ("detail_for_whom", "适合谁", "textarea", "详情页说明，可为空"),
         ],
     },
@@ -160,8 +162,10 @@ def get_admin_dashboard_context(feedback: Mapping[str, str] | None = None) -> di
                         f"{route.get('distance_km') or 0} km",
                         str(route.get("region") or "未分类"),
                     ],
+                    "is_visible": _parse_route_visibility(route.get("is_visible")),
                     "preview_href": f"/moto/routes/{route.get('slug')}",
                     "edit_href": f"/moto/admin/routes/{route.get('slug')}/edit",
+                    "delete_href": f"/moto/admin/routes/{route.get('slug')}/delete",
                 }
                 for route in routes
             ],
@@ -325,6 +329,7 @@ def save_route_from_form(form_data: Mapping[str, Any]) -> dict[str, Any]:
         "best_season": _required_text(form_data, "best_season", "最佳季节"),
         "budget_range": _required_text(form_data, "budget_range", "预算范围"),
         "summary": _required_text(form_data, "summary", "路线摘要"),
+        "is_visible": _parse_bool_value(form_data.get("is_visible"), "是否在路线页显示", default=True),
         "scenery_type": _split_multiline_value(form_data.get("scenery_type")),
         "bike_types": _split_multiline_value(form_data.get("bike_types")),
         "experience_levels": _split_multiline_value(form_data.get("experience_levels")),
@@ -415,6 +420,23 @@ def delete_route_admin_record(slug: str) -> bool:
     return delete_route_template(slug)
 
 
+def update_route_visibility(visible_route_slugs: list[str]) -> dict[str, int]:
+    visible_set = {str(slug or "").strip() for slug in visible_route_slugs if str(slug or "").strip()}
+    routes = [deepcopy(route) for route in load_route_templates()]
+
+    updated_count = 0
+    for route in routes:
+        slug = str(route.get("slug") or "").strip()
+        should_be_visible = slug in visible_set
+        previous_value = _parse_route_visibility(route.get("is_visible"))
+        route["is_visible"] = should_be_visible
+        if previous_value != should_be_visible:
+            updated_count += 1
+
+    save_route_templates(routes)
+    return {"updated": updated_count, "total": len(routes), "visible": len(visible_set)}
+
+
 def delete_spot_admin_record(slug: str) -> bool:
     return delete_approved_moto_spot(slug)
 
@@ -431,6 +453,7 @@ def _route_form_values(route: Mapping[str, Any] | None, form_data: Mapping[str, 
         "best_season": _field_value(form_data, "best_season", source.get("best_season", "")),
         "budget_range": _field_value(form_data, "budget_range", source.get("budget_range", "")),
         "summary": _field_value(form_data, "summary", source.get("summary", "")),
+        "is_visible": _field_value(form_data, "is_visible", str(_parse_route_visibility(source.get("is_visible"))).lower()),
         "detail_for_whom": _field_value(form_data, "detail_for_whom", source.get("detail_for_whom", "")),
         "scenery_type": _field_value(form_data, "scenery_type", _stringify_list(source.get("scenery_type", []))),
         "bike_types": _field_value(form_data, "bike_types", _stringify_list(source.get("bike_types", []))),
@@ -562,6 +585,32 @@ def _parse_nullable_bool(value: Any) -> bool | None:
     if raw in {"0", "false", "no", "n"}:
         return False
     raise ValueError("停车友好必须是 true / false / 空")
+
+
+def _parse_bool_value(value: Any, label: str, *, default: bool) -> bool:
+    raw = str(value or "").strip().lower()
+    if not raw:
+        return default
+    if raw in {"1", "true", "yes", "y"}:
+        return True
+    if raw in {"0", "false", "no", "n"}:
+        return False
+    raise ValueError(f"{label}必须是 true / false")
+
+
+def _parse_route_visibility(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return True
+    if isinstance(value, (int, float)):
+        return bool(value)
+    raw = str(value).strip().lower()
+    if raw in {"", "1", "true", "yes", "y"}:
+        return True
+    if raw in {"0", "false", "no", "n"}:
+        return False
+    return True
 
 
 def _split_multiline_value(value: Any) -> list[str]:

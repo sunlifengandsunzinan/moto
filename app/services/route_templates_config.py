@@ -82,6 +82,12 @@ def delete_route_template(slug: str) -> bool:
     return True
 
 
+def save_route_templates(routes: list[Mapping[str, Any]]) -> list[RouteTemplate]:
+    validated = validate_route_templates_data(list(routes))
+    _write_route_templates(validated)
+    return [deepcopy(route) for route in validated]
+
+
 def _write_route_templates(routes: list[RouteTemplate]) -> None:
     temp_path = ROUTE_TEMPLATES_JSON_PATH.with_suffix(".json.tmp")
     temp_path.write_text(json.dumps(routes, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

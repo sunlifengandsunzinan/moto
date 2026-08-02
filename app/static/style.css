@@ -945,6 +945,88 @@ a {
   margin-top: 24px;
 }
 
+.admin-route-list-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.admin-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(23, 50, 77, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.admin-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 14px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(23, 50, 77, 0.08);
+}
+
+.admin-table th {
+  font-size: 0.84rem;
+  letter-spacing: 0.06em;
+  color: rgba(23, 50, 77, 0.72);
+  background: rgba(244, 240, 232, 0.78);
+}
+
+.admin-table__title,
+.admin-table__slug,
+.admin-table__summary {
+  margin: 0;
+}
+
+.admin-table__title {
+  font-weight: 700;
+}
+
+.admin-table__slug {
+  color: rgba(23, 50, 77, 0.66);
+  font-size: 0.9rem;
+}
+
+.admin-table__summary {
+  max-width: 320px;
+  color: rgba(23, 50, 77, 0.84);
+  line-height: 1.5;
+}
+
+.admin-table__chips {
+  gap: 8px;
+}
+
+.admin-table__chips li {
+  padding: 6px 10px;
+  font-size: 0.84rem;
+}
+
+.admin-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-visibility-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+}
+
+.admin-route-list-actions {
+  justify-content: flex-start;
+}
+
 .admin-card-list {
   display: grid;
   gap: 16px;

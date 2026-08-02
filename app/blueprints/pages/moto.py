@@ -18,6 +18,7 @@ from ...services import (
     render_route_amap_screenshot_svg,
     save_route_from_form,
     save_spot_from_form,
+    update_route_visibility,
     start_local_collector,
     stop_local_collector,
     build_plan_result,
@@ -277,6 +278,19 @@ def moto_admin_route_save():
         ), status_code
 
     return redirect(url_for("moto.moto_admin_route_edit", slug=saved["slug"], message="路线已保存", kind="info"))
+
+
+@moto_bp.post("/moto/admin/routes/visibility")
+def moto_admin_route_visibility_save():
+    visible_route_slugs = request.form.getlist("visible_route_slugs")
+    result = update_route_visibility(visible_route_slugs)
+    return redirect(
+        url_for(
+            "moto.moto_admin",
+            message=f"路线展示设置已保存：当前显示 {result['visible']} / {result['total']} 条。",
+            kind="info",
+        )
+    )
 
 
 @moto_bp.post("/moto/admin/routes/<slug>/delete")
