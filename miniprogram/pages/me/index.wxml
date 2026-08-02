@@ -12,6 +12,37 @@
     </view>
   </view>
 
+  <view wx:if="{{showWechatProfileEditor && !wechatUserProfile}}" class="me-login-editor">
+    <view class="me-login-editor__header">
+      <text class="me-login-editor__title">登录行途</text>
+      <text class="me-login-editor__hint">请设置头像与昵称</text>
+    </view>
+
+    <view class="me-login-editor__profile-preview">
+      <view wx:if="{{draftWechatAvatarUrl}}" class="me-login-editor__avatar-shell">
+        <image class="me-login-editor__avatar" src="{{draftWechatAvatarUrl}}" mode="aspectFill" />
+      </view>
+      <view wx:else class="me-login-editor__avatar-shell me-login-editor__avatar-shell--placeholder">
+        <text class="me-login-editor__avatar-placeholder">{{avatarText}}</text>
+      </view>
+      <input
+        class="me-login-editor__nickname-input"
+        type="nickname"
+        placeholder="请输入微信昵称"
+        value="{{draftWechatNickName}}"
+        bindinput="handleWechatNicknameInput"
+      />
+    </view>
+
+    <view class="me-login-editor__actions">
+      <view class="me-login-editor__actions-row">
+        <button class="me-login-editor__button me-login-editor__button--half me-login-editor__button--ghost" open-type="chooseAvatar" bindchooseavatar="handleChooseWechatAvatar">选择微信头像</button>
+        <button class="me-login-editor__button me-login-editor__button--half" bindtap="handleSaveWechatProfileFromEditor">保存并登录</button>
+      </view>
+      <button class="me-login-editor__button me-login-editor__button--subtle" bindtap="handleCancelWechatProfileEditor">取消</button>
+    </view>
+  </view>
+
   <view class="me-stats-card">
     <view wx:for="{{metrics}}" wx:key="key" class="me-stats-card__item">
       <text class="me-stats-card__value">{{item.value}}</text>

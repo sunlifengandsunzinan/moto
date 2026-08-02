@@ -1,10 +1,4 @@
 <view class="page-shell route-detail-reference-page">
-  <view class="route-detail-topbar">
-    <view class="route-detail-back" bindtap="handleBack">
-      <text class="route-detail-back__icon">〈</text>
-    </view>
-  </view>
-
   <view class="route-detail-kpi-strip">
     <view wx:for="{{overviewStats}}" wx:key="key" class="route-detail-kpi-item">
       <text class="route-detail-kpi-item__label">{{item.label}}</text>
@@ -37,7 +31,7 @@
         <text>暂无地图预览</text>
       </view>
 
-      <view class="route-map-panel__cta" bindtap="handleDirectNavigate">
+      <view class="route-map-panel__cta" bindtap="handleOpenRouteMap">
         <text class="route-map-panel__cta-text">查看路线地图</text>
       </view>
     </view>

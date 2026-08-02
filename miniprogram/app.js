@@ -24,14 +24,15 @@ App({
       return null;
     }
 
-    const nickName = String(storedProfile.nickName || "").trim();
-    const avatarUrl = String(storedProfile.avatarUrl || "").trim();
-    if (!nickName && !avatarUrl) {
-      return null;
-    }
+    const nickName = String(
+      storedProfile.nickName || storedProfile.nickname || storedProfile.nick_name || "",
+    ).trim();
+    const avatarUrl = String(
+      storedProfile.avatarUrl || storedProfile.avatar || storedProfile.avatar_url || storedProfile.headImgUrl || "",
+    ).trim();
 
     return {
-      nickName,
+      nickName: nickName || "微信用户",
       avatarUrl,
       city: String(storedProfile.city || "").trim(),
       province: String(storedProfile.province || "").trim(),
@@ -41,20 +42,30 @@ App({
   },
 
   setWechatUserProfile(profile) {
-    const normalizedProfile = profile && typeof profile === "object"
+    const source = profile && typeof profile === "object"
+      ? (profile.userInfo && typeof profile.userInfo === "object" ? profile.userInfo : profile)
+      : null;
+
+    const normalizedProfile = source
       ? {
-          nickName: String(profile.nickName || "").trim(),
-          avatarUrl: String(profile.avatarUrl || "").trim(),
-          city: String(profile.city || "").trim(),
-          province: String(profile.province || "").trim(),
-          country: String(profile.country || "").trim(),
-          gender: Number(profile.gender || 0),
+          nickName: String(
+            source.nickName || source.nickname || source.nick_name || source.name || "",
+          ).trim(),
+          avatarUrl: String(
+            source.avatarUrl || source.avatar || source.avatar_url || source.headImgUrl || "",
+          ).trim(),
+          city: String(source.city || "").trim(),
+          province: String(source.province || "").trim(),
+          country: String(source.country || "").trim(),
+          gender: Number(source.gender || 0),
         }
       : null;
 
     const sanitizedProfile = normalizedProfile
-      && (normalizedProfile.nickName || normalizedProfile.avatarUrl)
-      ? normalizedProfile
+      ? {
+          ...normalizedProfile,
+          nickName: normalizedProfile.nickName || "微信用户",
+        }
       : null;
 
     this.globalData.wechatUserProfile = sanitizedProfile;

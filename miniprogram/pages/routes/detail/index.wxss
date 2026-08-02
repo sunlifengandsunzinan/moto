@@ -4,26 +4,6 @@
   color: #1f1f1f;
 }
 
-.route-detail-topbar {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10rpx;
-}
-
-.route-detail-back {
-  width: 64rpx;
-  height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.route-detail-back__icon {
-  font-size: 42rpx;
-  color: #1a1a1a;
-  line-height: 1;
-}
-
 .route-detail-kpi-strip {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

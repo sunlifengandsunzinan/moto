@@ -25,6 +25,11 @@ function initDebugConsole() {
 
   initAttempted = true;
 
+  // Keep vConsole for local DevTools debugging only.
+  if (!isDevtoolsPlatform()) {
+    return null;
+  }
+
   const VConsole = tryRequireVConsole();
   if (!VConsole) {
     return null;

@@ -2,7 +2,7 @@ const { API_PATHS, MINI_PROGRAM_PATHS } = require("../../utils/backend-config");
 const { request } = require("../../utils/request");
 const { getFavoriteRoutes } = require("../../utils/favorites");
 
-const DEFAULT_AVATAR_TEXT = "骑";
+const DEFAULT_AVATAR_TEXT = "行途";
 
 function normalizeMetricList(metrics, favoriteRouteCount) {
   const sourceMetrics = Array.isArray(metrics) ? metrics : [];
@@ -88,6 +88,32 @@ function formatWechatLocation(profile) {
   return parts.join(" · ");
 }
 
+function normalizeWechatProfilePayload(rawProfile) {
+  if (!rawProfile || typeof rawProfile !== "object") {
+    return null;
+  }
+
+  const source = rawProfile.userInfo && typeof rawProfile.userInfo === "object"
+    ? rawProfile.userInfo
+    : rawProfile;
+
+  const nickName = String(
+    source.nickName || source.nickname || source.nick_name || source.name || "",
+  ).trim();
+  const avatarUrl = String(
+    source.avatarUrl || source.avatar || source.avatar_url || source.headImgUrl || "",
+  ).trim();
+
+  return {
+    nickName: nickName || "微信用户",
+    avatarUrl,
+    city: String(source.city || "").trim(),
+    province: String(source.province || "").trim(),
+    country: String(source.country || "").trim(),
+    gender: Number(source.gender || 0),
+  };
+}
+
 function resolveAuthorizeErrorMessage(error) {
   const errMsg = String(error?.errMsg || "");
   if (errMsg.includes("auth deny") || errMsg.includes("auth denied") || errMsg.includes("cancel")) {
@@ -99,6 +125,9 @@ function resolveAuthorizeErrorMessage(error) {
 Page({
   data: {
     isAuthorizing: false,
+    showWechatProfileEditor: false,
+    draftWechatNickName: "",
+    draftWechatAvatarUrl: "",
     favoriteRouteCount: 0,
     wechatProfileLocation: "",
     wechatUserProfile: null,
@@ -184,7 +213,79 @@ Page({
       wechatProfileLocation: formatWechatLocation(profile),
       displayName: displayProfile.displayName,
       avatarText: displayProfile.avatarText,
+      showWechatProfileEditor: !profile && this.data.showWechatProfileEditor,
+      draftWechatNickName: profile?.nickName || this.data.draftWechatNickName,
+      draftWechatAvatarUrl: profile?.avatarUrl || this.data.draftWechatAvatarUrl,
     });
+  },
+
+  handleShowWechatProfileEditor() {
+    if (this.data.wechatUserProfile) {
+      return;
+    }
+
+    this.setData({
+      showWechatProfileEditor: true,
+      draftWechatNickName: this.data.draftWechatNickName || "",
+      draftWechatAvatarUrl: this.data.draftWechatAvatarUrl || "",
+    });
+  },
+
+  handleCancelWechatProfileEditor() {
+    this.setData({
+      showWechatProfileEditor: false,
+      draftWechatNickName: "",
+      draftWechatAvatarUrl: "",
+    });
+  },
+
+  handleChooseWechatAvatar(event) {
+    const avatarUrl = String(event?.detail?.avatarUrl || "").trim();
+    this.setData({
+      draftWechatAvatarUrl: avatarUrl,
+    });
+  },
+
+  handleWechatNicknameInput(event) {
+    const nickName = String(event?.detail?.value || "").trim();
+    this.setData({
+      draftWechatNickName: nickName,
+    });
+  },
+
+  handleSaveWechatProfileFromEditor() {
+    const nickName = String(this.data.draftWechatNickName || "").trim() || "微信用户";
+    const avatarUrl = String(this.data.draftWechatAvatarUrl || "").trim();
+
+    if (!avatarUrl) {
+      wx.showToast({ title: "请先选择头像", icon: "none" });
+      return;
+    }
+
+    const app = getApp();
+    const storedProfile = typeof app?.setWechatUserProfile === "function"
+      ? app.setWechatUserProfile({
+          nickName,
+          avatarUrl,
+        })
+      : {
+          nickName,
+          avatarUrl,
+        };
+
+    const displayProfile = buildDisplayProfile(storedProfile);
+    this.setData({
+      wechatUserProfile: storedProfile,
+      wechatProfileLocation: formatWechatLocation(storedProfile),
+      displayName: displayProfile.displayName,
+      avatarText: displayProfile.avatarText,
+      showWechatProfileEditor: false,
+      draftWechatNickName: "",
+      draftWechatAvatarUrl: "",
+    });
+
+    this.syncWechatProfile();
+    wx.showToast({ title: "登录成功", icon: "none" });
   },
 
   handleAuthorizeWechatProfile() {
@@ -195,10 +296,17 @@ Page({
     this.setData({ isAuthorizing: true });
 
     const finishAuthorize = (profile) => {
+      const normalizedProfile = normalizeWechatProfilePayload(profile);
+      if (!normalizedProfile) {
+        this.setData({ isAuthorizing: false });
+        wx.showToast({ title: "未获取到微信头像昵称", icon: "none" });
+        return;
+      }
+
       const app = getApp();
       const storedProfile = typeof app?.setWechatUserProfile === "function"
-        ? app.setWechatUserProfile(profile)
-        : profile;
+        ? app.setWechatUserProfile(normalizedProfile)
+        : normalizedProfile;
       const displayProfile = buildDisplayProfile(storedProfile);
 
       this.setData({
@@ -209,9 +317,15 @@ Page({
         avatarText: displayProfile.avatarText,
       });
 
+      // Read back from app storage to keep UI and persisted state consistent.
+      this.syncWechatProfile();
+
       if (storedProfile) {
         wx.showToast({ title: "登录成功", icon: "none" });
+        return;
       }
+
+      wx.showToast({ title: "未获取到微信头像昵称", icon: "none" });
     };
 
     const fallbackAuthorize = (originError) => {
@@ -224,7 +338,7 @@ Page({
       wx.getUserInfo({
         lang: "zh_CN",
         success: (result) => {
-          finishAuthorize(result && result.userInfo ? result.userInfo : null);
+          finishAuthorize(result);
         },
         fail: (error) => {
           this.setData({ isAuthorizing: false });
@@ -241,7 +355,7 @@ Page({
     wx.getUserProfile({
       desc: "用于在我的页面展示微信头像和昵称",
       success: (result) => {
-        finishAuthorize(result && result.userInfo ? result.userInfo : null);
+        finishAuthorize(result);
       },
       fail: (error) => {
         fallbackAuthorize(error);
@@ -298,7 +412,7 @@ Page({
       return;
     }
 
-    this.handleAuthorizeWechatProfile();
+    this.handleShowWechatProfileEditor();
   },
 
   handleQuickAction(event) {
@@ -317,7 +431,7 @@ Page({
         wx.showToast({ title: "已登录", icon: "none" });
         return;
       }
-      this.handleAuthorizeWechatProfile();
+      this.handleShowWechatProfileEditor();
       return;
     }
 

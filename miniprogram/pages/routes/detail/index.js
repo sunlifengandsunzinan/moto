@@ -2,6 +2,7 @@ const { request, buildWebUrl } = require("../../../utils/request");
 const {
   API_PATHS,
   MINI_PROGRAM_PATHS,
+  getMiniProgramNavigationUrl,
   getMiniProgramApiPath,
   getMiniProgramDownloadUrl,
   normalizeRequestPath,
@@ -391,6 +392,23 @@ Page({
         wx.showToast({ title: "无法打开系统地图", icon: "none", duration: 2200 });
       },
     });
+  },
+
+  handleOpenRouteMap() {
+    const route = this.data.route || {};
+    const interactiveMapAction = route?.amap_export?.mini_program?.interactive_map;
+    const navigateAction = route?.amap_export?.mini_program?.navigate;
+    const mapPageUrl = getMiniProgramNavigationUrl(interactiveMapAction)
+      || getMiniProgramNavigationUrl(navigateAction);
+
+    if (mapPageUrl) {
+      wx.navigateTo({
+        url: mapPageUrl,
+      });
+      return;
+    }
+
+    this.handleDirectNavigate();
   },
 
   handleToggleFavorite() {
