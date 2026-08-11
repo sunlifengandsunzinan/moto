@@ -7449,5 +7449,94 @@
         "image": "route-checkpoint-placeholder.jpg"
       }
     ]
+  },
+  {
+    "slug": "douyin-沈阳沈通线鸦鹘关赫图阿拉城木奇村铁苇线环线-67",
+    "title": "沈阳-沈通线-鸦鹘关-赫图阿拉城-木奇村-铁苇线环线",
+    "region": "north",
+    "spot_slugs": [],
+    "days": 1,
+    "difficulty": "medium",
+    "scenery_type": [
+      "scenic",
+      "mountain"
+    ],
+    "bike_types": [
+      "150-250cc",
+      "300-500cc",
+      "adv-touring"
+    ],
+    "experience_levels": [
+      "intermediate",
+      "advanced"
+    ],
+    "best_season": "春季 / 夏季 / 秋季",
+    "distance_km": 320,
+    "budget_range": "500-1000",
+    "summary": "沈阳往返环线，串联沈通线、鸦鹘关、赫图阿拉城、木奇村与铁苇线，适合周末全天山路骑行。",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "沈阳",
+          "lng": 123.464675,
+          "lat": 41.677576
+        },
+        {
+          "name": "沈通线",
+          "lng": 124.673212,
+          "lat": 41.584451
+        },
+        {
+          "name": "鸦鹘关",
+          "lng": 124.567912,
+          "lat": 41.535907
+        },
+        {
+          "name": "赫图阿拉城",
+          "lng": 124.874263,
+          "lat": 41.705298
+        },
+        {
+          "name": "木奇村",
+          "lng": 124.6337,
+          "lat": 41.773667
+        },
+        {
+          "name": "铁苇线",
+          "lng": 124.463977,
+          "lat": 41.934649
+        },
+        {
+          "name": "沈阳",
+          "lng": 123.464675,
+          "lat": 41.677576
+        }
+      ]
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "沈阳 -> 沈通线 -> 鸦鹘关 -> 赫图阿拉城 -> 木奇村 -> 铁苇线 -> 沈阳",
+        "ride_time": "建议骑行 8-10 小时，含 2-3 次停靠",
+        "distance": 320,
+        "highlights": [
+          "山路弯道",
+          "历史人文点位",
+          "沈阳当日往返环线"
+        ],
+        "note": "建议早 7-8 点出发，山区路段注意补油与天气变化。"
+      }
+    ],
+    "pois": {
+      "fuel": [],
+      "repair": [],
+      "lodging": [],
+      "viewpoint": [],
+      "emergency": []
+    },
+    "source": "manual",
+    "amap_href": "https://www.amap.com/dir?from%5Badcode%5D=210100&from%5Bname%5D=%E8%BE%BD%E5%AE%81%E7%9C%81%E6%B2%88%E9%98%B3%E5%B8%82&from%5Bid%5D=2101001786427027780-from&from%5Bpoitype%5D=&from%5Blnglat%5D=123.464675%2C41.677576&from%5Bmodxy%5D=&to%5Badcode%5D=210100&to%5Bname%5D=%E8%BE%BD%E5%AE%81%E7%9C%81%E6%B2%88%E9%98%B3%E5%B8%82&to%5Bid%5D=2101001786427376374-to&to%5Bpoitype%5D=&to%5Blnglat%5D=123.464675%2C41.677576&to%5Bmodxy%5D=&policy=1&type=car&via%5B0%5D%5Bid%5D=B0IA3GK1BJ&via%5B0%5D%5Bname%5D=%E6%B2%88%E9%80%9A%E7%BA%BF&via%5B0%5D%5Blnglat%5D=124.673212%2C41.584451&via%5B0%5D%5Bmodxy%5D=124.673212%2C41.584451&via%5B0%5D%5Bpoitype%5D=190301&via%5B0%5D%5Badcode%5D=210422&via%5B1%5D%5Bid%5D=B0J1256GD6&via%5B1%5D%5Bname%5D=%E9%B8%A6%E9%B9%98%E5%85%B3&via%5B1%5D%5Blnglat%5D=124.567912%2C41.535907&via%5B1%5D%5Bmodxy%5D=124.568123%2C41.535768&via%5B1%5D%5Bpoitype%5D=110200&via%5B1%5D%5Badcode%5D=210422&via%5B2%5D%5Bid%5D=B019D00ZWN&via%5B2%5D%5Bname%5D=%E8%B5%AB%E5%9B%BE%E9%98%BF%E6%8B%89%E5%9F%8E&via%5B2%5D%5Blnglat%5D=124.874263%2C41.705298&via%5B2%5D%5Bmodxy%5D=124.868841%2C41.70428&via%5B2%5D%5Bpoitype%5D=110202&via%5B2%5D%5Badcode%5D=210422&via%5B3%5D%5Badcode%5D=210422&via%5B3%5D%5Bname%5D=%E6%9C%A8%E5%A5%87%E6%9D%91&via%5B3%5D%5Bid%5D=B019D0OGJ6&via%5B3%5D%5Bpoitype%5D=190108&via%5B3%5D%5Blnglat%5D=124.63369999999998%2C41.773667&via%5B3%5D%5Bmodxy%5D=124.633837%2C41.773806&via%5B4%5D%5Bid%5D=B0K6O9TW2L&via%5B4%5D%5Bname%5D=%E9%93%81%E8%8B%87%E7%BA%BF&via%5B4%5D%5Blnglat%5D=124.463977%2C41.934649&via%5B4%5D%5Bmodxy%5D=124.463977%2C41.934649&via%5B4%5D%5Bpoitype%5D=190301&via%5B4%5D%5Badcode%5D=210422",
+    "is_visible": false
   }
 ]
