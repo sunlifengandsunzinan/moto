@@ -1016,6 +1016,27 @@ a {
   gap: 8px;
 }
 
+.admin-spot-table__image {
+  width: 132px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(23, 50, 77, 0.12);
+  background: rgba(23, 50, 77, 0.06);
+}
+
+.admin-spot-table__text {
+  margin: 0;
+  max-width: 260px;
+  color: rgba(23, 50, 77, 0.84);
+  line-height: 1.5;
+}
+
+.admin-spot-table__empty {
+  color: rgba(23, 50, 77, 0.48);
+  font-size: 0.9rem;
+}
+
 .admin-visibility-toggle {
   display: inline-flex;
   align-items: center;

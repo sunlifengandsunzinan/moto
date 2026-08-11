@@ -196,6 +196,23 @@ def moto_route_amap_launch(slug: str) -> tuple[str, int] | str:
     )
 
 
+@moto_bp.get("/moto/routes/<slug>/tencent-launch")
+def moto_route_tencent_launch(slug: str) -> tuple[str, int] | str:
+    route = get_route_by_slug(slug)
+    if route is None:
+        return render_template("404.html"), 404
+
+    increment_route_navigation(slug)
+
+    context = build_route_detail_context(route)
+    tencent_export = context["route"].get("tencent_export") if isinstance(context["route"], dict) else {}
+    return render_template(
+        "planner/route_tencent_launch.html",
+        route_title=context["route"]["title"],
+        tencent_export=tencent_export,
+    )
+
+
 @moto_bp.get("/moto/routes/collect")
 def moto_route_collect() -> str:
     return render_template("planner/route_collect.html", **get_route_waypoint_collection_context(request.args.get("route")))

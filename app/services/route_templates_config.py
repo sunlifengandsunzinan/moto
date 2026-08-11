@@ -13,8 +13,12 @@ ROUTE_TEMPLATES_JSON_PATH = Path(__file__).with_name("route_templates.json")
 
 
 @lru_cache(maxsize=1)
-def load_route_templates() -> list[RouteTemplate]:
+def _load_route_templates_cached(mtime_ns: int) -> list[RouteTemplate]:
     return validate_route_templates_file(ROUTE_TEMPLATES_JSON_PATH)
+
+
+def load_route_templates() -> list[RouteTemplate]:
+    return _load_route_templates_cached(_route_templates_mtime_ns())
 
 
 def get_route_template_by_slug(slug: str) -> RouteTemplate | None:
@@ -92,7 +96,14 @@ def _write_route_templates(routes: list[RouteTemplate]) -> None:
     temp_path = ROUTE_TEMPLATES_JSON_PATH.with_suffix(".json.tmp")
     temp_path.write_text(json.dumps(routes, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     temp_path.replace(ROUTE_TEMPLATES_JSON_PATH)
-    load_route_templates.cache_clear()
+    _load_route_templates_cached.cache_clear()
+
+
+def _route_templates_mtime_ns() -> int:
+    try:
+        return ROUTE_TEMPLATES_JSON_PATH.stat().st_mtime_ns
+    except FileNotFoundError:
+        return -1
 
 
 def _validate_route_templates(data: Any) -> list[RouteTemplate]:

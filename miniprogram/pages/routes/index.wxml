@@ -62,7 +62,15 @@
 
         <view class="route-heat-corner">
           <text class="route-heat-corner__icon">🔥</text>
-          <text class="route-heat-corner__value">{{route.engagement.total_count}}</text>
+          <text class="route-heat-corner__value">{{route.engagement.want_go_count}}</text>
+        </view>
+
+        <view
+          class="route-want-go-mini {{route.want_go.plan_bucket ? 'route-want-go-mini--active' : ''}}"
+          data-slug="{{route.slug}}"
+          catchtap="handleSetWantGo"
+        >
+          <text class="route-want-go-mini__text">{{route.want_go.plan_bucket ? '✓' : '+'}}</text>
         </view>
 
         <view class="route-title-overlay">
@@ -76,10 +84,9 @@
         <view class="route-kpi-box"><text>跑完奖励积分：{{route.reward_points_label}}</text></view>
       </view>
 
-      <view class="route-action-row">
+      <view class="route-action-row" wx:if="{{false}}">
         <button wx:if="{{false}}" class="button-secondary route-action-btn route-favorite-button {{route.is_favorite ? 'route-favorite-button--active' : ''}}" data-slug="{{route.slug}}" catchtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
         <button wx:if="{{false}}" class="button-secondary route-action-btn" data-slug="{{route.slug}}" catchtap="handleDirectNavigate">直接导航</button>
-        <button wx:if="{{route.gpx.is_available}}" class="button-secondary route-action-btn" data-slug="{{route.slug}}" data-filename="{{route.gpx.filename}}" catchtap="handleDownloadGpx">下载GPX</button>
       </view>
     </view>
 

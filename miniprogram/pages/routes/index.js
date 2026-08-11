@@ -4,11 +4,9 @@ const {
   MINI_PROGRAM_PATHS,
   WEB_PATHS,
   getMiniProgramApiPath,
-  getMiniProgramDownloadUrl,
   getMiniProgramNavigationUrl,
   normalizeRequestPath,
 } = require("../../utils/backend-config");
-const { downloadRemoteFile } = require("../../utils/file-download");
 
 const EMPTY_ROUTES_STATE = {
   page: {
@@ -27,9 +25,37 @@ const EMPTY_ROUTES_STATE = {
   routes: [],
 };
 
+const WANT_GO_PLAN_OPTIONS = [
+  { key: "this_month", label: "这个月" },
+  { key: "next_month", label: "下个月" },
+  { key: "later", label: "再说" },
+];
+
+function hasLoggedWechatProfile(profile) {
+  if (!profile || typeof profile !== "object") {
+    return false;
+  }
+
+  const nickName = String(profile.nickName || "").trim();
+  const avatarUrl = String(profile.avatarUrl || "").trim();
+  return Boolean(nickName || avatarUrl);
+}
+
+function normalizeWantGoPlanLabel(planBucket) {
+  const normalized = String(planBucket || "").trim();
+  const matched = WANT_GO_PLAN_OPTIONS.find((item) => item.key === normalized);
+  return matched ? matched.label : "想去";
+}
+
 function compareRouteHeat(left, right) {
   const leftEngagement = left?.engagement || {};
   const rightEngagement = right?.engagement || {};
+  const leftWantGo = Number(leftEngagement.want_go_count || 0);
+  const rightWantGo = Number(rightEngagement.want_go_count || 0);
+  if (leftWantGo !== rightWantGo) {
+    return rightWantGo - leftWantGo;
+  }
+
   const leftTotal = Number(leftEngagement.total_count || 0);
   const rightTotal = Number(rightEngagement.total_count || 0);
   if (leftTotal !== rightTotal) {
@@ -136,13 +162,23 @@ function normalizeRoute(route) {
       replan: null,
       collect: null,
       favorite: null,
+      want_go: null,
       ...((safeRoute && safeRoute.mini_program) || {}),
     },
     engagement: {
       favorite_count: 0,
       navigation_count: 0,
       total_count: 0,
+      want_go_count: 0,
       ...((safeRoute && safeRoute.engagement) || {}),
+    },
+    want_go: {
+      plan_bucket: "",
+      total_count: 0,
+      this_month_count: 0,
+      next_month_count: 0,
+      later_count: 0,
+      ...((safeRoute && safeRoute.want_go) || {}),
     },
     gpx: {
       is_available: false,
@@ -185,6 +221,7 @@ function normalizeRoute(route) {
     cover_image_url: buildRouteCoverImage(normalizedRoute),
     estimated_duration_label: buildEstimatedDurationLabel(normalizedRoute),
     reward_points_label: `${Number(normalizedRoute?.engagement?.favorite_count || 0)}分`,
+    want_go_action_label: normalizeWantGoPlanLabel(normalizedRoute?.want_go?.plan_bucket),
   };
 }
 
@@ -251,7 +288,7 @@ Page({
   },
 
   onShow() {
-    this.fetchData(this.buildQuery());
+    this.fetchData({});
   },
 
   applyDurationFilter(selectedDuration, routes) {
@@ -263,7 +300,7 @@ Page({
   },
 
   onPullDownRefresh() {
-    this.fetchData(this.buildQuery(), true);
+    this.fetchData({}, true);
   },
 
   buildQuery(overrides = {}) {
@@ -331,6 +368,20 @@ Page({
       sortLabel: nextSortMode === "heat" ? "热度" : "里程",
       routes: applyRouteFilters(this.data.allRoutes, this.data.selectedDuration, this.data.keyword, nextSortMode),
     });
+  },
+
+  ensureLoggedInForRouteAction() {
+    const app = getApp();
+    const profile = typeof app?.getWechatUserProfile === "function"
+      ? app.getWechatUserProfile()
+      : null;
+
+    if (hasLoggedWechatProfile(profile)) {
+      return true;
+    }
+
+    wx.showToast({ title: "请先去我的页面登录", icon: "none", duration: 1800 });
+    return false;
   },
 
   updateRouteEngagement(slug, engagement) {
@@ -435,28 +486,6 @@ Page({
     });
   },
 
-  handleDownloadGpx(event) {
-    const route = this.findRoute(event.currentTarget.dataset.slug);
-    const rawHref = getMiniProgramDownloadUrl(route?.gpx?.mini_program?.download) || event.currentTarget.dataset.href;
-    const filename = event.currentTarget.dataset.filename || route?.gpx?.filename || "route.gpx";
-    if (!rawHref) {
-      wx.showToast({ title: "当前路线没有 GPX 文件", icon: "none" });
-      return;
-    }
-
-    downloadRemoteFile({
-      url: buildWebUrl(rawHref),
-      filename,
-      loadingText: "正在下载 GPX",
-    }).catch((error) => {
-      wx.showToast({
-        title: error?.message || "GPX 下载失败",
-        icon: "none",
-        duration: 2200,
-      });
-    });
-  },
-
   handleToggleFavorite(event) {
     const slug = event.currentTarget.dataset.slug;
     const route = (this.data.allRoutes || []).find((item) => item.slug === slug);
@@ -521,6 +550,75 @@ Page({
           duration: 1800,
         });
       });
+  },
+
+  handleSetWantGo(event) {
+    if (!this.ensureLoggedInForRouteAction()) {
+      return;
+    }
+
+    const slug = String(event.currentTarget.dataset.slug || "").trim();
+    const route = this.findRoute(slug);
+    if (!route) {
+      return;
+    }
+
+    const itemList = [...WANT_GO_PLAN_OPTIONS.map((item) => item.label), "取消想去"];
+    wx.showActionSheet({
+      itemList,
+      success: (result) => {
+        const index = Number(result.tapIndex);
+        if (!Number.isFinite(index) || index < 0 || index >= itemList.length) {
+          return;
+        }
+
+        const pickedOption = WANT_GO_PLAN_OPTIONS[index] || null;
+        const isClear = !pickedOption;
+        const requestConfig = isClear
+          ? { path: API_PATHS.routeWantGo(slug), method: "DELETE" }
+          : {
+              path: API_PATHS.routeWantGo(slug),
+              method: "POST",
+              data: { plan_bucket: pickedOption.key },
+            };
+
+        request(requestConfig)
+          .then((payload) => {
+            const allRoutes = (this.data.allRoutes || []).map((item) => {
+              if (item.slug !== slug) {
+                return item;
+              }
+              const nextRoute = {
+                ...item,
+                engagement: {
+                  ...(item.engagement || {}),
+                  ...(payload?.engagement || {}),
+                },
+                want_go: {
+                  ...(item.want_go || {}),
+                  ...(payload?.want_go || {}),
+                },
+              };
+              nextRoute.want_go_action_label = normalizeWantGoPlanLabel(nextRoute?.want_go?.plan_bucket);
+              return nextRoute;
+            });
+
+            this.setData({
+              allRoutes,
+              routes: applyRouteFilters(allRoutes, this.data.selectedDuration, this.data.keyword, this.data.sortMode),
+            });
+
+            wx.showToast({
+              title: isClear ? "已取消想去" : `已标记${pickedOption.label}`,
+              icon: "none",
+              duration: 1700,
+            });
+          })
+          .catch(() => {
+            wx.showToast({ title: "设置失败，请重试", icon: "none", duration: 1800 });
+          });
+      },
+    });
   },
 
   handleOpenCollect(event) {

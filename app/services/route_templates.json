@@ -644,6 +644,7 @@
         "image": "route-liaoning-dandong.svg"
       }
     ],
+    "gpx_file": "331国道双穿越轻越野路线，家用suv即可轻松拿捏331国道_自驾游_领队_轻越野_331国道自驾.gpx",
     "is_visible": false
   },
   {
@@ -902,7 +903,7 @@
         }
       ]
     },
-    "is_visible": true
+    "is_visible": false
   },
   {
     "slug": "liaoning-red-beach-2-day",
@@ -1804,7 +1805,7 @@
     },
     "source": "douyin",
     "video_id": "7493822454457027866",
-    "is_visible": true
+    "is_visible": false
   },
   {
     "slug": "douyin-辽宁省内沿海观光大道228国道大连段自驾-26",
@@ -7144,6 +7145,308 @@
           "辽宁特色山路"
         ],
         "note": "短途骑行，沿途有辽宁特色山间公路"
+      }
+    ]
+  },
+  {
+    "slug": "douyin-沈阳本溪小墙缝环线-65",
+    "title": "沈阳-本溪小墙缝环线（本同线）",
+    "region": "northeast",
+    "spot_slugs": [],
+    "days": 1,
+    "difficulty": "easy",
+    "scenery_type": [
+      "scenic",
+      "mountain"
+    ],
+    "bike_types": [
+      "150-250cc",
+      "300-500cc"
+    ],
+    "distance_km": 125.5,
+    "budget_range": "200-500",
+    "best_season": "春 / 夏 / 秋",
+    "experience_levels": [
+      "beginner",
+      "intermediate"
+    ],
+    "summary": "沈阳出发，本同线进山，串联松树台村、八角亭渔村，终点小墙缝，适合当日往返。",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "青年南大街与G1113丹阜高速入口交叉口",
+          "lng": 123.459698,
+          "lat": 41.724099,
+          "has_coordinates": true
+        },
+        {
+          "name": "本同线",
+          "lng": 124.041931,
+          "lat": 41.37353,
+          "has_coordinates": true
+        },
+        {
+          "name": "小清线",
+          "lng": 124.150004,
+          "lat": 41.317063,
+          "has_coordinates": true
+        },
+        {
+          "name": "基督教堂",
+          "lng": 124.142017,
+          "lat": 41.301621,
+          "has_coordinates": true
+        },
+        {
+          "name": "东北抗联史实陈列馆",
+          "lng": 124.135141,
+          "lat": 41.288347,
+          "has_coordinates": true
+        },
+        {
+          "name": "天龙古洞风景区",
+          "lng": 124.12413600000002,
+          "lat": 41.274542,
+          "has_coordinates": true
+        },
+        {
+          "name": "香天线",
+          "lng": 124.106335,
+          "lat": 41.269442,
+          "has_coordinates": true
+        },
+        {
+          "name": "小墙缝",
+          "lng": 124.169911,
+          "lat": 41.147994,
+          "has_coordinates": true
+        }
+      ],
+      "amap_locked_href": "https://www.amap.com/dir?type=car&policy=1&from%5Bid%5D=B0FFHPG145-from&from%5Bname%5D=%E9%9D%92%E5%B9%B4%E5%8D%97%E5%A4%A7%E8%A1%97%E4%B8%8EG1113%E4%B8%B9%E9%98%9C%E9%AB%98%E9%80%9F%E5%85%A5%E5%8F%A3%E4%BA%A4%E5%8F%89%E5%8F%A3&from%5Blnglat%5D=123.459698%2C41.724099&from%5Bmodxy%5D=123.459698%2C41.724099&from%5Bpoitype%5D=190302&from%5Badcode%5D=210112&to%5Bname%5D=%E5%B0%8F%E5%A2%99%E7%BC%9D&to%5Blnglat%5D=124.169911%2C41.147994&to%5Bid%5D=B019E00P4G-to&to%5Bpoitype%5D=190203&to%5Badcode%5D=210500&to%5Bmodxy%5D=124.169911%2C41.147994&via%5B0%5D%5Bid%5D=regeo_1785850160479&via%5B0%5D%5Bname%5D=304%E7%9C%81%E9%81%93&via%5B0%5D%5Blnglat%5D=124.041931%2C41.37353&via%5B0%5D%5Badcode%5D=210521&via%5B0%5D%5Bmodxy%5D=&via%5B1%5D%5Bid%5D=regeo_1785850230537&via%5B1%5D%5Bname%5D=%E5%B0%8F%E6%B8%85%E7%BA%BF&via%5B1%5D%5Blnglat%5D=124.150004%2C41.317063&via%5B1%5D%5Badcode%5D=210521&via%5B1%5D%5Bmodxy%5D=&via%5B2%5D%5Bid%5D=B019E0NLC0&via%5B2%5D%5Bname%5D=%E5%9F%BA%E7%9D%A3%E6%95%99%E5%A0%82&via%5B2%5D%5Blnglat%5D=124.142017%2C41.301621&via%5B2%5D%5Bmodxy%5D=124.141719%2C41.301512&via%5B2%5D%5Bpoitype%5D=110206&via%5B2%5D%5Badcode%5D=210521&via%5B3%5D%5Bid%5D=B019E0NC7C&via%5B3%5D%5Bname%5D=%E4%B8%9C%E5%8C%97%E6%8A%97%E8%81%94%E5%8F%B2%E5%AE%9E%E9%99%88%E5%88%97%E9%A6%86&via%5B3%5D%5Blnglat%5D=124.135141%2C41.288347&via%5B3%5D%5Bmodxy%5D=124.133797%2C41.289181&via%5B3%5D%5Bpoitype%5D=110210&via%5B3%5D%5Badcode%5D=210521&via%5B4%5D%5Badcode%5D=210521&via%5B4%5D%5Bname%5D=%E5%A4%A9%E9%BE%99%E5%8F%A4%E6%B4%9E%E9%A3%8E%E6%99%AF%E5%8C%BA&via%5B4%5D%5Bid%5D=B0FFF2E2JG&via%5B4%5D%5Bpoitype%5D=110202%7C110101%7C110102&via%5B4%5D%5Blnglat%5D=124.12413600000002%2C41.274542&via%5B4%5D%5Bmodxy%5D=124.122962%2C41.274584&via%5B5%5D%5Bid%5D=regeo_1785850600248&via%5B5%5D%5Bname%5D=%E9%A6%99%E5%A4%A9%E7%BA%BF&via%5B5%5D%5Blnglat%5D=124.106335%2C41.269442&via%5B5%5D%5Badcode%5D=210521&via%5B5%5D%5Bmodxy%5D="
+    },
+    "pois": {
+      "fuel": [],
+      "repair": [],
+      "lodging": [],
+      "viewpoint": [],
+      "emergency": []
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "沈阳→本同线→小灯线→松树台村→本溪县观音阁水库八角鱼亭村→小墙缝",
+        "ride_time": "约2小时15分钟（单程）",
+        "distance": 126,
+        "highlights": [
+          "本溪山区盘山路",
+          "乡村与溪谷路段",
+          "短途高频弯道",
+          "当日可返程"
+        ],
+        "note": "建议上午出发，山区路段注意会车与落石，返程前在本溪市区补给。"
+      }
+    ],
+    "is_visible": true,
+    "detail_highlights": [],
+    "detail_notes": [],
+    "checkpoints": [],
+    "gpx_file": "douyin---65.gpx"
+  },
+  {
+    "slug": "douyin-沈阳鸭绿江绿江村集安环线-66",
+    "title": "沈阳-鸭绿江-绿江村-集安环线",
+    "region": "northeast",
+    "liaoning_scope": "include",
+    "spot_slugs": [],
+    "days": 3,
+    "difficulty": "medium",
+    "scenery_type": [
+      "scenic",
+      "mountain",
+      "border"
+    ],
+    "bike_types": [
+      "150-250cc",
+      "300-500cc",
+      "500cc+"
+    ],
+    "distance_km": 1080,
+    "budget_range": "800-1800",
+    "best_season": "春 / 夏 / 秋",
+    "experience_levels": [
+      "intermediate",
+      "advanced"
+    ],
+    "summary": "沈阳出发，经鸭绿江断桥、红石镇、大西岔镇、西江沟、绿江村到集安后返沈，边境风景和山路结合，适合 3 天长距离骑行。",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "青年南大街与G1113丹阜高速入口交叉口",
+          "lng": 123.459698,
+          "lat": 41.724099,
+          "has_coordinates": true
+        },
+        {
+          "name": "鸭绿江断桥",
+          "lng": 124.394254,
+          "lat": 40.118655,
+          "has_coordinates": true
+        },
+        {
+          "name": "红石镇",
+          "lng": 125.017182,
+          "lat": 40.665243,
+          "has_coordinates": true
+        },
+        {
+          "name": "大西岔镇",
+          "lng": 125.19451200000003,
+          "lat": 40.709592,
+          "has_coordinates": true
+        },
+        {
+          "name": "西江沟",
+          "lng": 125.371621,
+          "lat": 40.68826,
+          "has_coordinates": true
+        },
+        {
+          "name": "雁阵线南口",
+          "lng": 125.419632,
+          "lat": 40.693681,
+          "has_coordinates": true
+        },
+        {
+          "name": "__anchor__:雁阵线中段",
+          "lng": 125.456203,
+          "lat": 40.718314,
+          "has_coordinates": true
+        },
+        {
+          "name": "雁阵线北口",
+          "lng": 125.492227,
+          "lat": 40.741092,
+          "has_coordinates": true
+        },
+        {
+          "name": "振江镇绿江村景点",
+          "lng": 125.612833,
+          "lat": 40.793924,
+          "has_coordinates": true
+        },
+        {
+          "name": "集安市大吉他主题广场",
+          "lng": 126.196649,
+          "lat": 41.122012,
+          "has_coordinates": true
+        },
+        {
+          "name": "青年南大街与G1113丹阜高速出口交叉口",
+          "lng": 123.459951,
+          "lat": 41.72416,
+          "has_coordinates": true
+        }
+      ],
+      "amap_locked_href": "https://www.amap.com/dir?type=car&policy=1&from[name]=青年南大街与G1113丹阜高速入口交叉口&from[lnglat]=123.459698,41.724099&to[name]=青年南大街与G1113丹阜高速出口交叉口&to[lnglat]=123.459951,41.724160&via[0][name]=鸭绿江断桥&via[0][lnglat]=124.394254,40.118655&via[1][name]=红石镇&via[1][lnglat]=125.017182,40.665243&via[2][name]=大西岔镇&via[2][lnglat]=125.194512,40.709592&via[3][name]=西江沟&via[3][lnglat]=125.371621,40.688260&via[4][name]=雁阵线南口&via[4][lnglat]=125.419632,40.693681&via[5][name]=__anchor__:雁阵线中段&via[5][lnglat]=125.456203,40.718314&via[6][name]=雁阵线北口&via[6][lnglat]=125.492227,40.741092&via[7][name]=振江镇绿江村景点&via[7][lnglat]=125.612833,40.793924&via[8][name]=集安市大吉他主题广场&via[8][lnglat]=126.196649,41.122012"
+    },
+    "pois": {
+      "fuel": [],
+      "repair": [],
+      "lodging": [],
+      "viewpoint": [],
+      "emergency": []
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "沈阳→鸭绿江断桥→红石镇",
+        "ride_time": "约7-8小时",
+        "distance": 430,
+        "highlights": [
+          "沈丹线长距离热身",
+          "鸭绿江沿线边境风景",
+          "适合在红石镇落脚"
+        ],
+        "note": "第一天路程偏长，建议早出发并在丹东段完成补给。"
+      },
+      {
+        "day": 2,
+        "title": "红石镇→大西岔镇→西江沟→绿江村",
+        "ride_time": "约5-6小时",
+        "distance": 260,
+        "highlights": [
+          "山路与乡镇路组合",
+          "绿江村沿线风景",
+          "边境线骑行氛围"
+        ],
+        "note": "第二天以风景路段为主，建议预留拍照和停靠时间。"
+      },
+      {
+        "day": 3,
+        "title": "绿江村→雁阵线→集安市大吉他主题广场→沈阳",
+        "ride_time": "约7-8小时",
+        "distance": 390,
+        "highlights": [
+          "集安城市节点打卡",
+          "返程节奏可控",
+          "适合三天闭环路线"
+        ],
+        "note": "返程前建议在集安完成加油与简餐，避免后段补给稀疏。"
+      }
+    ],
+    "is_visible": true,
+    "detail_highlights": [],
+    "detail_notes": [],
+    "checkpoints": [
+      {
+        "name": "青年南大街与G1113丹阜高速入口交叉口",
+        "summary": "沈阳出发点",
+        "timing": "出发",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "鸭绿江断桥",
+        "summary": "边境风景节点",
+        "timing": "D1",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "红石镇",
+        "summary": "第一天补给节点",
+        "timing": "D1",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "大西岔镇",
+        "summary": "山路过渡节点",
+        "timing": "D2",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "西江沟",
+        "summary": "打卡点5",
+        "timing": "D2",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "振江镇绿江村景点",
+        "summary": "打卡点6",
+        "timing": "D2",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "集安市大吉他主题广场",
+        "summary": "城市打卡节点",
+        "timing": "D3",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "青年南大街与G1113丹阜高速出口交叉口",
+        "summary": "返程到达",
+        "timing": "收官",
+        "image": "route-checkpoint-placeholder.jpg"
       }
     ]
   }

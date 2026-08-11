@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime
+from functools import lru_cache
 import hashlib
 from html import escape
 import json
 import math
 import re
 from typing import Any, Mapping
-from urllib.parse import quote, urlencode
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
+from urllib.request import urlopen
+
+from flask import current_app, has_app_context
 
 from .liaoning_spots import (
     ROUTE_TYPE_LABELS,
@@ -23,9 +27,10 @@ from .liaoning_spots import (
 from .candidate_spots import build_candidate_review_media, candidate_to_collection_record, get_candidate_spot_by_slug, get_candidate_spots
 from .candidate_spots import get_reviewed_spots
 from . import gpx_service
+from .navigation_import_assistant import build_navigation_import_assistant_payload
 from .route_engagement import get_route_engagement, get_route_engagement_map
 from .route_templates_config import load_route_templates
-from .user_me_state import get_user_me_metrics
+from .user_me_state import get_route_want_go_stats, get_route_want_go_stats_map, get_user_me_metrics
 
 
 RouteDict = dict[str, Any]
@@ -54,6 +59,8 @@ SPOT_TYPE_LABELS = {
     "moto-station": "摩托驿站",
     "support-stop": "补给点",
 }
+
+ROUTE_ONLY_ANCHOR_PREFIX = "__anchor__:"
 
 
 def _mini_program_route_detail_action(slug: str) -> dict[str, Any]:
@@ -929,8 +936,8 @@ def build_moto_tabbar(active_tab: str) -> dict[str, Any]:
 def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
     route_templates = get_route_templates()
     user_metrics = get_user_me_metrics(user_id)
-    favorite_count = int(user_metrics.get("favorite_count") or 0)
-    checkin_count = favorite_count
+    want_go_count = int(user_metrics.get("want_go_count") or 0)
+    checkin_count = int(user_metrics.get("checkin_count") or 0)
 
     return {
         "page": {
@@ -943,7 +950,7 @@ def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
             "summary": "当前版本聚焦路线选择和出发决策，先让小程序更像一个轻量的摩旅路线工具。",
         },
         "metrics": [
-            {"label": "我收藏的", "value": favorite_count},
+            {"label": "我想去的", "value": want_go_count},
             {"label": "我的积分", "value": 0},
             {"label": "我打卡过的", "value": checkin_count},
         ],
@@ -1179,6 +1186,12 @@ def _is_route_visible(route: Mapping[str, Any]) -> bool:
 
 
 def _is_liaoning_route(route: Mapping[str, Any], liaoning_spot_slugs: set[str]) -> bool:
+    scope_value = str(route.get("liaoning_scope") or "").strip().lower()
+    if scope_value in {"include", "force", "forced", "true", "1", "yes"}:
+        return True
+    if scope_value in {"exclude", "false", "0", "no"}:
+        return False
+
     route_spot_slugs = {
         str(value).strip()
         for value in (route.get("spot_slugs") or [])
@@ -1667,7 +1680,9 @@ def build_plan_result(form_data: Mapping[str, Any]) -> dict[str, Any]:
 
 def build_routes_index_context(route_templates: list[dict[str, Any]], filters: Mapping[str, Any]) -> dict[str, Any]:
     selected_days = str(filters.get("days") or "").strip()
-    engagement_lookup = get_route_engagement_map([str(route.get("slug") or "") for route in route_templates])
+    route_slugs = [str(route.get("slug") or "") for route in route_templates]
+    engagement_lookup = get_route_engagement_map(route_slugs)
+    want_go_lookup = get_route_want_go_stats_map(route_slugs)
     day_options = [
         {"label": "全部", "value": ""},
         *[
@@ -1681,6 +1696,7 @@ def build_routes_index_context(route_templates: list[dict[str, Any]], filters: M
     ]
     filtered_routes.sort(
         key=lambda route: (
+            -want_go_lookup.get(route["slug"], {}).get("total_count", 0),
             -engagement_lookup.get(route["slug"], {}).get("total_count", 0),
             -engagement_lookup.get(route["slug"], {}).get("navigation_count", 0),
             -engagement_lookup.get(route["slug"], {}).get("favorite_count", 0),
@@ -1726,7 +1742,12 @@ def build_routes_index_context(route_templates: list[dict[str, Any]], filters: M
             ],
         },
         "routes": [
-            _route_index_card(route, gpx_lookup=gpx_lookup, engagement_lookup=engagement_lookup)
+            _route_index_card(
+                route,
+                gpx_lookup=gpx_lookup,
+                engagement_lookup=engagement_lookup,
+                want_go_lookup=want_go_lookup,
+            )
             for route in filtered_routes
         ],
         "empty_state": {
@@ -1742,6 +1763,8 @@ def _route_index_card(
     *,
     gpx_lookup: Mapping[str, Any] | None = None,
     engagement_lookup: Mapping[str, Mapping[str, int]] | None = None,
+    want_go_lookup: Mapping[str, Mapping[str, int]] | None = None,
+    use_cached_preview_polyline: bool = True,
 ) -> dict[str, Any]:
     slug = str(route["slug"])
     engagement = (
@@ -1749,15 +1772,55 @@ def _route_index_card(
         if isinstance(engagement_lookup, Mapping) and slug in engagement_lookup
         else get_route_engagement(slug)
     )
+    want_go_stats = (
+        dict(want_go_lookup.get(slug, {}))
+        if isinstance(want_go_lookup, Mapping) and slug in want_go_lookup
+        else get_route_want_go_stats(slug)
+    )
+    engagement["want_go_count"] = int(want_go_stats.get("total_count") or 0)
     navigation_waypoints = _route_navigation_waypoints(route)
-    waypoints = [point["name"] for point in navigation_waypoints]
+    display_navigation_waypoints = [point for point in navigation_waypoints if not bool(point.get("route_only"))]
+    if len(display_navigation_waypoints) < 2:
+        display_navigation_waypoints = navigation_waypoints
+
+    waypoints = [point["name"] for point in display_navigation_waypoints]
     waypoint_count = len(waypoints)
-    coordinate_waypoint_count = sum(1 for point in navigation_waypoints if point["has_coordinates"])
+    coordinate_waypoint_count = sum(1 for point in display_navigation_waypoints if point["has_coordinates"])
     supports_coordinate_navigation = coordinate_waypoint_count > 0
     navigation_mode = _route_navigation_mode(navigation_waypoints)
     status_variant = _route_navigation_status_variant(navigation_mode)
-    amap_export_href = _route_amap_export_href(navigation_waypoints, prefer_native=True)
-    amap_browser_href = _route_amap_export_href(navigation_waypoints, prefer_native=False)
+    locked_amap_href = _route_navigation_locked_amap_href(route)
+    amap_export_href = (
+        _normalize_locked_amap_href(locked_amap_href, prefer_native=True)
+        if locked_amap_href
+        else _route_amap_export_href(navigation_waypoints, prefer_native=True)
+    )
+    amap_browser_href = (
+        _normalize_locked_amap_href(locked_amap_href, prefer_native=False)
+        if locked_amap_href
+        else _route_amap_export_href(navigation_waypoints, prefer_native=False)
+    )
+    tencent_export_href = _route_tencent_export_href(display_navigation_waypoints)
+    tencent_app_href = _route_tencent_app_href(display_navigation_waypoints)
+    cached_preview_points = _route_cached_preview_polyline_points(route) if use_cached_preview_polyline else []
+    if len(cached_preview_points) >= 2:
+        routed_polyline = {
+            "points": cached_preview_points,
+            "status": "cached-tencent-direction",
+        }
+    else:
+        routed_polyline = _route_tencent_preview_polyline(navigation_waypoints)
+
+    routed_polyline_points = routed_polyline.get("points", []) if isinstance(routed_polyline.get("points"), list) else []
+    routed_polyline_status = str(routed_polyline.get("status") or "waypoint-straight-line").strip() or "waypoint-straight-line"
+
+    # Locked Amap routes should never display straight fallback segments that can visibly cut across terrain.
+    if locked_amap_href and (
+        "partial-fallback" in routed_polyline_status
+        or routed_polyline_status == "waypoint-straight-line"
+    ):
+        routed_polyline_points = []
+        routed_polyline_status = f"locked-amap-road-polyline-unavailable:{routed_polyline_status}"
     gpx_payload = _route_gpx_payload(route, navigation_waypoints, gpx_lookup=gpx_lookup)
     source_meta = _route_source_meta(route, gpx_payload=gpx_payload)
     tags = [f"{route['days']} 天", route["best_season"], difficulty_label(route["difficulty"])]
@@ -1785,19 +1848,29 @@ def _route_index_card(
             "collect": _mini_program_webview_action(f"/moto/routes/collect?route={slug}"),
             "favorite": _mini_program_api_action(f"/moto/routes/{slug}/favorite"),
             "navigation": _mini_program_api_action(f"/moto/routes/{slug}/navigation"),
+            "want_go": _mini_program_api_action(f"/moto/routes/{slug}/want-go"),
         },
         "engagement": engagement,
+        "want_go": {
+            "plan_bucket": "",
+            "this_month_count": int(want_go_stats.get("this_month_count") or 0),
+            "next_month_count": int(want_go_stats.get("next_month_count") or 0),
+            "later_count": int(want_go_stats.get("later_count") or 0),
+            "total_count": int(want_go_stats.get("total_count") or 0),
+        },
         "is_navigation_state_demo": bool(route.get("is_navigation_state_demo")),
         "waypoints": waypoints,
-        "navigation_waypoints": navigation_waypoints,
+        "navigation_waypoints": display_navigation_waypoints,
         "waypoint_count": waypoint_count,
         "amap_export": {
+            "app_href": amap_export_href,
             "href": amap_export_href,
             "browser_href": amap_browser_href,
             "embed_href": f"/moto/routes/{slug}/amap-embed",
             "launch_href": f"/moto/routes/{slug}/amap-launch",
             "mini_program": {
                 "navigate": _mini_program_webview_action(amap_export_href) if amap_export_href else {},
+                "launch": _mini_program_webview_action(f"/moto/routes/{slug}/amap-launch") if amap_export_href else {},
                 "browser": _mini_program_webview_action(amap_browser_href) if amap_browser_href else {},
                 "interactive_map": _mini_program_webview_action(f"/moto/routes/{slug}/amap-embed"),
             },
@@ -1805,7 +1878,10 @@ def _route_index_card(
             "is_available": bool(amap_export_href),
             "screenshot_href": f"/moto/routes/{slug}/amap-route.svg",
             "waypoint_text": " -> ".join(waypoints),
-            "waypoints": navigation_waypoints,
+            "waypoints": display_navigation_waypoints,
+            "preview_polyline_points": routed_polyline_points,
+            "preview_polyline_source": "tencent-direction" if routed_polyline_points else "unavailable",
+            "preview_polyline_status": routed_polyline_status,
             "coordinate_waypoint_count": coordinate_waypoint_count,
             "supports_coordinate_navigation": supports_coordinate_navigation,
             "navigation_mode": navigation_mode,
@@ -1816,6 +1892,16 @@ def _route_index_card(
                 coordinate_waypoint_count=coordinate_waypoint_count,
                 navigation_mode=navigation_mode,
             ),
+        },
+        "tencent_export": {
+            "app_href": tencent_app_href,
+            "href": tencent_export_href,
+            "launch_href": f"/moto/routes/{slug}/tencent-launch",
+            "mini_program": {
+                "navigate": _mini_program_webview_action(f"/moto/routes/{slug}/tencent-launch") if tencent_export_href else {},
+            },
+            "label": "腾讯地图导航",
+            "is_available": bool(tencent_export_href),
         },
         "gpx": gpx_payload,
         "source_meta": source_meta,
@@ -1980,9 +2066,9 @@ def _route_gpx_payload(
     return {
         "is_available": True,
         "filename": filename,
-        "download_href": f"/api/moto/gpx/download/{quote(filename)}",
+        "download_href": f"/api/moto/routes/{quote(str(route.get('slug') or '').strip())}/gpx",
         "mini_program": {
-            "download": _mini_program_download_action(f"/api/moto/gpx/download/{quote(filename)}"),
+            "download": _mini_program_download_action(f"/api/moto/routes/{quote(str(route.get('slug') or '').strip())}/gpx"),
         },
         "download_label": "GPX 文件下载",
         "source_badge": source_badge,
@@ -2057,11 +2143,11 @@ def _format_gpx_file_size(size: Any) -> str:
 
 
 def _route_navigation_waypoints(route: Mapping[str, Any]) -> list[dict[str, Any]]:
-    gpx_file = str(route.get("gpx_file") or "").strip()
-    if gpx_file:
-        gpx_waypoints = gpx_service.get_gpx_waypoints(gpx_file)
-        if len(gpx_waypoints) >= 2:
-            return gpx_waypoints
+    locked_amap_href = _route_navigation_locked_amap_href(route)
+    if locked_amap_href:
+        locked_waypoints = _parse_locked_amap_waypoints(locked_amap_href)
+        if len(locked_waypoints) >= 2:
+            return locked_waypoints
 
     navigation_config = route.get("navigation") if isinstance(route.get("navigation"), Mapping) else {}
     raw_navigation_waypoints = (
@@ -2078,6 +2164,13 @@ def _route_navigation_waypoints(route: Mapping[str, Any]) -> list[dict[str, Any]
         ]
         if normalized_points:
             return normalized_points
+
+    # GPX waypoints are fallback only. Admin-edited waypoints should be authoritative.
+    gpx_file = str(route.get("gpx_file") or "").strip()
+    if gpx_file:
+        gpx_waypoints = gpx_service.get_gpx_waypoints(gpx_file)
+        if len(gpx_waypoints) >= 2:
+            return gpx_waypoints
 
     ordered_names: list[str] = []
     points_by_name: dict[str, dict[str, Any]] = {}
@@ -2097,6 +2190,398 @@ def _route_navigation_waypoints(route: Mapping[str, Any]) -> list[dict[str, Any]
             _merge_route_navigation_point(points_by_name, ordered_names, raw_name.strip())
 
     return [points_by_name[name] for name in ordered_names]
+
+
+def _parse_locked_amap_waypoints(href: str) -> list[dict[str, Any]]:
+    raw = str(href or "").strip()
+    if not raw:
+        return []
+
+    try:
+        parsed = urlsplit(raw)
+    except Exception:
+        return []
+
+    query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    if not query_pairs:
+        return []
+
+    query_map: dict[str, str] = {}
+    for key, value in query_pairs:
+        if key:
+            query_map[key] = value
+
+    # amap /dir format: from[name], from[lnglat], via[i][name], via[i][lnglat], to[name], to[lnglat]
+    start = _amap_query_point(query_map.get("from[name]"), query_map.get("from[lnglat]"))
+    destination = _amap_query_point(query_map.get("to[name]"), query_map.get("to[lnglat]"))
+
+    via_by_index: dict[int, dict[str, str]] = {}
+    for key, value in query_pairs:
+        match = re.match(r"^via\[(\d+)\]\[(name|lnglat)\]$", key)
+        if not match:
+            continue
+        index = int(match.group(1))
+        field = match.group(2)
+        bucket = via_by_index.setdefault(index, {})
+        bucket[field] = value
+
+    via_points = [
+        _amap_query_point(via_by_index[index].get("name"), via_by_index[index].get("lnglat"))
+        for index in sorted(via_by_index)
+    ]
+    via_points = [point for point in via_points if point is not None]
+
+    # amap m.amap.com/carmap format: saddr / maddr / daddr where each point is "lng,lat,name"
+    if start is None and "saddr" in query_map:
+        start = _amap_carmap_point(query_map.get("saddr"))
+    if destination is None and "daddr" in query_map:
+        destination = _amap_carmap_point(query_map.get("daddr"))
+    if not via_points and "maddr" in query_map:
+        raw_maddr = str(query_map.get("maddr") or "")
+        via_points = [
+            point
+            for point in (_amap_carmap_point(segment) for segment in raw_maddr.split("|"))
+            if point is not None
+        ]
+
+    points: list[dict[str, Any]] = []
+    if start is not None:
+        points.append(start)
+    points.extend(via_points)
+    if destination is not None:
+        points.append(destination)
+    return points
+
+
+def _amap_query_point(name: Any, lnglat: Any) -> dict[str, Any] | None:
+    normalized_name, route_only = _route_waypoint_name_and_flags(name)
+    coords = _parse_amap_lnglat(lnglat)
+    if coords is None and not normalized_name:
+        return None
+
+    if coords is None:
+        return {
+            "name": normalized_name or "途径点",
+            "lat": None,
+            "lng": None,
+            "has_coordinates": False,
+            "route_only": route_only,
+        }
+
+    lng, lat = coords
+    return {
+        "name": normalized_name or f"{lng:.6f},{lat:.6f}",
+        "lat": lat,
+        "lng": lng,
+        "has_coordinates": True,
+        "route_only": route_only,
+    }
+
+
+def _amap_carmap_point(raw_value: Any) -> dict[str, Any] | None:
+    text = str(raw_value or "").strip()
+    if not text:
+        return None
+    parts = [part.strip() for part in text.split(",")]
+    if len(parts) < 2:
+        return None
+
+    coords = _parse_amap_lnglat(",".join(parts[:2]))
+    name = parts[2] if len(parts) >= 3 else ""
+    return _amap_query_point(name, f"{parts[0]},{parts[1]}") if coords is not None else None
+
+
+def _parse_amap_lnglat(raw_value: Any) -> tuple[float, float] | None:
+    text = str(raw_value or "").strip()
+    if not text:
+        return None
+
+    parts = [part.strip() for part in text.split(",") if part.strip()]
+    if len(parts) != 2:
+        return None
+
+    try:
+        lng = float(parts[0])
+        lat = float(parts[1])
+    except ValueError:
+        return None
+
+    if not _is_valid_coordinate(lat, lng):
+        return None
+    return (lng, lat)
+
+
+def _route_cached_preview_polyline_points(route: Mapping[str, Any]) -> list[dict[str, float]]:
+    navigation_config = route.get("navigation") if isinstance(route.get("navigation"), Mapping) else {}
+    raw_points = navigation_config.get("preview_polyline_points") if isinstance(navigation_config, Mapping) else []
+    if not isinstance(raw_points, list):
+        return []
+
+    points: list[dict[str, float]] = []
+    for item in raw_points:
+        if not isinstance(item, Mapping):
+            continue
+        try:
+            lat = float(item.get("lat"))
+            lng = float(item.get("lng"))
+        except (TypeError, ValueError):
+            continue
+        if not _is_valid_coordinate(lat, lng):
+            continue
+        points.append({"lat": lat, "lng": lng})
+    return points
+
+
+def _route_tencent_preview_polyline(waypoints: list[Mapping[str, Any]]) -> dict[str, Any]:
+    coordinate_points = [
+        {
+            "lat": float(point.get("lat")),
+            "lng": float(point.get("lng")),
+        }
+        for point in waypoints
+        if point.get("has_coordinates") and point.get("lat") is not None and point.get("lng") is not None
+    ]
+    if len(coordinate_points) < 2:
+        return {"points": [], "status": "insufficient-waypoints"}
+
+    tencent_key = _tencent_route_service_key()
+    if not tencent_key:
+        return {"points": [], "status": "missing-webservice-key"}
+
+    digest_input = json.dumps(coordinate_points, ensure_ascii=False, separators=(",", ":"))
+    cache_key = hashlib.sha1(digest_input.encode("utf-8")).hexdigest()
+    try:
+        return _fetch_tencent_route_polyline_cached_success(cache_key, digest_input, tencent_key)
+    except Exception:
+        # Unstable responses (rate limit / partial fallback) should not be sticky-cached.
+        return _fetch_tencent_route_polyline_uncached(digest_input, tencent_key)
+
+
+@lru_cache(maxsize=256)
+def _fetch_tencent_route_polyline_cached_success(cache_key: str, serialized_points: str, tencent_key: str) -> dict[str, Any]:
+    del cache_key
+    result = _fetch_tencent_route_polyline_uncached(serialized_points, tencent_key)
+    status = str(result.get("status") or "").strip()
+    has_points = isinstance(result.get("points"), list) and len(result.get("points") or []) >= 2
+    is_stable_success = status == "tencent-direction-segmented" and has_points
+    if not is_stable_success:
+        raise RuntimeError(f"unstable-polyline:{status or 'unknown'}")
+    return result
+
+
+def _fetch_tencent_route_polyline_uncached(serialized_points: str, tencent_key: str) -> dict[str, Any]:
+    try:
+        coordinate_points = json.loads(serialized_points)
+    except json.JSONDecodeError:
+        return {"points": [], "status": "invalid-points-json"}
+    if not isinstance(coordinate_points, list) or len(coordinate_points) < 2:
+        return {"points": [], "status": "insufficient-waypoints"}
+
+    merged_points: list[dict[str, float]] = []
+    failed_segments: list[str] = []
+    for index in range(len(coordinate_points) - 1):
+        start = coordinate_points[index]
+        end = coordinate_points[index + 1]
+        segment_result = _fetch_tencent_segment_polyline(start, end, tencent_key)
+        segment_points = segment_result.get("points") if isinstance(segment_result.get("points"), list) else []
+        segment_status = str(segment_result.get("status") or "request-failed").strip() or "request-failed"
+        if len(segment_points) < 2:
+            failed_segments.append(f"{index + 1}:{segment_status}")
+            segment_points = _build_straight_segment_points(start, end)
+
+        if merged_points and merged_points[-1] == segment_points[0]:
+            merged_points.extend(segment_points[1:])
+        else:
+            merged_points.extend(segment_points)
+
+    if len(merged_points) >= 2:
+        if failed_segments:
+            return {
+                "points": _downsample_polyline(merged_points, max_points=2200),
+                "status": "tencent-direction-segmented-partial-fallback-" + ",".join(failed_segments),
+            }
+        return {"points": _downsample_polyline(merged_points, max_points=2200), "status": "tencent-direction-segmented"}
+    return {"points": [], "status": "empty-polyline"}
+
+
+def _build_straight_segment_points(start: Mapping[str, Any], end: Mapping[str, Any], *, min_parts: int = 8) -> list[dict[str, float]]:
+    try:
+        start_lat = float(start["lat"])
+        start_lng = float(start["lng"])
+        end_lat = float(end["lat"])
+        end_lng = float(end["lng"])
+    except (KeyError, TypeError, ValueError):
+        return []
+
+    if not (_is_valid_coordinate(start_lat, start_lng) and _is_valid_coordinate(end_lat, end_lng)):
+        return []
+
+    segments = max(1, int(min_parts))
+    return [
+        {
+            "lat": start_lat + ((end_lat - start_lat) * step / segments),
+            "lng": start_lng + ((end_lng - start_lng) * step / segments),
+        }
+        for step in range(segments + 1)
+    ]
+
+
+def _fetch_tencent_segment_polyline(start: Mapping[str, Any], end: Mapping[str, Any], tencent_key: str) -> dict[str, Any]:
+    params = {
+        "from": f"{start['lat']},{start['lng']}",
+        "to": f"{end['lat']},{end['lng']}",
+        "output": "json",
+        "key": tencent_key,
+    }
+
+    payload = _fetch_tencent_route_payload(params)
+    if not isinstance(payload, Mapping):
+        return {"points": [], "status": "request-failed"}
+
+    raw_status = payload.get("status")
+    try:
+        response_status = int(raw_status)
+    except (TypeError, ValueError):
+        response_status = -1
+    if response_status != 0:
+        response_message = str(payload.get("message") or "").strip().lower()
+        if "webserviceapi" in response_message and "未开启" in str(payload.get("message") or ""):
+            return {"points": [], "status": "tencent-webservice-disabled"}
+        return {"points": [], "status": f"tencent-status-{response_status}"}
+
+    result = payload.get("result") if isinstance(payload.get("result"), Mapping) else {}
+    routes = result.get("routes") if isinstance(result.get("routes"), list) else []
+    if not routes:
+        return {"points": [], "status": "empty-route"}
+
+    first_route = routes[0] if isinstance(routes[0], Mapping) else {}
+    raw_polyline = first_route.get("polyline")
+    decoded_points = _decode_tencent_polyline(raw_polyline)
+    if len(decoded_points) >= 2:
+        return {"points": decoded_points, "status": "tencent-direction"}
+
+    steps = first_route.get("steps") if isinstance(first_route.get("steps"), list) else []
+    merged_points: list[dict[str, float]] = []
+    for step in steps:
+        if not isinstance(step, Mapping):
+            continue
+        step_points = _decode_tencent_polyline(step.get("polyline"))
+        if not step_points:
+            continue
+        if merged_points and merged_points[-1] == step_points[0]:
+            merged_points.extend(step_points[1:])
+        else:
+            merged_points.extend(step_points)
+
+    if len(merged_points) >= 2:
+        return {"points": merged_points, "status": "tencent-direction"}
+    return {"points": [], "status": "empty-polyline"}
+
+
+def _fetch_tencent_route_payload(params: Mapping[str, str]) -> Mapping[str, Any] | None:
+    payload: dict[str, Any] | None = None
+    for scheme in ("https", "http"):
+        request_url = f"{scheme}://apis.map.qq.com/ws/direction/v1/driving/?{urlencode(dict(params))}"
+        try:
+            with urlopen(request_url, timeout=3) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            break
+        except Exception:
+            continue
+    return payload
+
+
+def _decode_tencent_polyline(raw_polyline: Any) -> list[dict[str, float]]:
+    if isinstance(raw_polyline, str):
+        text = raw_polyline.strip()
+        if not text:
+            return []
+        points: list[dict[str, float]] = []
+        for segment in text.split(";"):
+            segment = segment.strip()
+            if not segment:
+                continue
+            pair = [part.strip() for part in segment.split(",") if part.strip()]
+            if len(pair) != 2:
+                continue
+            try:
+                lat = float(pair[0])
+                lng = float(pair[1])
+            except ValueError:
+                continue
+            if _is_valid_coordinate(lat, lng):
+                points.append({"lat": lat, "lng": lng})
+        return points
+
+    if not isinstance(raw_polyline, list):
+        return []
+    numeric_values = [value for value in raw_polyline if isinstance(value, int | float)]
+    if len(numeric_values) < 4:
+        return []
+
+    plain_points = _polyline_values_to_points([float(value) for value in numeric_values])
+    decoded_values = [float(value) for value in numeric_values]
+    if abs(decoded_values[0]) > 180 or abs(decoded_values[1]) > 180:
+        decoded_values[0] = decoded_values[0] / 1000000.0
+        decoded_values[1] = decoded_values[1] / 1000000.0
+    for index in range(2, len(decoded_values)):
+        decoded_values[index] = decoded_values[index - 2] + (decoded_values[index] / 1000000.0)
+    compressed_points = _polyline_values_to_points(decoded_values)
+
+    # Tencent driving polyline is usually compressed. Prefer the smoother candidate,
+    # but keep a safe fallback for unusual payloads.
+    compressed_score = _polyline_candidate_score(compressed_points)
+    plain_score = _polyline_candidate_score(plain_points)
+    if compressed_score >= plain_score:
+        return compressed_points
+    return plain_points
+
+
+def _polyline_values_to_points(values: list[float]) -> list[dict[str, float]]:
+    points: list[dict[str, float]] = []
+    for index in range(0, len(values) - 1, 2):
+        lat = values[index]
+        lng = values[index + 1]
+        if _is_valid_coordinate(lat, lng):
+            points.append({"lat": lat, "lng": lng})
+    return points
+
+
+def _polyline_candidate_score(points: list[dict[str, float]]) -> float:
+    if len(points) < 2:
+        return float("-inf")
+
+    long_jumps = 0
+    max_jump = 0.0
+    for index in range(1, len(points)):
+        previous = points[index - 1]
+        current = points[index]
+        jump_km = _haversine_distance_km(previous["lat"], previous["lng"], current["lat"], current["lng"])
+        max_jump = max(max_jump, jump_km)
+        if jump_km > 8:
+            long_jumps += 1
+
+    return len(points) - (long_jumps * 80) - (max_jump * 3)
+
+
+def _is_valid_coordinate(lat: float, lng: float) -> bool:
+    return -90 <= lat <= 90 and -180 <= lng <= 180
+
+
+def _downsample_polyline(points: list[dict[str, float]], *, max_points: int) -> list[dict[str, float]]:
+    if len(points) <= max_points:
+        return points
+    step = max(1, math.ceil(len(points) / max_points))
+    sampled = [points[index] for index in range(0, len(points), step)]
+    if sampled[-1] != points[-1]:
+        sampled.append(points[-1])
+    return sampled[:max_points]
+
+
+def _tencent_route_service_key() -> str:
+    if has_app_context():
+        return str(current_app.config.get("TENCENT_MAP_WEB_SERVICE_KEY") or "").strip()
+    return ""
 
 
 def _merge_route_navigation_point(
@@ -2123,15 +2608,15 @@ def _merge_route_navigation_point(
 
 def _normalize_route_navigation_point(raw_point: Any) -> dict[str, Any] | None:
     if isinstance(raw_point, str):
-        name = raw_point.strip()
+        name, route_only = _route_waypoint_name_and_flags(raw_point)
         if not name:
             return None
-        return {"name": name, "lat": None, "lng": None, "has_coordinates": False}
+        return {"name": name, "lat": None, "lng": None, "has_coordinates": False, "route_only": route_only}
 
     if not isinstance(raw_point, Mapping):
         return None
 
-    name = str(raw_point.get("name") or raw_point.get("title") or "").strip()
+    name, name_marked_route_only = _route_waypoint_name_and_flags(raw_point.get("name") or raw_point.get("title") or "")
     if not name:
         return None
 
@@ -2139,7 +2624,18 @@ def _normalize_route_navigation_point(raw_point: Any) -> dict[str, Any] | None:
     lat = _route_coordinate_value(raw_point.get("lat"), coordinates.get("lat"), coordinates.get("latitude"), raw_point.get("latitude"))
     lng = _route_coordinate_value(raw_point.get("lng"), coordinates.get("lng"), coordinates.get("lon"), coordinates.get("longitude"), raw_point.get("longitude"), raw_point.get("lon"))
     has_coordinates = lat is not None and lng is not None
-    return {"name": name, "lat": lat, "lng": lng, "has_coordinates": has_coordinates}
+    route_only = bool(raw_point.get("route_only")) or name_marked_route_only
+    return {"name": name, "lat": lat, "lng": lng, "has_coordinates": has_coordinates, "route_only": route_only}
+
+
+def _route_waypoint_name_and_flags(raw_name: Any) -> tuple[str, bool]:
+    name = str(raw_name or "").strip()
+    if not name:
+        return "", False
+    if name.startswith(ROUTE_ONLY_ANCHOR_PREFIX):
+        stripped = name[len(ROUTE_ONLY_ANCHOR_PREFIX):].strip()
+        return stripped or "途径点", True
+    return name, False
 
 
 def _route_coordinate_value(*values: Any) -> float | None:
@@ -2245,6 +2741,97 @@ def _route_amap_export_href(waypoints: list[Mapping[str, Any]], *, prefer_native
     return f"https://m.amap.com/navigation/carmap/{'&'.join(params)}"
 
 
+def _route_tencent_export_href(waypoints: list[Mapping[str, Any]]) -> str:
+    params = _route_tencent_export_params(waypoints)
+    if not params:
+        return ""
+    return f"https://apis.map.qq.com/uri/v1/routeplan?{urlencode(params)}"
+
+
+def _route_tencent_app_href(waypoints: list[Mapping[str, Any]]) -> str:
+    params = _route_tencent_export_params(waypoints)
+    if not params:
+        return ""
+    return f"qqmap://map/routeplan?{urlencode(params)}"
+
+
+def _route_tencent_export_params(waypoints: list[Mapping[str, Any]]) -> list[tuple[str, str]]:
+    coordinate_points = [
+        point
+        for point in waypoints
+        if (
+            not bool(point.get("route_only"))
+            and point.get("has_coordinates")
+            and point.get("lat") is not None
+            and point.get("lng") is not None
+        )
+    ]
+    if len(coordinate_points) < 2:
+        coordinate_points = [
+            point
+            for point in waypoints
+            if point.get("has_coordinates") and point.get("lat") is not None and point.get("lng") is not None
+        ]
+    if len(coordinate_points) < 2:
+        return []
+
+    start = coordinate_points[0]
+    destination = coordinate_points[-1]
+    via_points = coordinate_points[1:-1][:6]
+    params: list[tuple[str, str]] = [
+        ("type", "drive"),
+        ("from", str(start.get("name") or "起点")),
+        ("fromcoord", f"{float(start['lat'])},{float(start['lng'])}"),
+        ("to", str(destination.get("name") or "终点")),
+        ("tocoord", f"{float(destination['lat'])},{float(destination['lng'])}"),
+        ("policy", "0"),
+        ("referer", _tencent_uri_referer()),
+    ]
+
+    if via_points:
+        via_coords = ";".join(f"{float(point['lat'])},{float(point['lng'])}" for point in via_points)
+        # Tencent route URI compatibility differs across app/web containers.
+        # Send common aliases together to maximize via-point recognition.
+        params.append(("via", via_coords))
+        params.append(("waypoints", via_coords))
+        params.append(("waypointcoords", via_coords))
+
+    return params
+
+
+def _tencent_uri_referer() -> str:
+    if has_app_context():
+        value = str(current_app.config.get("TENCENT_MAP_URI_REFERER") or "").strip()
+        if value:
+            return value
+    return "xingtu"
+
+
+def _route_navigation_locked_amap_href(route: Mapping[str, Any]) -> str:
+    navigation = route.get("navigation") if isinstance(route.get("navigation"), Mapping) else {}
+    return str(navigation.get("amap_locked_href") or "").strip()
+
+
+def _normalize_locked_amap_href(href: str, *, prefer_native: bool) -> str:
+    raw = str(href or "").strip()
+    if not raw:
+        return ""
+
+    try:
+        parsed = urlsplit(raw)
+    except Exception:
+        return raw
+
+    if not parsed.scheme or not parsed.netloc:
+        return raw
+
+    query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    filtered_pairs = [(key, value) for key, value in query_pairs if key != "callnative"]
+    filtered_pairs.append(("callnative", "1" if prefer_native else "0"))
+    normalized_query = urlencode(filtered_pairs, doseq=True)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, normalized_query, parsed.fragment))
+
+
 def _route_amap_point_value(point: Mapping[str, Any]) -> str:
     if point.get("has_coordinates") and point.get("lng") is not None and point.get("lat") is not None:
         return f"{point['lng']},{point['lat']},{point['name']}"
@@ -2331,7 +2918,9 @@ def _route_waypoint_preview_path(waypoint_count: int) -> str:
 
 def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
     gpx_lookup = _build_gpx_lookup()
-    route_card = _route_index_card(route, gpx_lookup=gpx_lookup)
+    route_card = _route_index_card(route, gpx_lookup=gpx_lookup, use_cached_preview_polyline=False)
+    linked_spots = _build_route_linked_spots(route)
+    import_assistant = build_navigation_import_assistant_payload(route_card)
     return {
         "page": {"title": route["title"], "eyebrow": "路线详情"},
         "route": {
@@ -2380,6 +2969,8 @@ def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
                 }
                 for checkpoint in route.get("checkpoints", [])
             ],
+            "linked_spots": linked_spots,
+            "navigation_import_assistant": import_assistant,
             "poi_groups": build_poi_groups(
                 route,
                 {
@@ -2399,6 +2990,59 @@ def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
             if candidate["slug"] != route["slug"]
         ][:2],
     }
+
+
+def _build_route_linked_spots(route: Mapping[str, Any]) -> list[dict[str, Any]]:
+    spot_catalog = {
+        str(spot.get("slug") or "").strip(): spot
+        for spot in get_liaoning_moto_spots()
+        if str(spot.get("slug") or "").strip()
+    }
+
+    linked_spots: list[dict[str, Any]] = []
+    for raw_slug in route.get("spot_slugs", []) or []:
+        slug = str(raw_slug or "").strip()
+        if not slug:
+            continue
+
+        spot = spot_catalog.get(slug)
+        if not spot:
+            continue
+
+        coordinates = spot.get("coordinates") if isinstance(spot.get("coordinates"), dict) else {}
+        lat = coordinates.get("lat")
+        lng = coordinates.get("lng")
+        has_coordinates = isinstance(lat, (int, float)) and isinstance(lng, (int, float))
+        source_items = spot.get("sources") if isinstance(spot.get("sources"), list) else []
+        image_gallery = spot.get("image_gallery") if isinstance(spot.get("image_gallery"), list) else []
+
+        linked_spots.append(
+            {
+                "slug": slug,
+                "name": str(spot.get("name") or ""),
+                "summary": str(spot.get("summary") or ""),
+                "image_url": str((image_gallery[0] or {}).get("image_url") or "") if image_gallery else "",
+                "support_tags": [str(tag) for tag in (spot.get("support_labels") or []) if str(tag).strip()],
+                "coordinates": {
+                    "lat": lat if has_coordinates else None,
+                    "lng": lng if has_coordinates else None,
+                    "has_coordinates": has_coordinates,
+                    "text": f"{lat:.6f}, {lng:.6f}" if has_coordinates else "未维护坐标",
+                },
+                "sources": [
+                    {
+                        "type": str(item.get("type") or ""),
+                        "name": str(item.get("name") or ""),
+                        "verified": bool(item.get("verified")),
+                        "note": str(item.get("note") or ""),
+                    }
+                    for item in source_items[:3]
+                    if isinstance(item, dict)
+                ],
+            }
+        )
+
+    return linked_spots
 
 
 def normalize_preferences(form_data: Mapping[str, Any]) -> dict[str, Any]:

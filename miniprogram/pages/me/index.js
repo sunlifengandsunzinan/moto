@@ -6,7 +6,7 @@ const DEFAULT_AVATAR_TEXT = "行途";
 function normalizeMetricList(metrics) {
   const sourceMetrics = Array.isArray(metrics) ? metrics : [];
   const defaults = [
-    { key: "favorites", value: "0", label: "我收藏的" },
+    { key: "want-go", value: "0", label: "我想去的" },
     { key: "points", value: "0", label: "我的积分" },
     { key: "checkins", value: "0", label: "我打卡过的" },
   ];

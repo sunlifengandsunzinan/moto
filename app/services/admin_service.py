@@ -3,8 +3,10 @@ from __future__ import annotations
 from collections import defaultdict
 from copy import deepcopy
 import json
+import re
 from typing import Any, Mapping
 
+from . import gpx_service
 from .liaoning_spots import (
     get_approved_moto_spot_by_slug,
     get_approved_moto_spots,
@@ -20,6 +22,7 @@ from .route_templates_config import (
     delete_route_template,
 )
 from .planner_service import get_liaoning_route_templates
+from .user_me_state import get_route_want_go_stats_map
 
 
 ROUTE_FORM_GROUPS = [
@@ -54,12 +57,15 @@ ROUTE_FORM_GROUPS = [
     },
     {
         "title": "路线结构",
-        "description": "高德导航、路线地图和详情日程都依赖这里的数据。",
+        "description": "高德导航、路线地图和详情日程都依赖这里的数据；其中打卡点可独立维护，不会改动原始线路。",
         "fields": [
+            ("amap_locked_href", "高德锁定链接", "text", "粘贴你在高德手工规划后的完整链接，保存后优先使用该路线"),
+            ("manual_navigation_points", "手工导航点", "textarea", "每行一个点：名称 | 经度 | 纬度，例如 沈阳 | 123.4315 | 41.8057"),
             ("navigation_waypoints", "导航途径点 JSON", "textarea", "必须至少 2 个点，包含 name 和经纬度"),
+            ("manual_checkpoints", "手工打卡点（仅详情展示）", "textarea", "每行一个点：名称 | 摘要 | 时长 | 距离 | 打卡数。例如 小灯线 | 山路转折点 | 10分钟 | 18km | 23次。只影响详情页打卡点，不改地图路线和导航点。"),
             ("days_plan", "每日行程 JSON", "textarea", "详情页日程"),
             ("pois", "POI 分类 JSON", "textarea", "fuel / repair / lodging / viewpoint / emergency"),
-            ("checkpoints", "打卡点时间线 JSON", "textarea", "可为空"),
+            ("checkpoints", "打卡点时间线 JSON", "textarea", "高级用法，可为空；若填写“手工打卡点”，则优先使用手工打卡点"),
         ],
     },
 ]
@@ -135,6 +141,8 @@ def get_admin_dashboard_context(
     route_per_page: int = 20,
 ) -> dict[str, Any]:
     routes = load_route_templates()
+    route_slugs = [str(route.get("slug") or "").strip() for route in routes if str(route.get("slug") or "").strip()]
+    want_go_lookup = get_route_want_go_stats_map(route_slugs)
     visible_frontend_routes = get_liaoning_route_templates()
     frontend_scope_slugs = {
         str(route.get("slug") or "").strip()
@@ -162,6 +170,13 @@ def get_admin_dashboard_context(
                 f"{int(route.get('days') or 0)} 天",
                 f"{route.get('distance_km') or 0} km",
                 str(route.get("region") or "未分类"),
+                (
+                    "想去 "
+                    f"{int((want_go_lookup.get(str(route.get('slug') or ''), {}) or {}).get('total_count') or 0)}"
+                    f" (本月 {int((want_go_lookup.get(str(route.get('slug') or ''), {}) or {}).get('this_month_count') or 0)}"
+                    f" / 下月 {int((want_go_lookup.get(str(route.get('slug') or ''), {}) or {}).get('next_month_count') or 0)}"
+                    f" / 再说 {int((want_go_lookup.get(str(route.get('slug') or ''), {}) or {}).get('later_count') or 0)})"
+                ),
             ],
             "preview_href": f"/moto/routes/{route.get('slug')}",
             "edit_href": f"/moto/admin/routes/{route.get('slug')}/edit",
@@ -183,6 +198,7 @@ def get_admin_dashboard_context(
         "stats": [
             {"label": "路线总库", "value": len(routes)},
             {"label": "前台显示路线", "value": len(visible_frontend_routes)},
+            {"label": "路线想去总计", "value": sum(int((item or {}).get("total_count") or 0) for item in want_go_lookup.values())},
             {"label": "点位总数", "value": len(spots)},
             {"label": "路线区域", "value": len(route_regions)},
             {"label": "点位区域", "value": len(spot_regions)},
@@ -203,6 +219,10 @@ def get_admin_dashboard_context(
                     "title": spot.get("name") or str(spot.get("slug") or "未命名点位"),
                     "slug": str(spot.get("slug") or ""),
                     "summary": str(spot.get("summary") or ""),
+                    "image_url": ((spot.get("image_gallery") or [{}])[0]).get("image_url", ""),
+                    "coordinates": _spot_coordinates_text(spot.get("coordinates")),
+                    "support_tags": [str(tag) for tag in (spot.get("support_labels") or []) if str(tag).strip()],
+                    "source_note": _spot_sources_text(spot.get("sources")),
                     "meta": [
                         str(spot.get("city") or "未设城市"),
                         str(spot.get("region") or "未设区域"),
@@ -210,7 +230,7 @@ def get_admin_dashboard_context(
                     ],
                     "preview_href": f"/moto/spots/liaoning/{spot.get('slug')}",
                     "edit_href": f"/moto/admin/spots/{spot.get('slug')}/edit",
-                    "image_url": ((spot.get("image_gallery") or [{}])[0]).get("image_url", ""),
+                    "delete_href": f"/moto/admin/spots/{spot.get('slug')}/delete",
                 }
                 for spot in spots
             ],
@@ -284,6 +304,9 @@ def get_admin_route_form_context(
         "delete_action": f"/moto/admin/routes/{current_slug}/delete" if is_edit and current_slug else "",
         "back_href": "/moto/admin",
         "tips": [
+            "手工打卡点只影响详情页里的打卡点时间线，不会改动高德锁定链接、腾讯贴路线、地图 marker 或原始导航途径点。",
+            "先粘贴“高德锁定链接”，再点“一键解析高德点位”，可自动回填手工导航点与 JSON，减少手工录入坐标。",
+            "优先填写“手工导航点”，每行一个起点/途径点/终点，保存后会自动生成标准 GPX 文件并绑定到当前路线。",
             "导航途径点 JSON 需要至少 2 个带 name 的节点，支持 lat/lng 或 coordinates.lat/lng。",
             "每日行程 JSON 会直接进入路线详情页的“示例日程”区。",
             "POI JSON 会进入路线详情和路线列表的补给信息。",
@@ -375,6 +398,18 @@ def save_route_from_form(form_data: Mapping[str, Any]) -> dict[str, Any]:
         "pois": {"fuel": [], "repair": [], "lodging": [], "viewpoint": [], "emergency": []},
     }
 
+    manual_navigation_points = _parse_manual_navigation_points(form_data.get("manual_navigation_points"))
+    navigation_waypoints = manual_navigation_points or _parse_json_text(form_data.get("navigation_waypoints"), "导航途径点 JSON", default=[])
+    manual_checkpoints = _parse_manual_checkpoints(form_data.get("manual_checkpoints"))
+    amap_locked_href = str(form_data.get("amap_locked_href") or "").strip()
+
+    navigation_payload: dict[str, Any] = {
+        "provider": "amap",
+        "waypoints": navigation_waypoints,
+    }
+    if amap_locked_href:
+        navigation_payload["amap_locked_href"] = amap_locked_href
+
     route.update({
         "slug": _required_text(form_data, "slug", "路线 slug"),
         "title": _required_text(form_data, "title", "路线标题"),
@@ -391,15 +426,26 @@ def save_route_from_form(form_data: Mapping[str, Any]) -> dict[str, Any]:
         "experience_levels": _split_multiline_value(form_data.get("experience_levels")),
         "spot_slugs": _split_multiline_value(form_data.get("spot_slugs")),
         "days_plan": _parse_json_text(form_data.get("days_plan"), "每日行程 JSON", default=[]),
-        "navigation": {
-            "provider": "amap",
-            "waypoints": _parse_json_text(form_data.get("navigation_waypoints"), "导航途径点 JSON", default=[]),
-        },
+        "navigation": navigation_payload,
         "pois": _parse_json_text(form_data.get("pois"), "POI JSON", default={}),
         "detail_highlights": _split_multiline_value(form_data.get("detail_highlights")),
         "detail_notes": _split_multiline_value(form_data.get("detail_notes")),
-        "checkpoints": _parse_json_text(form_data.get("checkpoints"), "打卡点时间线 JSON", default=[]),
+        "checkpoints": manual_checkpoints or _parse_json_text(form_data.get("checkpoints"), "打卡点时间线 JSON", default=[]),
     })
+
+    if manual_navigation_points and not route.get("days_plan"):
+        route["days_plan"] = _build_manual_route_days_plan(
+            manual_navigation_points,
+            route_days=max(1, int(route.get("days") or 1)),
+            distance_km=float(route.get("distance_km") or 0),
+        )
+
+    if manual_navigation_points:
+        route["gpx_file"] = gpx_service.write_route_waypoints_gpx(
+            route_slug=route["slug"],
+            route_title=route["title"],
+            waypoints=manual_navigation_points,
+        )
 
     detail_for_whom = str(form_data.get("detail_for_whom") or "").strip()
     if detail_for_whom:
@@ -514,6 +560,8 @@ def delete_spot_admin_record(slug: str) -> bool:
 
 def _route_form_values(route: Mapping[str, Any] | None, form_data: Mapping[str, Any] | None) -> dict[str, Any]:
     source = deepcopy(dict(route)) if route else {}
+    source_navigation = source.get("navigation") if isinstance(source.get("navigation"), Mapping) else {}
+    source_checkpoints = source.get("checkpoints", [])
     values = {
         "slug": _field_value(form_data, "slug", source.get("slug", "")),
         "title": _field_value(form_data, "title", source.get("title", "")),
@@ -532,10 +580,17 @@ def _route_form_values(route: Mapping[str, Any] | None, form_data: Mapping[str, 
         "spot_slugs": _field_value(form_data, "spot_slugs", _stringify_list(source.get("spot_slugs", []))),
         "detail_highlights": _field_value(form_data, "detail_highlights", _stringify_list(source.get("detail_highlights", []))),
         "detail_notes": _field_value(form_data, "detail_notes", _stringify_list(source.get("detail_notes", []))),
-        "navigation_waypoints": _field_value(form_data, "navigation_waypoints", _json_text((source.get("navigation") or {}).get("waypoints", []))),
+        "amap_locked_href": _field_value(form_data, "amap_locked_href", source_navigation.get("amap_locked_href", "")),
+        "manual_navigation_points": _field_value(form_data, "manual_navigation_points", _stringify_manual_navigation_points(source_navigation.get("waypoints", []))),
+        "navigation_waypoints": _field_value(form_data, "navigation_waypoints", _json_text(source_navigation.get("waypoints", []))),
+        "manual_checkpoints": _field_value(
+            form_data,
+            "manual_checkpoints",
+            _stringify_manual_checkpoints(source_checkpoints) or _stringify_waypoint_checkpoints(source_navigation.get("waypoints", [])),
+        ),
         "days_plan": _field_value(form_data, "days_plan", _json_text(source.get("days_plan", []))),
         "pois": _field_value(form_data, "pois", _json_text(source.get("pois", {}))),
-        "checkpoints": _field_value(form_data, "checkpoints", _json_text(source.get("checkpoints", []))),
+        "checkpoints": _field_value(form_data, "checkpoints", _json_text(source_checkpoints)),
     }
     return values
 
@@ -603,6 +658,145 @@ def _build_form_groups(group_specs: list[dict[str, Any]], values: Mapping[str, A
             }
         )
     return groups
+
+
+def _parse_manual_navigation_points(raw_value: Any) -> list[dict[str, Any]]:
+    text = str(raw_value or "").strip()
+    if not text:
+        return []
+
+    points: list[dict[str, Any]] = []
+    for index, raw_line in enumerate(text.splitlines(), start=1):
+        line = raw_line.strip()
+        if not line:
+            continue
+        parts = [segment.strip() for segment in re.split(r"\s*[|,，]\s*", line) if segment.strip()]
+        if len(parts) < 3:
+            raise ValueError(f"手工导航点第 {index} 行格式错误，请按 名称 | 经度 | 纬度 填写")
+
+        name = parts[0]
+        try:
+            lng = float(parts[1])
+            lat = float(parts[2])
+        except ValueError as error:
+            raise ValueError(f"手工导航点第 {index} 行经纬度格式错误") from error
+
+        points.append({
+            "name": name,
+            "lng": lng,
+            "lat": lat,
+            "has_coordinates": True,
+        })
+
+    if points and len(points) < 2:
+        raise ValueError("手工导航点至少需要起点和终点两个点")
+    return points
+
+
+def _stringify_manual_navigation_points(points: Any) -> str:
+    if not isinstance(points, list):
+        return ""
+    lines: list[str] = []
+    for point in points:
+        if not isinstance(point, Mapping):
+            continue
+        name = str(point.get("name") or "").strip()
+        lng = point.get("lng")
+        lat = point.get("lat")
+        if not name or lng in {None, ""} or lat in {None, ""}:
+            continue
+        lines.append(f"{name} | {lng} | {lat}")
+    return "\n".join(lines)
+
+
+def _parse_manual_checkpoints(raw_value: Any) -> list[dict[str, Any]]:
+    lines = [line.strip() for line in str(raw_value or "").splitlines() if line.strip()]
+    checkpoints: list[dict[str, Any]] = []
+    for line in lines:
+        parts = [part.strip() for part in line.split("|")]
+        if not parts or not parts[0]:
+            raise ValueError(f"手工打卡点格式不正确：{line}")
+
+        checkpoints.append(
+            {
+                "name": parts[0],
+                "summary": parts[1] if len(parts) > 1 else "",
+                "timing": parts[2] if len(parts) > 2 else "",
+                "distance_text": parts[3] if len(parts) > 3 else "后台维护",
+                "hit_count_text": parts[4] if len(parts) > 4 else "--",
+            }
+        )
+    return checkpoints
+
+
+def _stringify_manual_checkpoints(points: Any) -> str:
+    if not isinstance(points, list):
+        return ""
+
+    lines: list[str] = []
+    for item in points:
+        if not isinstance(item, Mapping):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        summary = str(item.get("summary") or "").strip()
+        timing = str(item.get("timing") or item.get("duration_text") or "").strip()
+        distance_text = str(item.get("distance_text") or item.get("distance") or "").strip()
+        hit_count_text = str(item.get("hit_count_text") or item.get("hit_count") or "").strip()
+        lines.append(" | ".join([name, summary, timing, distance_text, hit_count_text]).rstrip())
+    return "\n".join(lines)
+
+
+def _stringify_waypoint_checkpoints(points: Any) -> str:
+    if not isinstance(points, list):
+        return ""
+
+    lines: list[str] = []
+    for item in points:
+        if not isinstance(item, Mapping):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        lines.append(f"{name} |  |  |  | ")
+    return "\n".join(lines)
+
+
+def _build_manual_route_days_plan(
+    waypoints: list[dict[str, Any]],
+    *,
+    route_days: int,
+    distance_km: float,
+) -> list[dict[str, Any]]:
+    safe_days = max(1, route_days)
+    chunk_size = max(1, len(waypoints) // safe_days)
+    average_day_distance = max(1, int(round(distance_km / safe_days))) if distance_km > 0 else max(80, (len(waypoints) - 1) * 80 // safe_days)
+    days_plan: list[dict[str, Any]] = []
+
+    for index in range(safe_days):
+        start = index * chunk_size
+        end = None if index == safe_days - 1 else (index + 1) * chunk_size
+        chunk = waypoints[start:end]
+        if not chunk:
+            continue
+        days_plan.append({
+            "day": index + 1,
+            "title": " -> ".join(str(point.get("name") or "途径点") for point in chunk),
+            "ride_time": f"建议骑行 {3 + index}-{4 + index} 小时",
+            "distance": average_day_distance,
+            "highlights": ["手工维护导航点", "自动生成 GPX", "支持地图导入"],
+            "note": "后台根据起点、途径点和终点自动生成，后续可继续细化每日安排。",
+        })
+
+    return days_plan or [{
+        "day": 1,
+        "title": " -> ".join(str(point.get("name") or "途径点") for point in waypoints),
+        "ride_time": "建议骑行 3-4 小时",
+        "distance": average_day_distance,
+        "highlights": ["手工维护导航点", "自动生成 GPX", "支持地图导入"],
+        "note": "后台根据起点、途径点和终点自动生成，后续可继续细化每日安排。",
+    }]
 
 
 def _field_value(form_data: Mapping[str, Any] | None, name: str, fallback: Any) -> Any:
@@ -722,3 +916,36 @@ def _merge_uploaded_image_urls(current_urls: list[str], uploaded_image_urls: Map
             merged.append("")
         merged[index] = url
     return [item for item in merged if str(item).strip()]
+
+
+def _spot_coordinates_text(coordinates: Any) -> str:
+    if not isinstance(coordinates, dict):
+        return "未维护坐标"
+    lat = coordinates.get("lat")
+    lng = coordinates.get("lng")
+    if isinstance(lat, (int, float)) and isinstance(lng, (int, float)):
+        return f"{lat:.6f}, {lng:.6f}"
+    return "未维护坐标"
+
+
+def _spot_sources_text(sources: Any) -> str:
+    if not isinstance(sources, list) or not sources:
+        return "暂无来源说明"
+    normalized: list[str] = []
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        name = str(source.get("name") or "").strip()
+        note = str(source.get("note") or "").strip()
+        source_type = str(source.get("type") or "").strip()
+        if name:
+            normalized.append(name)
+        elif note:
+            normalized.append(note)
+        elif source_type:
+            normalized.append(source_type)
+    if not normalized:
+        return "暂无来源说明"
+    preview = " / ".join(normalized[:2])
+    suffix = " 等" if len(normalized) > 2 else ""
+    return f"{preview}{suffix}"

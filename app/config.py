@@ -32,6 +32,7 @@ class BaseConfig:
     DEBUG = False
     TESTING = False
     AMAP_WEB_JS_API_KEY = "38f53ab9f332df1392b762d6806a89f0"
+    TENCENT_MAP_WEB_SERVICE_KEY = os.getenv("TENCENT_MAP_WEB_SERVICE_KEY", "4MABZ-BYQKZ-4CAXR-TZUQC-MRP6E-MHBDI")
 
 
 class DevelopmentConfig(BaseConfig):

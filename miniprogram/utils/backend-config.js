@@ -16,8 +16,12 @@ const API_PATHS = {
   routeDetail(slug) {
     return `/moto/routes/${encodeURIComponent(String(slug || "").trim())}`;
   },
+  routeWantGo(slug) {
+    return `/moto/routes/${encodeURIComponent(String(slug || "").trim())}/want-go`;
+  },
   spots: "/moto/spots",
   me: "/moto/me",
+  meNavigationPreferences: "/moto/me/navigation-preferences",
 };
 
 const WEB_PATHS = {

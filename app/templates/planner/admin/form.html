@@ -74,6 +74,13 @@
                   {% else %}
                     <input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.component }}" value="{{ field.value }}">
                   {% endif %}
+                  {% if field.name == 'amap_locked_href' %}
+                    <span class="planner-field__example">粘贴高德链接后，点击下方按钮可自动解析起点/途经点/终点并回填到导航字段。</span>
+                    <div class="planner-actions" style="margin-top: 8px;">
+                      <button id="amap_parse_waypoints_btn" class="button-secondary" type="button">一键解析高德点位</button>
+                    </div>
+                    <span id="amap_parse_waypoints_status" class="planner-field__example"></span>
+                  {% endif %}
                   <span class="planner-field__example">{{ field.help }}</span>
                 </label>
               {% endfor %}
@@ -100,4 +107,168 @@
       </ul>
     </section>
   </main>
+
+  <script>
+    (function () {
+      const hrefInput = document.getElementById("amap_locked_href");
+      const manualPointsInput = document.getElementById("manual_navigation_points");
+      const jsonWaypointsInput = document.getElementById("navigation_waypoints");
+      const parseButton = document.getElementById("amap_parse_waypoints_btn");
+      const statusEl = document.getElementById("amap_parse_waypoints_status");
+
+      if (!hrefInput || !manualPointsInput || !jsonWaypointsInput || !parseButton || !statusEl) {
+        return;
+      }
+
+      function setStatus(message, isError) {
+        statusEl.textContent = message;
+        statusEl.style.color = isError ? "#b42318" : "#2e6f40";
+      }
+
+      function parseFloatStrict(value) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+
+      function parseLngLatPair(value) {
+        const text = String(value || "").trim();
+        if (!text) {
+          return null;
+        }
+        const parts = text.split(",").map((item) => item.trim());
+        if (parts.length !== 2) {
+          return null;
+        }
+        const lng = parseFloatStrict(parts[0]);
+        const lat = parseFloatStrict(parts[1]);
+        if (lng === null || lat === null) {
+          return null;
+        }
+        return { lng, lat };
+      }
+
+      function parseCarmapToken(token, fallbackName) {
+        const parts = String(token || "").split(",").map((item) => item.trim()).filter(Boolean);
+        if (parts.length < 2) {
+          return null;
+        }
+        const lng = parseFloatStrict(parts[0]);
+        const lat = parseFloatStrict(parts[1]);
+        if (lng === null || lat === null) {
+          return null;
+        }
+        const name = (parts.slice(2).join(",") || fallbackName || "途经点").trim();
+        return { name, lng, lat, has_coordinates: true };
+      }
+
+      function parseDirFormat(searchParams) {
+        const points = [];
+        const start = parseLngLatPair(searchParams.get("from[lnglat]"));
+        const end = parseLngLatPair(searchParams.get("to[lnglat]"));
+
+        if (start) {
+          points.push({
+            name: String(searchParams.get("from[name]") || "起点").trim() || "起点",
+            lng: start.lng,
+            lat: start.lat,
+            has_coordinates: true,
+          });
+        }
+
+        for (let index = 0; index < 64; index += 1) {
+          const lnglat = searchParams.get(`via[${index}][lnglat]`);
+          const name = String(searchParams.get(`via[${index}][name]`) || `途经点${index + 1}`).trim();
+          if (!lnglat && !searchParams.has(`via[${index}][name]`)) {
+            break;
+          }
+          const parsed = parseLngLatPair(lnglat);
+          if (!parsed) {
+            continue;
+          }
+          points.push({ name: name || `途经点${index + 1}`, lng: parsed.lng, lat: parsed.lat, has_coordinates: true });
+        }
+
+        if (end) {
+          points.push({
+            name: String(searchParams.get("to[name]") || "终点").trim() || "终点",
+            lng: end.lng,
+            lat: end.lat,
+            has_coordinates: true,
+          });
+        }
+
+        return points;
+      }
+
+      function parseCarmapFormat(searchParams) {
+        const points = [];
+        const start = parseCarmapToken(searchParams.get("saddr"), "起点");
+        const end = parseCarmapToken(searchParams.get("daddr"), "终点");
+        const middle = String(searchParams.get("maddr") || "").trim();
+
+        if (start) {
+          points.push(start);
+        }
+
+        if (middle) {
+          middle.split("|").forEach((token, index) => {
+            const parsed = parseCarmapToken(token, `途经点${index + 1}`);
+            if (parsed) {
+              points.push(parsed);
+            }
+          });
+        }
+
+        if (end) {
+          points.push(end);
+        }
+
+        return points;
+      }
+
+      function parseAmapUrl(urlValue) {
+        const raw = String(urlValue || "").trim();
+        if (!raw) {
+          throw new Error("请先粘贴高德链接");
+        }
+
+        let parsedUrl;
+        try {
+          parsedUrl = new URL(raw);
+        } catch (_) {
+          throw new Error("链接格式不正确，请粘贴完整的 http/https 高德链接");
+        }
+
+        const params = parsedUrl.searchParams;
+        let points = [];
+        if (params.has("from[lnglat]") && params.has("to[lnglat]")) {
+          points = parseDirFormat(params);
+        } else if (params.has("saddr") && params.has("daddr")) {
+          points = parseCarmapFormat(params);
+        }
+
+        if (points.length < 2) {
+          throw new Error("未能解析出足够点位（至少需要起点和终点）");
+        }
+        return points;
+      }
+
+      function formatManualLines(points) {
+        return points
+          .map((point) => `${point.name} | ${point.lng} | ${point.lat}`)
+          .join("\n");
+      }
+
+      parseButton.addEventListener("click", function () {
+        try {
+          const points = parseAmapUrl(hrefInput.value);
+          manualPointsInput.value = formatManualLines(points);
+          jsonWaypointsInput.value = JSON.stringify(points, null, 2);
+          setStatus(`解析成功：已回填 ${points.length} 个导航点。保存后会按这些点生成腾讯贴路预览。`, false);
+        } catch (error) {
+          setStatus(String(error && error.message ? error.message : error), true);
+        }
+      });
+    })();
+  </script>
 {% endblock %}

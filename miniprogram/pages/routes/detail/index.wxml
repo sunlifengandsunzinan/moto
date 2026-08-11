@@ -24,15 +24,15 @@
         <text>暂无地图预览</text>
       </view>
 
-      <view class="route-map-panel__cta" bindtap="handleDirectNavigate">
-        <text class="route-map-panel__cta-text">查看路线地图</text>
+      <view class="route-map-panel__cta" bindtap="handlePrimaryMapAction">
+        <text class="route-map-panel__cta-text">{{primaryMapActionLabel}}</text>
       </view>
     </view>
 
-    <view class="route-detail-actions-row" wx:if="{{false}}">
-      <button class="button-secondary route-detail-action-button route-detail-favorite-button {{route.is_favorite ? 'route-detail-favorite-button--active' : ''}}" bindtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
-      <button wx:if="{{route.amap_export.is_available}}" class="button-secondary route-detail-action-button" bindtap="handleDirectNavigate">直接导航</button>
-      <button wx:if="{{route.gpx.is_available}}" class="button-secondary route-detail-action-button" data-filename="{{route.gpx.filename}}" bindtap="handleDownloadGpx">下载GPX</button>
+    <view class="route-detail-actions-row">
+      <button class="button-secondary route-detail-action-button route-detail-want-go-button" bindtap="handleSetWantGoPlan">{{wantGoActionLabel}}</button>
+      <button wx:if="{{false}}" class="button-secondary route-detail-action-button route-detail-favorite-button {{route.is_favorite ? 'route-detail-favorite-button--active' : ''}}" bindtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
+      <button wx:if="{{false && route.amap_export.is_available}}" class="button-secondary route-detail-action-button" bindtap="handleDirectNavigate">直接导航</button>
     </view>
 
     <view class="checkpoint-list">
@@ -55,6 +55,70 @@
             <text class="checkpoint-distance">{{item.distance_text}}</text>
             <text class="checkpoint-hit">打卡{{item.hit_count_text}}</text>
           </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="linked-spots-section" wx:if="{{linkedSpots.length}}">
+      <view class="linked-spots-section__title">关联打卡点</view>
+      <view class="linked-spots-list">
+        <view wx:for="{{linkedSpots}}" wx:key="slug" class="linked-spot-card">
+          <image wx:if="{{item.image_url}}" class="linked-spot-card__image" mode="aspectFill" src="{{item.image_url}}"></image>
+          <view class="linked-spot-card__body">
+            <view class="linked-spot-card__name">{{item.name}}</view>
+            <view wx:if="{{item.summary}}" class="linked-spot-card__summary">{{item.summary}}</view>
+            <view class="linked-spot-card__coordinates">坐标：{{item.coordinates_text}}</view>
+            <view class="linked-spot-card__tags" wx:if="{{item.support_tags.length}}">
+              <text wx:for="{{item.support_tags}}" wx:key="*this" class="linked-spot-card__tag">{{item}}</text>
+            </view>
+            <view class="linked-spot-card__sources" wx:if="{{item.source_items.length}}">
+              <view class="linked-spot-card__sources-title">来源说明</view>
+              <view wx:for="{{item.source_items}}" wx:key="index" wx:for-item="source" class="linked-spot-card__source-item">
+                <text>{{source.name || source.type || '未命名来源'}}</text>
+                <text wx:if="{{source.verified}}">（已核验）</text>
+                <text wx:if="{{source.note}}">：{{source.note}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{showImportAssistant}}" class="route-import-modal" bindtap="handleCloseImportAssistant">
+      <view class="route-import-modal__dialog" catchtap="noop">
+        <view class="route-import-modal__header">
+          <text class="route-import-modal__title">{{importAssistant.title}}</text>
+          <text class="route-import-modal__subtitle">{{importAssistant.subtitle}}</text>
+        </view>
+
+        <view wx:if="{{importDownloadMessage}}" class="route-import-modal__status route-import-modal__status--{{importDownloadStatus}}">
+          <text>{{importDownloadMessage}}</text>
+        </view>
+
+        <view class="route-import-modal__apps" wx:if="{{importAssistant.map_apps.length}}">
+          <view wx:for="{{importAssistant.map_apps}}" wx:key="key" class="route-import-modal__app {{selectedImportMapAppKey === item.key ? 'is-active' : ''}}" data-key="{{item.key}}" bindtap="handleSelectImportMapApp">
+            <text class="route-import-modal__app-label">{{item.label}}</text>
+            <text wx:if="{{item.description}}" class="route-import-modal__app-desc">{{item.description}}</text>
+          </view>
+        </view>
+
+        <view class="route-import-modal__steps" wx:if="{{selectedImportSteps.length}}">
+          <text class="route-import-modal__steps-title">导入步骤</text>
+          <view wx:for="{{selectedImportSteps}}" wx:key="index" class="route-import-modal__step-item">
+            <text class="route-import-modal__step-index">{{index + 1}}.</text>
+            <text class="route-import-modal__step-text">{{item}}</text>
+          </view>
+        </view>
+
+        <view class="route-import-modal__troubleshooting" wx:if="{{showImportTroubleshooting && importAssistant.troubleshooting.items.length}}">
+          <text class="route-import-modal__steps-title">{{importAssistant.troubleshooting.title}}</text>
+          <view wx:for="{{importAssistant.troubleshooting.items}}" wx:key="index" class="route-import-modal__troubleshooting-item">{{item}}</view>
+        </view>
+
+        <view class="route-import-modal__actions">
+          <button class="route-import-modal__btn route-import-modal__btn--ghost" bindtap="handleToggleImportTroubleshooting">{{showImportTroubleshooting ? '收起帮助' : importAssistant.helper_entry_label}}</button>
+          <button class="route-import-modal__btn route-import-modal__btn--ghost" wx:if="{{downloadedGpxPath}}" bindtap="handleCopyGpxPath">复制文件路径</button>
+          <button class="route-import-modal__btn route-import-modal__btn--primary" bindtap="handleCloseImportAssistant">我知道了</button>
         </view>
       </view>
     </view>

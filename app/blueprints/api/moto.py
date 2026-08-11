@@ -6,13 +6,19 @@ from flask import jsonify, request, send_file
 from ...services import (
     build_route_detail_context,
     build_routes_index_context,
+    clear_user_route_want_go_plan,
+    get_route_want_go_stats,
     get_user_favorite_slugs,
     get_moto_me_context,
     get_liaoning_route_templates,
+    get_user_navigation_preferences,
+    get_user_want_go_route_plans,
     mark_user_route_checkin,
     get_route_by_slug,
     get_route_waypoint_collection_api_payload,
+    set_user_navigation_preferences,
     set_user_route_favorite,
+    set_user_route_want_go_plan,
     get_spots_index_context,
     gpx_service,
 )
@@ -32,11 +38,16 @@ def _resolve_user_id() -> str:
 def moto_routes():
     user_id = _resolve_user_id()
     favorite_slugs = get_user_favorite_slugs(user_id)
+    want_go_plans = get_user_want_go_route_plans(user_id)
     context = build_routes_index_context(get_liaoning_route_templates(), request.args)
     context["routes"] = [
         {
             **route,
             "is_favorite": str(route.get("slug") or "").strip() in favorite_slugs,
+            "want_go": {
+                **(route.get("want_go") if isinstance(route.get("want_go"), dict) else {}),
+                "plan_bucket": want_go_plans.get(str(route.get("slug") or "").strip(), ""),
+            },
         }
         for route in context.get("routes", [])
     ]
@@ -60,12 +71,93 @@ def moto_route_detail(slug: str):
     if route is None:
         return jsonify({"message": "Route not found"}), 404
     payload = build_route_detail_context(route)
-    favorite_slugs = get_user_favorite_slugs(_resolve_user_id())
+    user_id = _resolve_user_id()
+    favorite_slugs = get_user_favorite_slugs(user_id)
+    want_go_plans = get_user_want_go_route_plans(user_id)
+    user_navigation_preferences = get_user_navigation_preferences(user_id)
+    want_go_stats = get_route_want_go_stats(slug)
     payload["route"] = {
         **payload.get("route", {}),
         "is_favorite": str(slug).strip() in favorite_slugs,
+        "engagement": {
+            **(payload.get("route", {}).get("engagement") if isinstance(payload.get("route", {}).get("engagement"), dict) else {}),
+            "want_go_count": int(want_go_stats.get("total_count") or 0),
+        },
+        "want_go": {
+            **(payload.get("route", {}).get("want_go") if isinstance(payload.get("route", {}).get("want_go"), dict) else {}),
+            "plan_bucket": want_go_plans.get(str(slug).strip(), ""),
+            "this_month_count": int(want_go_stats.get("this_month_count") or 0),
+            "next_month_count": int(want_go_stats.get("next_month_count") or 0),
+            "later_count": int(want_go_stats.get("later_count") or 0),
+            "total_count": int(want_go_stats.get("total_count") or 0),
+        },
     }
+    detail_sections = payload.get("detail_sections") if isinstance(payload.get("detail_sections"), dict) else {}
+    navigation_import_assistant = detail_sections.get("navigation_import_assistant") if isinstance(detail_sections.get("navigation_import_assistant"), dict) else {}
+    if navigation_import_assistant:
+        navigation_import_assistant["preferred_map_app"] = str(user_navigation_preferences.get("preferred_map_app") or "").strip()
+        detail_sections["navigation_import_assistant"] = navigation_import_assistant
+        payload["detail_sections"] = detail_sections
     return jsonify(payload)
+
+
+@api_bp.route("/moto/routes/<slug>/want-go", methods=["POST", "DELETE"])
+def moto_route_want_go(slug: str):
+    route = get_route_by_slug(slug)
+    if route is None:
+        return jsonify({"ok": False, "error": "Route not found"}), 404
+
+    user_id = _resolve_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "error": "Missing user id"}), 400
+
+    if request.method == "DELETE":
+        result = clear_user_route_want_go_plan(user_id, slug)
+    else:
+        data = request.get_json(silent=True) or {}
+        plan_bucket = str(data.get("plan_bucket") or request.form.get("plan_bucket") or "").strip()
+        result = set_user_route_want_go_plan(user_id, slug, plan_bucket)
+
+    if not result.get("ok"):
+        return jsonify({"ok": False, "error": "Invalid want-go plan bucket"}), 400
+
+    want_go_stats = get_route_want_go_stats(slug)
+    engagement = {
+        **get_route_engagement(slug),
+        "want_go_count": int(want_go_stats.get("total_count") or 0),
+    }
+    return jsonify({
+        "ok": True,
+        "slug": slug,
+        "plan_bucket": str(result.get("plan_bucket") or ""),
+        "want_go_count": int(result.get("want_go_count") or 0),
+        "want_go": {
+            "plan_bucket": str(result.get("plan_bucket") or ""),
+            "this_month_count": int(want_go_stats.get("this_month_count") or 0),
+            "next_month_count": int(want_go_stats.get("next_month_count") or 0),
+            "later_count": int(want_go_stats.get("later_count") or 0),
+            "total_count": int(want_go_stats.get("total_count") or 0),
+        },
+        "engagement": engagement,
+    })
+
+
+@api_bp.post("/moto/me/navigation-preferences")
+def moto_me_navigation_preferences_save():
+    user_id = _resolve_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "error": "Missing user id"}), 400
+
+    data = request.get_json(silent=True) or {}
+    preferred_map_app = str(data.get("preferred_map_app") or request.form.get("preferred_map_app") or "").strip()
+    result = set_user_navigation_preferences(user_id, preferred_map_app=preferred_map_app)
+    if not result.get("ok"):
+        return jsonify({"ok": False, "error": "Failed to save navigation preferences"}), 400
+
+    return jsonify({
+        "ok": True,
+        "preferred_map_app": str(result.get("preferred_map_app") or ""),
+    })
 
 
 @api_bp.route("/moto/routes/<slug>/favorite", methods=["POST", "DELETE"])
@@ -141,6 +233,25 @@ def gpx_download(filename: str):
     fpath = PROJECT_ROOT / "data" / "gpx" / filename
     if not fpath.exists() or not fpath.suffix == ".gpx":
         return jsonify({"ok": False, "error": "文件不存在"}), 404
+    return send_file(str(fpath), mimetype="application/gpx+xml",
+                     as_attachment=True, download_name=filename)
+
+
+@api_bp.get("/moto/routes/<slug>/gpx")
+def moto_route_gpx_download(slug: str):
+    route = get_route_by_slug(slug)
+    if route is None:
+        return jsonify({"ok": False, "error": "Route not found"}), 404
+
+    filename = str(route.get("gpx_file") or "").strip()
+    if not filename:
+        return jsonify({"ok": False, "error": "文件不存在"}), 404
+
+    PROJECT_ROOT = Path(__file__).resolve().parents[3]
+    fpath = PROJECT_ROOT / "data" / "gpx" / filename
+    if not fpath.exists() or not fpath.suffix == ".gpx":
+        return jsonify({"ok": False, "error": "文件不存在"}), 404
+
     return send_file(str(fpath), mimetype="application/gpx+xml",
                      as_attachment=True, download_name=filename)
 

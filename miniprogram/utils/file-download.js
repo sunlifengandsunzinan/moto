@@ -1,4 +1,9 @@
-function downloadRemoteFile({ url, filename = "route.gpx", loadingText = "正在下载" }) {
+function downloadRemoteFile({
+  url,
+  filename = "route.gpx",
+  loadingText = "正在下载",
+  showSavedModal = true,
+}) {
   return new Promise((resolve, reject) => {
     if (!url) {
       reject(new Error("下载地址不存在"));
@@ -19,19 +24,23 @@ function downloadRemoteFile({ url, filename = "route.gpx", loadingText = "正在
         wx.saveFile({
           tempFilePath,
           success: ({ savedFilePath }) => {
-            wx.showModal({
-              title: "GPX 已下载",
-              content: `${filename}\n已保存到：${savedFilePath}`,
-              showCancel: false,
-            });
+            if (showSavedModal) {
+              wx.showModal({
+                title: "GPX 已下载",
+                content: `${filename}\n已保存到：${savedFilePath}`,
+                showCancel: false,
+              });
+            }
             resolve(savedFilePath);
           },
           fail: () => {
-            wx.showModal({
-              title: "GPX 已下载",
-              content: `${filename}\n临时文件路径：${tempFilePath}`,
-              showCancel: false,
-            });
+            if (showSavedModal) {
+              wx.showModal({
+                title: "GPX 已下载",
+                content: `${filename}\n临时文件路径：${tempFilePath}`,
+                showCancel: false,
+              });
+            }
             resolve(tempFilePath);
           },
         });

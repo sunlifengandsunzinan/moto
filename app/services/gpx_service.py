@@ -16,6 +16,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timezone
+from html import escape
 from pathlib import Path
 from typing import Any
 import xml.etree.ElementTree as ET
@@ -143,6 +144,51 @@ def get_gpx_waypoints(filename: str, max_points: int = 16) -> list[dict]:
             break
 
     return waypoints
+
+
+def write_route_waypoints_gpx(*, route_slug: str, route_title: str, waypoints: list[dict[str, Any]]) -> str:
+    normalized_slug = _slugify_gpx_filename(route_slug) or f"route-{int(time.time())}"
+    if len(waypoints) < 2:
+        raise ValueError("至少需要两个导航点才能生成 GPX")
+
+    GPX_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"{normalized_slug}.gpx"
+    file_path = GPX_DIR / filename
+    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+    trkpts = []
+    for point in waypoints:
+        name = escape(str(point.get("name") or "途径点").strip())
+        lat = float(point.get("lat"))
+        lng = float(point.get("lng"))
+        trkpts.append(
+            f'    <trkpt lat="{lat:.6f}" lon="{lng:.6f}">\n'
+            f"      <name>{name}</name>\n"
+            f"    </trkpt>"
+        )
+
+    content = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<gpx version="1.1" creator="moto-admin" xmlns="http://www.topografix.com/GPX/1/1">\n'
+        "  <metadata>\n"
+        f"    <name>{escape(str(route_title or route_slug or 'route').strip())}</name>\n"
+        f"    <time>{now}</time>\n"
+        "  </metadata>\n"
+        "  <trk>\n"
+        f"    <name>{escape(str(route_title or route_slug or 'route').strip())}</name>\n"
+        "    <trkseg>\n"
+        f"{'\n'.join(trkpts)}\n"
+        "    </trkseg>\n"
+        "  </trk>\n"
+        "</gpx>\n"
+    )
+    file_path.write_text(content, encoding="utf-8")
+    return filename
+
+
+def _slugify_gpx_filename(value: str) -> str:
+    normalized = re.sub(r"[^a-zA-Z0-9_-]+", "-", str(value or "").strip()).strip("-").lower()
+    return normalized[:80]
 
 
 def run_gpx_process_url(video_url: str) -> dict:

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="moto-admin" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>沈阳-本溪小墙缝环线（本同线）</name>
+    <time>2026-08-06T01:44:53Z</time>
+  </metadata>
+  <trk>
+    <name>沈阳-本溪小墙缝环线（本同线）</name>
+    <trkseg>
+    <trkpt lat="41.724099" lon="123.459698">
+      <name>青年南大街与G1113丹阜高速入口交叉口</name>
+    </trkpt>
+    <trkpt lat="41.373530" lon="124.041931">
+      <name>304省道</name>
+    </trkpt>
+    <trkpt lat="41.317063" lon="124.150004">
+      <name>小清线</name>
+    </trkpt>
+    <trkpt lat="41.301621" lon="124.142017">
+      <name>基督教堂</name>
+    </trkpt>
+    <trkpt lat="41.288347" lon="124.135141">
+      <name>东北抗联史实陈列馆</name>
+    </trkpt>
+    <trkpt lat="41.274542" lon="124.124136">
+      <name>天龙古洞风景区</name>
+    </trkpt>
+    <trkpt lat="41.269442" lon="124.106335">
+      <name>香天线</name>
+    </trkpt>
+    <trkpt lat="41.147994" lon="124.169911">
+      <name>小墙缝</name>
+    </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
