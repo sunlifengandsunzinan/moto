@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="moto-admin" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>沈阳-沈通线-鸦鹘关-赫图阿拉城-木奇村-铁苇线环线</name>
+    <time>2026-08-12T03:43:17Z</time>
+  </metadata>
+  <trk>
+    <name>沈阳-沈通线-鸦鹘关-赫图阿拉城-木奇村-铁苇线环线</name>
+    <trkseg>
+    <trkpt lat="41.677576" lon="123.464675">
+      <name>沈阳</name>
+    </trkpt>
+    <trkpt lat="41.584451" lon="124.673212">
+      <name>沈通线</name>
+    </trkpt>
+    <trkpt lat="41.535907" lon="124.567912">
+      <name>鸦鹘关</name>
+    </trkpt>
+    <trkpt lat="41.705298" lon="124.874263">
+      <name>赫图阿拉城</name>
+    </trkpt>
+    <trkpt lat="41.773667" lon="124.633700">
+      <name>木奇村</name>
+    </trkpt>
+    <trkpt lat="41.934649" lon="124.463977">
+      <name>铁苇线</name>
+    </trkpt>
+    <trkpt lat="41.677576" lon="123.464675">
+      <name>沈阳</name>
+    </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

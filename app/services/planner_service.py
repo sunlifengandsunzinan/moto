@@ -1832,6 +1832,7 @@ def _route_index_card(
         "slug": slug,
         "title": route["title"],
         "summary": route["summary"],
+        "cover_image_url": str(route.get("cover_image_url") or "").strip(),
         "tags": tags,
         "best_season": route["best_season"],
         "difficulty_label": difficulty_label(route["difficulty"]),
@@ -2965,7 +2966,7 @@ def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
                     "name": checkpoint["name"],
                     "summary": checkpoint["summary"],
                     "timing": checkpoint["timing"],
-                    "image_url": f"/static/{checkpoint['image']}",
+                    "image_url": f"/static/{str(checkpoint.get('image') or 'route-checkpoint-placeholder.jpg').strip()}",
                 }
                 for checkpoint in route.get("checkpoints", [])
             ],

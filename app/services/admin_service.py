@@ -39,6 +39,7 @@ ROUTE_FORM_GROUPS = [
             ("best_season", "最佳季节", "text", "例如 春秋"),
             ("budget_range", "预算范围", "text", "例如 1000-2000"),
             ("summary", "摘要", "textarea", "路线列表与详情摘要"),
+            ("cover_image_url", "封面图地址", "text", "可选，优先用于小程序首页路线封面"),
             ("is_visible", "是否在路线页显示", "text", "true / false，默认 true"),
             ("detail_for_whom", "适合谁", "textarea", "详情页说明，可为空"),
         ],
@@ -290,10 +291,22 @@ def get_admin_route_form_context(
         "form": {
             "action": "/moto/admin/routes/save",
             "method": "post",
-            "enctype": "",
+            "enctype": "multipart/form-data",
             "submit_label": "保存路线",
             "hidden_fields": [{"name": "original_slug", "value": slug or ""}],
             "groups": _build_form_groups(ROUTE_FORM_GROUPS, values),
+            "image_uploads_title": "路线封面图",
+            "image_uploads_description": "上传后会覆盖当前路线封面图；小程序首页会优先显示这里的图片，不再强制使用高德截图。",
+            "image_uploads": [
+                {
+                    "name": "image_upload_cover",
+                    "label": "上传路线封面图",
+                    "help": "建议上传横版图片；保存后会写入当前路线的 cover_image_url。",
+                    "current_url": str(values.get("cover_image_url") or "").strip(),
+                    "upload_action": "/moto/admin/routes/upload-cover",
+                    "upload_label": "单独上传封面图",
+                }
+            ],
         },
         "errors": errors or [],
         "feedback": {
@@ -376,7 +389,7 @@ def get_admin_spot_form_context(
     }
 
 
-def save_route_from_form(form_data: Mapping[str, Any]) -> dict[str, Any]:
+def save_route_from_form(form_data: Mapping[str, Any], uploaded_cover_image_url: str | None = None) -> dict[str, Any]:
     original_slug = str(form_data.get("original_slug") or "").strip() or None
     base_route = get_route_template_by_slug(original_slug) if original_slug else None
     route = deepcopy(base_route) if base_route else {
@@ -420,6 +433,7 @@ def save_route_from_form(form_data: Mapping[str, Any]) -> dict[str, Any]:
         "best_season": _required_text(form_data, "best_season", "最佳季节"),
         "budget_range": _required_text(form_data, "budget_range", "预算范围"),
         "summary": _required_text(form_data, "summary", "路线摘要"),
+        "cover_image_url": str(form_data.get("cover_image_url") or "").strip(),
         "is_visible": _parse_bool_value(form_data.get("is_visible"), "是否在路线页显示", default=True),
         "scenery_type": _split_multiline_value(form_data.get("scenery_type")),
         "bike_types": _split_multiline_value(form_data.get("bike_types")),
@@ -432,6 +446,12 @@ def save_route_from_form(form_data: Mapping[str, Any]) -> dict[str, Any]:
         "detail_notes": _split_multiline_value(form_data.get("detail_notes")),
         "checkpoints": manual_checkpoints or _parse_json_text(form_data.get("checkpoints"), "打卡点时间线 JSON", default=[]),
     })
+
+    if uploaded_cover_image_url:
+        route["cover_image_url"] = uploaded_cover_image_url
+
+    if not str(route.get("cover_image_url") or "").strip():
+        route.pop("cover_image_url", None)
 
     if manual_navigation_points and not route.get("days_plan"):
         route["days_plan"] = _build_manual_route_days_plan(
@@ -447,6 +467,8 @@ def save_route_from_form(form_data: Mapping[str, Any]) -> dict[str, Any]:
             waypoints=manual_navigation_points,
         )
 
+    _normalize_route_checkpoints(route)
+
     detail_for_whom = str(form_data.get("detail_for_whom") or "").strip()
     if detail_for_whom:
         route["detail_for_whom"] = detail_for_whom
@@ -454,6 +476,21 @@ def save_route_from_form(form_data: Mapping[str, Any]) -> dict[str, Any]:
         route.pop("detail_for_whom", None)
 
     return save_route_template(route, original_slug=original_slug)
+
+
+def save_route_cover_image_only(route_slug: str, cover_image_url: str) -> dict[str, Any]:
+    normalized_slug = str(route_slug or "").strip()
+    if not normalized_slug:
+        raise ValueError("缺少路线 slug，无法更新封面图")
+
+    route = get_route_template_by_slug(normalized_slug)
+    if route is None:
+        raise ValueError("路线不存在，无法更新封面图")
+
+    updated_route = deepcopy(route)
+    updated_route["cover_image_url"] = str(cover_image_url or "").strip()
+    _normalize_route_checkpoints(updated_route)
+    return save_route_template(updated_route, original_slug=normalized_slug)
 
 
 def save_spot_from_form(form_data: Mapping[str, Any], uploaded_image_urls: Mapping[int, str] | None = None) -> dict[str, Any]:
@@ -572,6 +609,7 @@ def _route_form_values(route: Mapping[str, Any] | None, form_data: Mapping[str, 
         "best_season": _field_value(form_data, "best_season", source.get("best_season", "")),
         "budget_range": _field_value(form_data, "budget_range", source.get("budget_range", "")),
         "summary": _field_value(form_data, "summary", source.get("summary", "")),
+        "cover_image_url": _field_value(form_data, "cover_image_url", source.get("cover_image_url", "")),
         "is_visible": _field_value(form_data, "is_visible", str(_parse_route_visibility(source.get("is_visible"))).lower()),
         "detail_for_whom": _field_value(form_data, "detail_for_whom", source.get("detail_for_whom", "")),
         "scenery_type": _field_value(form_data, "scenery_type", _stringify_list(source.get("scenery_type", []))),
@@ -593,6 +631,24 @@ def _route_form_values(route: Mapping[str, Any] | None, form_data: Mapping[str, 
         "checkpoints": _field_value(form_data, "checkpoints", _json_text(source_checkpoints)),
     }
     return values
+
+
+def _normalize_route_checkpoints(route: dict[str, Any]) -> None:
+    checkpoints = route.get("checkpoints")
+    if not isinstance(checkpoints, list):
+        return
+
+    for index, checkpoint in enumerate(checkpoints):
+        if not isinstance(checkpoint, dict):
+            continue
+        name = str(checkpoint.get("name") or "").strip() or f"打卡点{index + 1}"
+        summary = str(checkpoint.get("summary") or "").strip() or "后台维护"
+        timing = str(checkpoint.get("timing") or "").strip() or "后台维护"
+        image = str(checkpoint.get("image") or "").strip()
+        checkpoint["name"] = name
+        checkpoint["summary"] = summary
+        checkpoint["timing"] = timing
+        checkpoint["image"] = image or "route-checkpoint-placeholder.jpg"
 
 
 def _spot_form_values(spot: Mapping[str, Any] | None, form_data: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -720,8 +776,8 @@ def _parse_manual_checkpoints(raw_value: Any) -> list[dict[str, Any]]:
         checkpoints.append(
             {
                 "name": parts[0],
-                "summary": parts[1] if len(parts) > 1 else "",
-                "timing": parts[2] if len(parts) > 2 else "",
+                "summary": parts[1] if len(parts) > 1 and parts[1] else "后台维护",
+                "timing": parts[2] if len(parts) > 2 and parts[2] else "后台维护",
                 "distance_text": parts[3] if len(parts) > 3 else "后台维护",
                 "hit_count_text": parts[4] if len(parts) > 4 else "--",
             }

@@ -22,6 +22,7 @@
       "intermediate"
     ],
     "summary": "沈阳出发，本同线进山，串联松树台村、八角亭渔村，终点小墙缝，适合当日往返。",
+    "cover_image_url": "/static/uploads/routes/route-65-cover.png",
     "navigation": {
       "provider": "amap",
       "waypoints": [
@@ -255,51 +256,69 @@
         "name": "青年南大街与G1113丹阜高速入口交叉口",
         "summary": "沈阳出发点",
         "timing": "出发",
+        "distance_text": "",
+        "hit_count_text": "",
         "image": "route-checkpoint-placeholder.jpg"
       },
       {
         "name": "鸭绿江断桥",
         "summary": "边境风景节点",
         "timing": "D1",
+        "distance_text": "",
+        "hit_count_text": "",
         "image": "route-checkpoint-placeholder.jpg"
       },
       {
         "name": "红石镇",
         "summary": "第一天补给节点",
         "timing": "D1",
+        "distance_text": "",
+        "hit_count_text": "",
         "image": "route-checkpoint-placeholder.jpg"
       },
       {
         "name": "大西岔镇",
         "summary": "山路过渡节点",
         "timing": "D2",
+        "distance_text": "",
+        "hit_count_text": "",
         "image": "route-checkpoint-placeholder.jpg"
       },
       {
         "name": "西江沟",
         "summary": "打卡点5",
         "timing": "D2",
+        "distance_text": "",
+        "hit_count_text": "",
         "image": "route-checkpoint-placeholder.jpg"
       },
       {
         "name": "振江镇绿江村景点",
         "summary": "打卡点6",
         "timing": "D2",
+        "distance_text": "",
+        "hit_count_text": "",
         "image": "route-checkpoint-placeholder.jpg"
       },
       {
         "name": "集安市大吉他主题广场",
         "summary": "城市打卡节点",
         "timing": "D3",
+        "distance_text": "",
+        "hit_count_text": "",
         "image": "route-checkpoint-placeholder.jpg"
       },
       {
         "name": "青年南大街与G1113丹阜高速出口交叉口",
         "summary": "返程到达",
         "timing": "收官",
+        "distance_text": "",
+        "hit_count_text": "",
         "image": "route-checkpoint-placeholder.jpg"
       }
-    ]
+    ],
+    "cover_image_url": "/static/uploads/routes/douyin--66-cover-b0a60fe9.jpg",
+    "gpx_file": "douyin---66.gpx"
   },
   {
     "slug": "douyin-沈阳沈通线鸦鹘关赫图阿拉城木奇村铁苇线环线-67",
@@ -331,37 +350,44 @@
         {
           "name": "沈阳",
           "lng": 123.464675,
-          "lat": 41.677576
+          "lat": 41.677576,
+          "has_coordinates": true
         },
         {
           "name": "沈通线",
           "lng": 124.673212,
-          "lat": 41.584451
+          "lat": 41.584451,
+          "has_coordinates": true
         },
         {
           "name": "鸦鹘关",
           "lng": 124.567912,
-          "lat": 41.535907
+          "lat": 41.535907,
+          "has_coordinates": true
         },
         {
           "name": "赫图阿拉城",
           "lng": 124.874263,
-          "lat": 41.705298
+          "lat": 41.705298,
+          "has_coordinates": true
         },
         {
           "name": "木奇村",
           "lng": 124.6337,
-          "lat": 41.773667
+          "lat": 41.773667,
+          "has_coordinates": true
         },
         {
           "name": "铁苇线",
           "lng": 124.463977,
-          "lat": 41.934649
+          "lat": 41.934649,
+          "has_coordinates": true
         },
         {
           "name": "沈阳",
           "lng": 123.464675,
-          "lat": 41.677576
+          "lat": 41.677576,
+          "has_coordinates": true
         }
       ]
     },
@@ -388,6 +414,68 @@
     },
     "source": "manual",
     "amap_href": "https://www.amap.com/dir?from%5Badcode%5D=210100&from%5Bname%5D=%E8%BE%BD%E5%AE%81%E7%9C%81%E6%B2%88%E9%98%B3%E5%B8%82&from%5Bid%5D=2101001786427027780-from&from%5Bpoitype%5D=&from%5Blnglat%5D=123.464675%2C41.677576&from%5Bmodxy%5D=&to%5Badcode%5D=210100&to%5Bname%5D=%E8%BE%BD%E5%AE%81%E7%9C%81%E6%B2%88%E9%98%B3%E5%B8%82&to%5Bid%5D=2101001786427376374-to&to%5Bpoitype%5D=&to%5Blnglat%5D=123.464675%2C41.677576&to%5Bmodxy%5D=&policy=1&type=car&via%5B0%5D%5Bid%5D=B0IA3GK1BJ&via%5B0%5D%5Bname%5D=%E6%B2%88%E9%80%9A%E7%BA%BF&via%5B0%5D%5Blnglat%5D=124.673212%2C41.584451&via%5B0%5D%5Bmodxy%5D=124.673212%2C41.584451&via%5B0%5D%5Bpoitype%5D=190301&via%5B0%5D%5Badcode%5D=210422&via%5B1%5D%5Bid%5D=B0J1256GD6&via%5B1%5D%5Bname%5D=%E9%B8%A6%E9%B9%98%E5%85%B3&via%5B1%5D%5Blnglat%5D=124.567912%2C41.535907&via%5B1%5D%5Bmodxy%5D=124.568123%2C41.535768&via%5B1%5D%5Bpoitype%5D=110200&via%5B1%5D%5Badcode%5D=210422&via%5B2%5D%5Bid%5D=B019D00ZWN&via%5B2%5D%5Bname%5D=%E8%B5%AB%E5%9B%BE%E9%98%BF%E6%8B%89%E5%9F%8E&via%5B2%5D%5Blnglat%5D=124.874263%2C41.705298&via%5B2%5D%5Bmodxy%5D=124.868841%2C41.70428&via%5B2%5D%5Bpoitype%5D=110202&via%5B2%5D%5Badcode%5D=210422&via%5B3%5D%5Badcode%5D=210422&via%5B3%5D%5Bname%5D=%E6%9C%A8%E5%A5%87%E6%9D%91&via%5B3%5D%5Bid%5D=B019D0OGJ6&via%5B3%5D%5Bpoitype%5D=190108&via%5B3%5D%5Blnglat%5D=124.63369999999998%2C41.773667&via%5B3%5D%5Bmodxy%5D=124.633837%2C41.773806&via%5B4%5D%5Bid%5D=B0K6O9TW2L&via%5B4%5D%5Bname%5D=%E9%93%81%E8%8B%87%E7%BA%BF&via%5B4%5D%5Blnglat%5D=124.463977%2C41.934649&via%5B4%5D%5Bmodxy%5D=124.463977%2C41.934649&via%5B4%5D%5Bpoitype%5D=190301&via%5B4%5D%5Badcode%5D=210422",
-    "is_visible": true
+    "is_visible": true,
+    "cover_image_url": "/static/uploads/routes/douyin--67-cover-072c0471.jpg",
+    "detail_highlights": [],
+    "detail_notes": [],
+    "checkpoints": [
+      {
+        "name": "沈阳",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "沈通线",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "鸦鹘关",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "赫图阿拉城",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "木奇村",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "铁苇线",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "沈阳",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      }
+    ],
+    "gpx_file": "douyin---67.gpx"
   }
 ]

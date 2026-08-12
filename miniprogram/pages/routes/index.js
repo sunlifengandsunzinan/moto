@@ -146,6 +146,11 @@ function buildEstimatedDurationLabel(route) {
 }
 
 function buildRouteCoverImage(route) {
+  const explicitCoverImage = String(route?.cover_image_url || "").trim();
+  if (explicitCoverImage) {
+    return buildWebUrl(explicitCoverImage);
+  }
+
   const screenshotHref = String(route?.amap_export?.screenshot_href || "").trim();
   if (screenshotHref) {
     return buildWebUrl(screenshotHref);

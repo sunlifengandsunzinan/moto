@@ -5,6 +5,7 @@ from .admin_service import (
 	get_admin_dashboard_context,
 	get_admin_route_form_context,
 	get_admin_spot_form_context,
+	save_route_cover_image_only,
 	save_route_from_form,
 	save_spot_from_form,
 	update_route_visibility,

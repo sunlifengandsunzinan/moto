@@ -39,8 +39,8 @@
         {% if form.image_uploads %}
           <section class="admin-form-group">
             <div class="planner-section-heading">
-              <p class="eyebrow">图片上传</p>
-              <p class="planner-footnote">上传后会自动写入当前点位的图片列表，仍可继续用下方文本区补充更多图片 URL。</p>
+              <p class="eyebrow">{{ form.image_uploads_title or '图片上传' }}</p>
+              <p class="planner-footnote">{{ form.image_uploads_description or '上传后会自动写入当前点位的图片列表，仍可继续用下方文本区补充更多图片 URL。' }}</p>
             </div>
             <div class="admin-upload-grid">
               {% for item in form.image_uploads %}
@@ -52,6 +52,11 @@
                     <div class="admin-upload-card__empty">当前还没有图片</div>
                   {% endif %}
                   <input id="{{ item.name }}" name="{{ item.name }}" type="file" accept="image/*">
+                  {% if item.upload_action %}
+                    <div class="planner-actions" style="margin-top: 8px;">
+                      <button class="button-secondary" type="submit" formaction="{{ item.upload_action }}" formmethod="post">{{ item.upload_label or '单独上传图片' }}</button>
+                    </div>
+                  {% endif %}
                   <span class="planner-field__example">{{ item.help }}</span>
                 </label>
               {% endfor %}

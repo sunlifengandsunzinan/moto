@@ -175,8 +175,8 @@ function buildMapPayload(amapExport) {
     .filter(Boolean);
   const routedPolylinePoints = (amapExport?.preview_polyline_points || [])
     .map((point) => {
-      const lng = Number(point?.lng);
-      const lat = Number(point?.lat);
+      const lng = Number(point?.lng ?? point?.longitude);
+      const lat = Number(point?.lat ?? point?.latitude);
       if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
         return null;
       }
@@ -202,6 +202,8 @@ function buildMapPayload(amapExport) {
     longitude: point.longitude,
     latitude: point.latitude,
   }));
+  const fallbackPolylinePoints = dedupePolylinePoints(includePoints);
+  const visiblePolylinePoints = safePolylinePoints.length >= 2 ? safePolylinePoints : fallbackPolylinePoints;
 
   return {
     preview_available: true,
@@ -235,15 +237,15 @@ function buildMapPayload(amapExport) {
         },
       };
     }),
-    polyline: safePolylinePoints.length >= 2
+    polyline: visiblePolylinePoints.length >= 2
       ? [{
-          points: safePolylinePoints,
-          color: "#1f87bd",
-          width: 5,
+          points: visiblePolylinePoints,
+          color: "#1372CFFF",
+          width: 8,
           dottedLine: false,
           arrowLine: false,
-          borderColor: "#f3f7f8",
-          borderWidth: 1,
+          borderColor: "#FFFFFFD9",
+          borderWidth: 2,
         }]
       : [],
     scale: coordinatePoints.length >= 4 ? 8 : 10,

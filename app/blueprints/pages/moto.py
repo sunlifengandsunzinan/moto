@@ -16,6 +16,7 @@ from ...services import (
     get_admin_route_form_context,
     get_admin_spot_form_context,
     render_route_amap_screenshot_svg,
+    save_route_cover_image_only,
     save_route_from_form,
     save_spot_from_form,
     update_route_visibility,
@@ -283,7 +284,36 @@ def moto_admin_route_edit(slug: str) -> str:
 def moto_admin_route_save():
     form_data = request.form
     try:
-        saved = save_route_from_form(form_data)
+        uploaded_cover_image_url = _save_uploaded_route_cover_image(
+            request.files,
+            str(form_data.get("slug") or form_data.get("original_slug") or "route"),
+        )
+        saved = save_route_from_form(form_data, uploaded_cover_image_url)
+    except ValueError as error:
+        status_code = 400
+        return render_template(
+            "planner/admin/form.html",
+            **get_admin_route_form_context(
+                str(form_data.get("original_slug") or "") or None,
+                form_data=form_data,
+                errors=[str(error)],
+            ),
+        ), status_code
+    return redirect(url_for("moto.moto_admin_route_edit", slug=saved["slug"], message="路线已保存", kind="info"))
+
+
+@moto_bp.post("/moto/admin/routes/upload-cover")
+def moto_admin_route_cover_upload():
+    form_data = request.form
+    try:
+        uploaded_cover_image_url = _save_uploaded_route_cover_image(
+            request.files,
+            str(form_data.get("slug") or form_data.get("original_slug") or "route"),
+        )
+        if not uploaded_cover_image_url:
+            raise ValueError("请选择要上传的路线封面图")
+        target_slug = str(form_data.get("original_slug") or form_data.get("slug") or "").strip()
+        saved = save_route_cover_image_only(target_slug, uploaded_cover_image_url)
     except ValueError as error:
         status_code = 400
         return render_template(
@@ -295,7 +325,7 @@ def moto_admin_route_save():
             ),
         ), status_code
 
-    return redirect(url_for("moto.moto_admin_route_edit", slug=saved["slug"], message="路线已保存", kind="info"))
+    return redirect(url_for("moto.moto_admin_route_edit", slug=saved["slug"], message="路线封面图已上传", kind="info"))
 
 
 @moto_bp.post("/moto/admin/routes/visibility")
@@ -394,6 +424,25 @@ def _save_uploaded_spot_images(files: Mapping[str, FileStorage], slug: str) -> d
         uploaded_urls[index] = f"/static/uploads/spots/{filename}"
 
     return uploaded_urls
+
+
+def _save_uploaded_route_cover_image(files: Mapping[str, FileStorage], slug: str) -> str:
+    file = files.get("image_upload_cover")
+    if file is None or not file.filename:
+        return ""
+
+    normalized_slug = secure_filename(str(slug or "route").strip()) or "route"
+    extension = Path(file.filename).suffix.lower()
+    if extension not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+        raise ValueError("上传图片只支持 jpg、jpeg、png、webp、gif")
+
+    upload_dir = Path(current_app.static_folder or "") / "uploads" / "routes"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"{normalized_slug}-cover-{uuid4().hex[:8]}{extension}"
+    destination = upload_dir / filename
+    file.save(destination)
+    return f"/static/uploads/routes/{filename}"
 
 
 @moto_bp.get("/moto/mini-preview")

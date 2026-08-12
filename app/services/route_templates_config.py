@@ -165,7 +165,9 @@ def _validate_route_templates(data: Any) -> list[RouteTemplate]:
                 _require_string(checkpoint, "name", checkpoint_context)
                 _require_string(checkpoint, "summary", checkpoint_context)
                 _require_string(checkpoint, "timing", checkpoint_context)
-                _require_string(checkpoint, "image", checkpoint_context)
+                image_value = str(checkpoint.get("image") or "").strip()
+                if not image_value:
+                    checkpoint["image"] = "route-checkpoint-placeholder.jpg"
         if "is_navigation_state_demo" in route and not isinstance(route["is_navigation_state_demo"], bool):
             raise ValueError(f"{context}.is_navigation_state_demo must be a boolean")
 
