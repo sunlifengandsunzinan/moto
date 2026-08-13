@@ -3,7 +3,6 @@ const {
   API_PATHS,
   MINI_PROGRAM_PATHS,
   getMiniProgramApiPath,
-  getMiniProgramNavigationUrl,
   getMiniProgramDownloadUrl,
   normalizeRequestPath,
   TENCENT_MAP_SUBKEY,
@@ -16,6 +15,8 @@ const WANT_GO_PLAN_OPTIONS = [
   { key: "next_month", label: "下个月" },
   { key: "later", label: "再说" },
 ];
+
+const SHARE_MENUS = ["shareAppMessage", "shareTimeline"];
 
 function normalizeWantGoPlanLabel(planBucket) {
   const normalized = String(planBucket || "").trim();
@@ -442,12 +443,24 @@ function resolveMapAppView(importAssistant, selectedMapAppKey, platformKey) {
 }
 
 function resolveDirectNavigationOptions(route) {
-  const amapUrl = getMiniProgramNavigationUrl(route?.amap_export?.mini_program?.launch)
-    || getMiniProgramNavigationUrl(route?.amap_export?.mini_program?.navigate);
-  const tencentUrl = getMiniProgramNavigationUrl(route?.tencent_export?.mini_program?.navigate);
+  const amapUrl = resolveManualNavigationUrl(route, "amap");
+  const tencentUrl = resolveManualNavigationUrl(route, "tencent");
+  const coordinateTarget = getRouteNavigationTarget(route);
   return [
-    { key: "amap", label: "高德地图", url: amapUrl, isAvailable: Boolean(amapUrl) },
-    { key: "tencent", label: "腾讯地图", url: tencentUrl, isAvailable: Boolean(tencentUrl) },
+    {
+      key: "amap",
+      label: "高德地图",
+      url: "",
+      manualUrl: amapUrl,
+      isAvailable: Boolean(amapUrl || coordinateTarget),
+    },
+    {
+      key: "tencent",
+      label: "腾讯地图",
+      url: "",
+      manualUrl: tencentUrl,
+      isAvailable: Boolean(tencentUrl || coordinateTarget),
+    },
   ];
 }
 
@@ -465,6 +478,22 @@ function buildWaypointSummary(route) {
     .filter(Boolean)
     .slice(0, 18);
   return names.join(" -> ");
+}
+
+function buildRouteSharePayload(route, fallbackSlug) {
+  const title = String(route?.title || "摩旅路线").trim() || "摩旅路线";
+  const slug = String(route?.slug || fallbackSlug || "").trim();
+  const days = Number(route?.days || 0);
+  const distanceText = String(route?.distance_text || route?.distance || "").trim();
+  const titleSuffix = days > 0 ? ` · ${days}天` : distanceText ? ` · ${distanceText}` : "";
+  const path = slug ? MINI_PROGRAM_PATHS.routeDetail(slug) : MINI_PROGRAM_PATHS.routesTab;
+  const query = slug ? `slug=${encodeURIComponent(slug)}` : "";
+
+  return {
+    title: `${title}${titleSuffix}`,
+    path,
+    query,
+  };
 }
 
 function normalizePayload(payload) {
@@ -611,7 +640,42 @@ Page({
     const slug = decodeURIComponent(options.slug || "");
     this.slug = slug;
     this.runtimePlatformKey = detectPlatformKey();
+    this.enableNativeSharing();
     this.fetchData(slug);
+  },
+
+  onShow() {
+    this.enableNativeSharing();
+  },
+
+  enableNativeSharing() {
+    if (typeof wx.showShareMenu !== "function") {
+      return;
+    }
+
+    try {
+      wx.showShareMenu({
+        menus: SHARE_MENUS,
+      });
+    } catch (_) {
+      // Ignore share menu capability mismatches across client versions.
+    }
+  },
+
+  onShareAppMessage() {
+    const sharePayload = buildRouteSharePayload(this.data.route || {}, this.slug);
+    return {
+      title: sharePayload.title,
+      path: sharePayload.path,
+    };
+  },
+
+  onShareTimeline() {
+    const sharePayload = buildRouteSharePayload(this.data.route || {}, this.slug);
+    return {
+      title: sharePayload.title,
+      query: sharePayload.query,
+    };
   },
 
   onPullDownRefresh() {
@@ -765,25 +829,17 @@ Page({
     const navigationOptions = resolveDirectNavigationOptions(route);
     const selectedOption = navigationOptions.find((item) => item.key === mapKey);
     const navigateUrl = selectedOption?.url || "";
-    const manualUrl = resolveManualNavigationUrl(route, mapKey);
+    const manualUrl = selectedOption?.manualUrl || resolveManualNavigationUrl(route, mapKey);
 
     if (manualUrl) {
-      this.copyNavigationLinkForManualOpen(mapKey, false);
+      this.trackNavigationEngagement(route);
+      this.copyNavigationLinkForManualOpen(mapKey, true);
+      return;
     }
 
     if (navigateUrl) {
       this.trackNavigationEngagement(route);
-      wx.navigateTo({
-        url: navigateUrl,
-        fail: () => {
-          this.copyNavigationLinkForManualOpen(mapKey, true);
-          wx.showToast({
-            title: "已复制路线链接，请在浏览器粘贴打开",
-            icon: "none",
-            duration: 2200,
-          });
-        },
-      });
+      wx.navigateTo({ url: navigateUrl });
       return;
     }
 

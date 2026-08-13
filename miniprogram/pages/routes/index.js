@@ -31,6 +31,8 @@ const WANT_GO_PLAN_OPTIONS = [
   { key: "later", label: "再说" },
 ];
 
+const SHARE_MENUS = ["shareAppMessage", "shareTimeline"];
+
 function hasLoggedWechatProfile(profile) {
   if (!profile || typeof profile !== "object") {
     return false;
@@ -248,6 +250,33 @@ function normalizePayload(payload) {
   };
 }
 
+function buildRouteSharePayload(route) {
+  const title = String(route?.title || "摩旅路线").trim() || "摩旅路线";
+  const slug = String(route?.slug || "").trim();
+  const days = Number(route?.days || 0);
+  const distance = Number(route?.distance_km || 0);
+  const suffix = days > 0 ? ` · ${days}天` : distance > 0 ? ` · ${distance}km` : "";
+
+  return {
+    title: `${title}${suffix}`,
+    path: slug ? MINI_PROGRAM_PATHS.routeDetail(slug) : MINI_PROGRAM_PATHS.routesTab,
+  };
+}
+
+function buildRoutesListSharePayload(routes, keyword) {
+  const visibleCount = Array.isArray(routes) ? routes.length : 0;
+  const normalizedKeyword = String(keyword || "").trim();
+  const title = normalizedKeyword
+    ? `摩旅路线 · ${normalizedKeyword} · ${visibleCount}条`
+    : `热门摩旅路线 · ${visibleCount}条`;
+
+  return {
+    title,
+    path: MINI_PROGRAM_PATHS.routesTab,
+    query: normalizedKeyword ? `keyword=${encodeURIComponent(normalizedKeyword)}` : "",
+  };
+}
+
 function applyRouteFilters(allRoutes, selectedDuration, keyword, sortMode) {
   const normalizedKeyword = String(keyword || "").trim().toLowerCase();
   const filtered = (Array.isArray(allRoutes) ? allRoutes : []).filter((route) => {
@@ -289,11 +318,51 @@ Page({
   },
 
   onLoad() {
+    this.enableNativeSharing();
     this.fetchData();
   },
 
   onShow() {
+    this.enableNativeSharing();
     this.fetchData({});
+  },
+
+  enableNativeSharing() {
+    if (typeof wx.showShareMenu !== "function") {
+      return;
+    }
+
+    try {
+      wx.showShareMenu({ menus: SHARE_MENUS });
+    } catch (_) {
+      // Ignore capability mismatches across client versions.
+    }
+  },
+
+  onShareAppMessage(res) {
+    const slug = String(res?.target?.dataset?.slug || "").trim();
+    if (slug) {
+      const route = this.findRoute(slug);
+      const sharePayload = buildRouteSharePayload(route || { slug });
+      return {
+        title: sharePayload.title,
+        path: sharePayload.path,
+      };
+    }
+
+    const sharePayload = buildRoutesListSharePayload(this.data.routes, this.data.keyword);
+    return {
+      title: sharePayload.title,
+      path: sharePayload.path,
+    };
+  },
+
+  onShareTimeline() {
+    const sharePayload = buildRoutesListSharePayload(this.data.routes, this.data.keyword);
+    return {
+      title: sharePayload.title,
+      query: sharePayload.query,
+    };
   },
 
   applyDurationFilter(selectedDuration, routes) {
@@ -644,4 +713,6 @@ Page({
       this.openInWebView(href);
     }
   },
+
+  noop() {},
 });

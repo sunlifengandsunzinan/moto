@@ -84,7 +84,8 @@
         <view class="route-kpi-box"><text>跑完奖励积分：{{route.reward_points_label}}</text></view>
       </view>
 
-      <view class="route-action-row" wx:if="{{false}}">
+      <view class="route-action-row">
+        <button class="button-secondary route-action-btn" data-slug="{{route.slug}}" open-type="share" catchtap="noop">分享路线</button>
         <button wx:if="{{false}}" class="button-secondary route-action-btn route-favorite-button {{route.is_favorite ? 'route-favorite-button--active' : ''}}" data-slug="{{route.slug}}" catchtap="handleToggleFavorite">{{route.is_favorite ? '已收藏' : '收藏'}}</button>
         <button wx:if="{{false}}" class="button-secondary route-action-btn" data-slug="{{route.slug}}" catchtap="handleDirectNavigate">直接导航</button>
       </view>
