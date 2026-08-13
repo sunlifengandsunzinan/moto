@@ -2737,7 +2737,8 @@ def _route_amap_export_href(waypoints: list[Mapping[str, Any]], *, prefer_native
         f"daddr={quote(_route_amap_point_value(destination))}",
     ]
     if via_points:
-        params.append(f"maddr={quote('|'.join(_route_amap_point_value(point) for point in via_points), safe='|')}")
+        # Encode all separators so maddr survives nested webview/browser handoff.
+        params.append(f"maddr={quote('|'.join(_route_amap_point_value(point) for point in via_points))}")
     params.extend(["src=mypage", f"callnative={1 if prefer_native else 0}", "innersrc=uriapi"])
     return f"https://m.amap.com/navigation/carmap/{'&'.join(params)}"
 

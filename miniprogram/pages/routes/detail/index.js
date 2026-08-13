@@ -451,6 +451,22 @@ function resolveDirectNavigationOptions(route) {
   ];
 }
 
+function resolveManualNavigationUrl(route, mapKey) {
+  if (mapKey === "tencent") {
+    return String(route?.tencent_export?.href || route?.tencent_export?.app_href || "").trim();
+  }
+  return String(route?.amap_export?.browser_href || route?.amap_export?.href || "").trim();
+}
+
+function buildWaypointSummary(route) {
+  const waypoints = Array.isArray(route?.amap_export?.waypoints) ? route.amap_export.waypoints : [];
+  const names = waypoints
+    .map((point) => String(point?.name || "").trim())
+    .filter(Boolean)
+    .slice(0, 18);
+  return names.join(" -> ");
+}
+
 function normalizePayload(payload) {
   const route = payload?.route || {};
   const amapExport = route.amap_export || {};
@@ -749,10 +765,25 @@ Page({
     const navigationOptions = resolveDirectNavigationOptions(route);
     const selectedOption = navigationOptions.find((item) => item.key === mapKey);
     const navigateUrl = selectedOption?.url || "";
+    const manualUrl = resolveManualNavigationUrl(route, mapKey);
+
+    if (manualUrl) {
+      this.copyNavigationLinkForManualOpen(mapKey, false);
+    }
 
     if (navigateUrl) {
       this.trackNavigationEngagement(route);
-      wx.navigateTo({ url: navigateUrl });
+      wx.navigateTo({
+        url: navigateUrl,
+        fail: () => {
+          this.copyNavigationLinkForManualOpen(mapKey, true);
+          wx.showToast({
+            title: "已复制路线链接，请在浏览器粘贴打开",
+            icon: "none",
+            duration: 2200,
+          });
+        },
+      });
       return;
     }
 
@@ -776,7 +807,41 @@ Page({
         this.trackNavigationEngagement(route);
       },
       fail: () => {
+        this.copyNavigationLinkForManualOpen(mapKey, true);
         wx.showToast({ title: "无法打开系统地图", icon: "none", duration: 2200 });
+      },
+    });
+  },
+
+  copyNavigationLinkForManualOpen(mapKey = "amap", showFeedback = true) {
+    const route = this.data.route || {};
+    const mapLabel = mapKey === "tencent" ? "腾讯地图" : "高德地图";
+    const manualUrl = resolveManualNavigationUrl(route, mapKey);
+    if (!manualUrl) {
+      return;
+    }
+
+    const waypointSummary = buildWaypointSummary(route);
+    const payload = [
+      `路线：${String(route.title || "未命名路线")}`,
+      `地图：${mapLabel}`,
+      `链接：${manualUrl}`,
+      waypointSummary ? `途径：${waypointSummary}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    wx.setClipboardData({
+      data: payload,
+      success: () => {
+        if (!showFeedback) {
+          return;
+        }
+        wx.showToast({
+          title: "路线链接已复制",
+          icon: "none",
+          duration: 1800,
+        });
       },
     });
   },

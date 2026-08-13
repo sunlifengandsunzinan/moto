@@ -51,13 +51,22 @@
                   {% else %}
                     <div class="admin-upload-card__empty">当前还没有图片</div>
                   {% endif %}
-                  <input id="{{ item.name }}" name="{{ item.name }}" type="file" accept="image/*">
+                  <input
+                    id="{{ item.name }}"
+                    name="{{ item.name }}"
+                    type="file"
+                    accept="image/*"
+                    data-autocompress-image="true"
+                    data-upload-max-bytes="900000"
+                    data-upload-max-edge="1920"
+                  >
                   {% if item.upload_action %}
                     <div class="planner-actions" style="margin-top: 8px;">
                       <button class="button-secondary" type="submit" formaction="{{ item.upload_action }}" formmethod="post">{{ item.upload_label or '单独上传图片' }}</button>
                     </div>
                   {% endif %}
                   <span class="planner-field__example">{{ item.help }}</span>
+                  <span class="planner-field__example" data-image-upload-status></span>
                 </label>
               {% endfor %}
             </div>
@@ -115,6 +124,198 @@
 
   <script>
     (function () {
+      const adminForm = document.querySelector(".planner-form.admin-form");
+      const imageInputs = adminForm
+        ? Array.from(adminForm.querySelectorAll('input[type="file"][data-autocompress-image="true"]'))
+        : [];
+      let bypassImageCompression = false;
+
+      function getUploadStatusElement(input) {
+        const card = input && input.closest ? input.closest(".admin-upload-card") : null;
+        return card ? card.querySelector("[data-image-upload-status]") : null;
+      }
+
+      function setUploadStatus(input, message, isError) {
+        const statusEl = getUploadStatusElement(input);
+        if (!statusEl) {
+          return;
+        }
+        statusEl.textContent = message || "";
+        statusEl.style.color = isError ? "#b42318" : "#2e6f40";
+      }
+
+      function loadImageElement(file) {
+        return new Promise((resolve, reject) => {
+          const objectUrl = URL.createObjectURL(file);
+          const image = new Image();
+          image.onload = function () {
+            URL.revokeObjectURL(objectUrl);
+            resolve(image);
+          };
+          image.onerror = function () {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("图片读取失败，请换一张图片重试"));
+          };
+          image.src = objectUrl;
+        });
+      }
+
+      function canvasToBlob(canvas, mimeType, quality) {
+        return new Promise((resolve, reject) => {
+          canvas.toBlob(function (blob) {
+            if (!blob) {
+              reject(new Error("图片压缩失败，请稍后重试"));
+              return;
+            }
+            resolve(blob);
+          }, mimeType, quality);
+        });
+      }
+
+      async function compressImageFile(file, maxBytes, maxEdge) {
+        if (!(file instanceof File)) {
+          return file;
+        }
+
+        const mimeType = String(file.type || "").toLowerCase();
+        if (!mimeType.startsWith("image/")) {
+          return file;
+        }
+        if (mimeType === "image/gif") {
+          if (file.size > maxBytes) {
+            throw new Error("GIF 图片过大，无法自动压缩动图，请先转成 jpg/png/webp 后再上传");
+          }
+          return file;
+        }
+        if (file.size <= maxBytes) {
+          return file;
+        }
+
+        const image = await loadImageElement(file);
+        const originalWidth = Number(image.naturalWidth || image.width || 0);
+        const originalHeight = Number(image.naturalHeight || image.height || 0);
+        if (!originalWidth || !originalHeight) {
+          throw new Error("无法读取图片尺寸，请换一张图片重试");
+        }
+
+        const scale = Math.min(1, maxEdge / Math.max(originalWidth, originalHeight));
+        const targetWidth = Math.max(1, Math.round(originalWidth * scale));
+        const targetHeight = Math.max(1, Math.round(originalHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+
+        const context = canvas.getContext("2d");
+        if (!context) {
+          throw new Error("浏览器不支持图片压缩，请换浏览器或先手动压缩图片");
+        }
+        context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+        const qualitySteps = [0.86, 0.78, 0.7, 0.62, 0.54, 0.46, 0.38];
+        let bestBlob = null;
+        for (const quality of qualitySteps) {
+          const blob = await canvasToBlob(canvas, "image/jpeg", quality);
+          bestBlob = blob;
+          if (blob.size <= maxBytes) {
+            break;
+          }
+        }
+
+        if (!bestBlob) {
+          throw new Error("图片压缩失败，请稍后重试");
+        }
+        if (bestBlob.size > maxBytes) {
+          throw new Error("图片压缩后仍超过上传限制，请继续缩小图片尺寸后再上传");
+        }
+
+        const compressedName = file.name.replace(/\.[^.]+$/, "") + "-compressed.jpg";
+        return new File([bestBlob], compressedName, {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        });
+      }
+
+      async function prepareImageUploads() {
+        for (const input of imageInputs) {
+          const file = input.files && input.files[0];
+          if (!file) {
+            setUploadStatus(input, "", false);
+            continue;
+          }
+
+          const maxBytes = Number(input.dataset.uploadMaxBytes || 900000);
+          const maxEdge = Number(input.dataset.uploadMaxEdge || 1920);
+          if (!Number.isFinite(maxBytes) || !Number.isFinite(maxEdge)) {
+            continue;
+          }
+
+          if (file.size <= maxBytes) {
+            setUploadStatus(input, `已选择图片：${Math.round(file.size / 1024)} KB。`, false);
+            continue;
+          }
+
+          setUploadStatus(input, "图片较大，正在自动压缩后上传...", false);
+          const compressedFile = await compressImageFile(file, maxBytes, maxEdge);
+          if (compressedFile !== file) {
+            const transfer = new DataTransfer();
+            transfer.items.add(compressedFile);
+            input.files = transfer.files;
+            setUploadStatus(
+              input,
+              `已自动压缩：${Math.round(file.size / 1024)} KB -> ${Math.round(compressedFile.size / 1024)} KB。`,
+              false,
+            );
+          } else {
+            setUploadStatus(input, `已选择图片：${Math.round(file.size / 1024)} KB。`, false);
+          }
+        }
+      }
+
+      if (adminForm && imageInputs.length) {
+        imageInputs.forEach((input) => {
+          input.addEventListener("change", function () {
+            const file = input.files && input.files[0];
+            if (!file) {
+              setUploadStatus(input, "", false);
+              return;
+            }
+            const maxBytes = Number(input.dataset.uploadMaxBytes || 900000);
+            if (file.size > maxBytes) {
+              setUploadStatus(input, `当前图片约 ${Math.round(file.size / 1024)} KB，提交时会先自动压缩。`, false);
+              return;
+            }
+            setUploadStatus(input, `已选择图片：${Math.round(file.size / 1024)} KB。`, false);
+          });
+        });
+
+        adminForm.addEventListener("submit", function (event) {
+          if (bypassImageCompression) {
+            return;
+          }
+
+          const submitter = event.submitter || null;
+          event.preventDefault();
+          prepareImageUploads()
+            .then(function () {
+              bypassImageCompression = true;
+              if (submitter && typeof adminForm.requestSubmit === "function") {
+                adminForm.requestSubmit(submitter);
+                return;
+              }
+              adminForm.submit();
+            })
+            .catch(function (error) {
+              const message = String(error && error.message ? error.message : error);
+              imageInputs.forEach((input) => {
+                const hasFile = input.files && input.files[0];
+                if (hasFile) {
+                  setUploadStatus(input, message, true);
+                }
+              });
+            });
+        });
+      }
+
       const hrefInput = document.getElementById("amap_locked_href");
       const manualPointsInput = document.getElementById("manual_navigation_points");
       const jsonWaypointsInput = document.getElementById("navigation_waypoints");
