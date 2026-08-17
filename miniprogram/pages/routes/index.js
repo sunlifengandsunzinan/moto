@@ -713,6 +713,4 @@ Page({
       this.openInWebView(href);
     }
   },
-
-  noop() {},
 });

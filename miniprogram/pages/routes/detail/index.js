@@ -468,7 +468,7 @@ function resolveManualNavigationUrl(route, mapKey) {
   if (mapKey === "tencent") {
     return String(route?.tencent_export?.href || route?.tencent_export?.app_href || "").trim();
   }
-  return String(route?.amap_export?.browser_href || route?.amap_export?.href || "").trim();
+  return String(route?.amap_export?.app_href || route?.amap_export?.href || route?.amap_export?.browser_href || "").trim();
 }
 
 function buildWaypointSummary(route) {
