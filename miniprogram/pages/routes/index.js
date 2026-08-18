@@ -40,7 +40,7 @@ function hasLoggedWechatProfile(profile) {
 
   const nickName = String(profile.nickName || "").trim();
   const avatarUrl = String(profile.avatarUrl || "").trim();
-  return Boolean(nickName || avatarUrl);
+  return Boolean(nickName && avatarUrl && nickName !== "微信用户");
 }
 
 function normalizeWantGoPlanLabel(planBucket) {
@@ -147,6 +147,31 @@ function buildEstimatedDurationLabel(route) {
   return `${estimatedHours}H`;
 }
 
+function resolveSuggestedDays(route) {
+  const configuredDays = Number(route?.days || 0);
+  if (Number.isFinite(configuredDays) && configuredDays > 0) {
+    return Math.max(1, Math.ceil(configuredDays));
+  }
+
+  const distance = Number(route?.distance_km || 0);
+  if (!Number.isFinite(distance) || distance <= 0) {
+    return 1;
+  }
+
+  const difficulty = String(route?.difficulty || "").trim().toLowerCase();
+  const dailyDistanceByDifficulty = {
+    easy: 320,
+    medium: 260,
+    hard: 200,
+  };
+  const fallbackDailyDistance = Number(dailyDistanceByDifficulty[difficulty] || 280);
+  return Math.max(1, Math.ceil(distance / fallbackDailyDistance));
+}
+
+function buildSuggestedDaysLabel(route) {
+  return `${resolveSuggestedDays(route)}天`;
+}
+
 function buildRouteCoverImage(route) {
   const explicitCoverImage = String(route?.cover_image_url || "").trim();
   if (explicitCoverImage) {
@@ -227,7 +252,7 @@ function normalizeRoute(route) {
     ...normalizedRoute,
     cover_image_url: buildRouteCoverImage(normalizedRoute),
     estimated_duration_label: buildEstimatedDurationLabel(normalizedRoute),
-    reward_points_label: `${Number(normalizedRoute?.engagement?.favorite_count || 0)}分`,
+    suggested_days_label: buildSuggestedDaysLabel(normalizedRoute),
     want_go_action_label: normalizeWantGoPlanLabel(normalizedRoute?.want_go?.plan_bucket),
   };
 }

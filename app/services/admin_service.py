@@ -22,7 +22,7 @@ from .route_templates_config import (
     delete_route_template,
 )
 from .planner_service import get_liaoning_route_templates
-from .user_me_state import get_route_want_go_stats_map
+from .user_me_state import get_admin_user_summaries, get_route_want_go_stats_map
 
 
 ROUTE_FORM_GROUPS = [
@@ -156,6 +156,7 @@ def get_admin_dashboard_context(
         if str(route.get("slug") or "").strip()
     }
     spots = get_approved_moto_spots()
+    users = get_admin_user_summaries()
     route_regions = sorted({str(route.get("region") or "") for route in routes if str(route.get("region") or "").strip()})
     spot_regions = sorted({str(spot.get("region") or "") for spot in spots if str(spot.get("region") or "").strip()})
 
@@ -197,6 +198,7 @@ def get_admin_dashboard_context(
             "kind": str((feedback or {}).get("kind") or "info").strip() or "info",
         },
         "stats": [
+            {"label": "用户总数", "value": len(users)},
             {"label": "路线总库", "value": len(routes)},
             {"label": "前台显示路线", "value": len(visible_frontend_routes)},
             {"label": "路线想去总计", "value": sum(int((item or {}).get("total_count") or 0) for item in want_go_lookup.values())},
@@ -204,6 +206,28 @@ def get_admin_dashboard_context(
             {"label": "路线区域", "value": len(route_regions)},
             {"label": "点位区域", "value": len(spot_regions)},
         ],
+        "user_section": {
+            "title": "小程序用户",
+            "description": "查看已写入后端的用户档案、注册时间和行为统计。",
+            "items": [
+                {
+                    "user_id": str(item.get("user_id") or ""),
+                    "display_name": str(item.get("display_name") or "未填写昵称"),
+                    "avatar_url": str(item.get("avatar_url") or ""),
+                    "location": " / ".join(
+                        part for part in [str(item.get("province") or "").strip(), str(item.get("city") or "").strip()] if part
+                    ),
+                    "created_at": str(item.get("created_at") or ""),
+                    "updated_at": str(item.get("updated_at") or ""),
+                    "meta": [
+                        f"收藏 {int(item.get('favorite_count') or 0)}",
+                        f"想去 {int(item.get('want_go_count') or 0)}",
+                        f"打卡 {int(item.get('checkin_count') or 0)}",
+                    ],
+                }
+                for item in users
+            ],
+        },
         "route_section": {
             "title": "路线模板",
             "description": "编辑路线列表、详情页、高德地图、日程和 POI 数据。",

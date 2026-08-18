@@ -20,6 +20,7 @@ from ...services import (
     set_user_route_favorite,
     set_user_route_want_go_plan,
     get_spots_index_context,
+    upsert_user_profile,
     gpx_service,
 )
 from ...services.route_engagement import get_route_engagement, increment_route_favorite, increment_route_navigation
@@ -157,6 +158,23 @@ def moto_me_navigation_preferences_save():
     return jsonify({
         "ok": True,
         "preferred_map_app": str(result.get("preferred_map_app") or ""),
+    })
+
+
+@api_bp.post("/moto/me/profile")
+def moto_me_profile_save():
+    user_id = _resolve_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "error": "Missing user id"}), 400
+
+    data = request.get_json(silent=True) or {}
+    result = upsert_user_profile(user_id, data)
+    if not result.get("ok"):
+        return jsonify({"ok": False, "error": "Invalid profile payload"}), 400
+
+    return jsonify({
+        "ok": True,
+        "profile": result.get("profile") or {},
     })
 
 

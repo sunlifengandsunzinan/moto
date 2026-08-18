@@ -31,6 +31,71 @@
     <section class="panel">
       <div class="panel-hero__header">
         <div>
+          <p class="eyebrow">{{ user_section.title }}</p>
+          <h2>查看小程序用户</h2>
+          <p class="subtitle">{{ user_section.description }}</p>
+        </div>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>用户</th>
+              <th>User ID</th>
+              <th>地区</th>
+              <th>注册时间</th>
+              <th>最近活跃</th>
+              <th>行为统计</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in user_section["items"] %}
+              <tr>
+                <td>
+                  <div class="admin-user-cell">
+                    {% if item.avatar_url %}
+                      <img class="admin-user-cell__avatar" src="{{ item.avatar_url }}" alt="{{ item.display_name }}">
+                    {% else %}
+                      <div class="admin-user-cell__avatar admin-user-cell__avatar--placeholder">骑</div>
+                    {% endif %}
+                    <div>
+                      <p class="admin-table__title">{{ item.display_name }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <p class="admin-table__slug">{{ item.user_id }}</p>
+                </td>
+                <td>
+                  <p class="admin-spot-table__text">{{ item.location or "未填写" }}</p>
+                </td>
+                <td>
+                  <p class="admin-spot-table__text">{{ item.created_at or "未知" }}</p>
+                </td>
+                <td>
+                  <p class="admin-spot-table__text">{{ item.updated_at or "未知" }}</p>
+                </td>
+                <td>
+                  <ul class="planner-chip-list admin-table__chips">
+                    {% for meta in item.meta %}
+                      <li>{{ meta }}</li>
+                    {% endfor %}
+                  </ul>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6">当前还没有已同步到后端的用户资料。</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-hero__header">
+        <div>
           <p class="eyebrow">{{ route_section.title }}</p>
           <h2>维护路线模板</h2>
           <p class="subtitle">{{ route_section.description }}</p>

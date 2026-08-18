@@ -11,6 +11,10 @@ USER_ME_STATE_PATH = PROJECT_ROOT / "data" / "raw" / "user_me_state.json"
 WANT_GO_PLAN_BUCKETS = {"this_month", "next_month", "later"}
 
 
+def _current_timestamp() -> str:
+    return datetime.now().isoformat(timespec="seconds")
+
+
 def normalize_user_id(user_id: str | None) -> str:
     value = str(user_id or "").strip()
     if not value:
@@ -83,6 +87,68 @@ def get_user_want_go_route_plans(user_id: str | None) -> dict[str, str]:
     return _normalized_want_go_plans(user_state)
 
 
+def upsert_user_profile(user_id: str | None, profile: dict[str, Any] | None) -> dict[str, Any]:
+    normalized_user_id = normalize_user_id(user_id)
+    normalized_profile = _normalize_user_profile(profile)
+    if not normalized_user_id or not normalized_profile:
+        return {"ok": False, "profile": {}}
+
+    payload = _read_payload()
+    users = payload.setdefault("users", {})
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
+    now = _current_timestamp()
+    merged_profile = {
+        **(user_state.get("profile") if isinstance(user_state.get("profile"), dict) else {}),
+        **normalized_profile,
+    }
+    user_state["profile"] = merged_profile
+    user_state["updated_at"] = now
+    _write_payload(payload)
+
+    return {"ok": True, "profile": merged_profile}
+
+
+def get_admin_user_summaries() -> list[dict[str, Any]]:
+    payload = _read_payload()
+    users = payload.get("users") if isinstance(payload.get("users"), dict) else {}
+    summaries: list[dict[str, Any]] = []
+
+    for user_id, raw_user_state in users.items():
+        normalized_user_id = normalize_user_id(user_id)
+        if not normalized_user_id or not isinstance(raw_user_state, dict):
+            continue
+
+        user_state = _ensure_user_state(raw_user_state)
+        profile = user_state.get("profile") if isinstance(user_state.get("profile"), dict) else {}
+        metrics = get_user_me_metrics(normalized_user_id)
+        display_name = str(profile.get("nickName") or "").strip() or "未填写昵称"
+        avatar_url = str(profile.get("avatarUrl") or "").strip()
+        summaries.append(
+            {
+                "user_id": normalized_user_id,
+                "display_name": display_name,
+                "avatar_url": avatar_url,
+                "city": str(profile.get("city") or "").strip(),
+                "province": str(profile.get("province") or "").strip(),
+                "created_at": str(user_state.get("created_at") or user_state.get("updated_at") or "").strip(),
+                "updated_at": str(user_state.get("updated_at") or "").strip(),
+                "favorite_count": int(metrics.get("favorite_count") or 0),
+                "want_go_count": int(metrics.get("want_go_count") or 0),
+                "checkin_count": int(metrics.get("checkin_count") or 0),
+            }
+        )
+
+    summaries.sort(
+        key=lambda item: (
+            str(item.get("created_at") or ""),
+            str(item.get("updated_at") or ""),
+            str(item.get("user_id") or ""),
+        ),
+        reverse=True,
+    )
+    return summaries
+
+
 def set_user_route_want_go_plan(user_id: str | None, slug: str, plan_bucket: str) -> dict[str, Any]:
     normalized_user_id = normalize_user_id(user_id)
     normalized_slug = str(slug or "").strip()
@@ -97,14 +163,14 @@ def set_user_route_want_go_plan(user_id: str | None, slug: str, plan_bucket: str
 
     payload = _read_payload()
     users = payload.setdefault("users", {})
-    user_state = users.setdefault(normalized_user_id, _new_user_state())
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
     plans = _normalized_want_go_plans(user_state)
     previous_bucket = plans.get(normalized_slug)
     changed = previous_bucket != normalized_bucket
 
     plans[normalized_slug] = normalized_bucket
     _assign_want_go_plans(user_state, plans)
-    user_state["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    user_state["updated_at"] = _current_timestamp()
 
     if changed:
         _write_payload(payload)
@@ -131,13 +197,13 @@ def clear_user_route_want_go_plan(user_id: str | None, slug: str) -> dict[str, A
 
     payload = _read_payload()
     users = payload.setdefault("users", {})
-    user_state = users.setdefault(normalized_user_id, _new_user_state())
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
     plans = _normalized_want_go_plans(user_state)
     changed = normalized_slug in plans
     if changed:
         plans.pop(normalized_slug, None)
         _assign_want_go_plans(user_state, plans)
-        user_state["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        user_state["updated_at"] = _current_timestamp()
         _write_payload(payload)
 
     metrics = get_user_me_metrics(normalized_user_id)
@@ -185,6 +251,7 @@ def get_route_want_go_stats_map(route_slugs: list[str] | None = None) -> dict[st
     for user_state in users.values():
         if not isinstance(user_state, dict):
             continue
+        user_state = _ensure_user_state(user_state)
         plans = _normalized_want_go_plans(user_state)
         for slug, bucket in plans.items():
             if normalized_slugs and slug not in normalized_slugs:
@@ -234,7 +301,7 @@ def set_user_route_favorite(user_id: str | None, slug: str, is_favorite: bool) -
 
     payload = _read_payload()
     users = payload.setdefault("users", {})
-    user_state = users.setdefault(normalized_user_id, _new_user_state())
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
 
     favorites = {
         str(item).strip()
@@ -253,7 +320,7 @@ def set_user_route_favorite(user_id: str | None, slug: str, is_favorite: bool) -
             changed = True
 
     user_state["favorite_route_slugs"] = sorted(favorites)
-    user_state["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    user_state["updated_at"] = _current_timestamp()
 
     if changed:
         _write_payload(payload)
@@ -278,7 +345,7 @@ def mark_user_route_checkin(user_id: str | None, slug: str) -> dict[str, Any]:
 
     payload = _read_payload()
     users = payload.setdefault("users", {})
-    user_state = users.setdefault(normalized_user_id, _new_user_state())
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
 
     checkins = {
         str(item).strip()
@@ -290,7 +357,7 @@ def mark_user_route_checkin(user_id: str | None, slug: str) -> dict[str, Any]:
     if changed:
         checkins.add(normalized_slug)
         user_state["checked_route_slugs"] = sorted(checkins)
-        user_state["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        user_state["updated_at"] = _current_timestamp()
         _write_payload(payload)
 
     return {
@@ -320,14 +387,14 @@ def set_user_navigation_preferences(user_id: str | None, *, preferred_map_app: s
 
     payload = _read_payload()
     users = payload.setdefault("users", {})
-    user_state = users.setdefault(normalized_user_id, _new_user_state())
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
     navigation_preferences = user_state.setdefault("navigation_preferences", {})
     if not isinstance(navigation_preferences, dict):
         navigation_preferences = {}
         user_state["navigation_preferences"] = navigation_preferences
 
     navigation_preferences["preferred_map_app"] = normalized_map_app
-    user_state["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    user_state["updated_at"] = _current_timestamp()
     _write_payload(payload)
 
     return {
@@ -337,14 +404,17 @@ def set_user_navigation_preferences(user_id: str | None, *, preferred_map_app: s
 
 
 def _new_user_state() -> dict[str, Any]:
+    now = _current_timestamp()
     return {
         "favorite_route_slugs": [],
         "checked_route_slugs": [],
         "want_go_plans": {},
+        "profile": {},
         "navigation_preferences": {
             "preferred_map_app": "",
         },
-        "updated_at": datetime.now().isoformat(timespec="seconds"),
+        "created_at": now,
+        "updated_at": now,
     }
 
 
@@ -378,7 +448,7 @@ def _assign_want_go_plans(user_state: dict[str, Any], plans: dict[str, str]) -> 
     user_state["want_go_plans"] = {
         slug: {
             "bucket": bucket,
-            "updated_at": datetime.now().isoformat(timespec="seconds"),
+            "updated_at": _current_timestamp(),
         }
         for slug, bucket in sorted(plans.items())
     }
@@ -390,7 +460,48 @@ def _read_user_state(user_id: str) -> dict[str, Any]:
     user_state = users.get(user_id)
     if not isinstance(user_state, dict):
         return _new_user_state()
+    return _ensure_user_state(user_state)
+
+
+def _ensure_user_state(user_state: dict[str, Any]) -> dict[str, Any]:
+    created_at = str(user_state.get("created_at") or user_state.get("updated_at") or "").strip() or _current_timestamp()
+    updated_at = str(user_state.get("updated_at") or created_at).strip() or created_at
+    profile = user_state.get("profile") if isinstance(user_state.get("profile"), dict) else {}
+    navigation_preferences = user_state.get("navigation_preferences") if isinstance(user_state.get("navigation_preferences"), dict) else {}
+    user_state.setdefault("favorite_route_slugs", [])
+    user_state.setdefault("checked_route_slugs", [])
+    user_state.setdefault("want_go_plans", {})
+    user_state["profile"] = _normalize_user_profile(profile) or {}
+    user_state["navigation_preferences"] = {
+        "preferred_map_app": str(navigation_preferences.get("preferred_map_app") or "").strip(),
+    }
+    user_state["created_at"] = created_at
+    user_state["updated_at"] = updated_at
     return user_state
+
+
+def _normalize_user_profile(profile: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(profile, dict):
+        return {}
+
+    nick_name = str(profile.get("nickName") or profile.get("nickname") or profile.get("name") or "").strip()
+    avatar_url = str(profile.get("avatarUrl") or profile.get("avatar") or profile.get("headImgUrl") or "").strip()
+    city = str(profile.get("city") or "").strip()
+    province = str(profile.get("province") or "").strip()
+    country = str(profile.get("country") or "").strip()
+    gender = int(profile.get("gender") or 0)
+
+    if not any([nick_name, avatar_url, city, province, country, gender]):
+        return {}
+
+    return {
+        "nickName": nick_name,
+        "avatarUrl": avatar_url,
+        "city": city,
+        "province": province,
+        "country": country,
+        "gender": gender,
+    }
 
 
 def _read_payload() -> dict[str, Any]:

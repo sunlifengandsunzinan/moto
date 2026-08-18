@@ -31,7 +31,7 @@ function hasLoggedWechatProfile(profile) {
 
   const nickName = String(profile.nickName || "").trim();
   const avatarUrl = String(profile.avatarUrl || "").trim();
-  return Boolean(nickName || avatarUrl);
+  return Boolean(nickName && avatarUrl && nickName !== "微信用户");
 }
 
 function getRouteDetailFallback() {
@@ -185,6 +185,22 @@ function buildMapPayload(amapExport) {
     })
     .filter(Boolean);
   const safePolylinePoints = downsamplePolylinePoints(dedupePolylinePoints(routedPolylinePoints), 900);
+  const previewPolylineStatus = String(amapExport?.preview_polyline_status || "").trim();
+  const hasFallbackStatus = (
+    previewPolylineStatus.includes("segment-failed")
+    || previewPolylineStatus.includes("partial-fallback")
+    || previewPolylineStatus.includes("waypoint-straight-line")
+    || previewPolylineStatus.includes("missing-webservice-key")
+    || previewPolylineStatus.includes("insufficient-waypoints")
+    || previewPolylineStatus.includes("empty-polyline")
+    || previewPolylineStatus.includes("request-failed")
+    || previewPolylineStatus.includes("tencent-status-")
+  );
+  const hasTrustedPolylineStatus = (
+    previewPolylineStatus === "tencent-direction-segmented"
+    || previewPolylineStatus === "cached-tencent-direction"
+    || previewPolylineStatus === "tencent-direction"
+  );
 
   const markerPoints = coordinatePoints;
 
@@ -203,11 +219,13 @@ function buildMapPayload(amapExport) {
     longitude: point.longitude,
     latitude: point.latitude,
   }));
-  const fallbackPolylinePoints = dedupePolylinePoints(includePoints);
-  const visiblePolylinePoints = safePolylinePoints.length >= 2 ? safePolylinePoints : fallbackPolylinePoints;
+  const visiblePolylinePoints = (
+    !hasFallbackStatus && hasTrustedPolylineStatus && safePolylinePoints.length >= 2
+  ) ? safePolylinePoints : [];
 
   return {
-    preview_available: true,
+    // Keep the real map visible for locked routes even when road polyline is intentionally hidden.
+    preview_available: markerPoints.length >= 1,
     center: {
       longitude: markerPoints[0].longitude,
       latitude: markerPoints[0].latitude,

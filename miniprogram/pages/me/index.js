@@ -107,7 +107,7 @@ function hasLoggedWechatProfile(profile) {
 
   const nickName = String(profile.nickName || "").trim();
   const avatarUrl = String(profile.avatarUrl || "").trim();
-  return Boolean(nickName || avatarUrl);
+  return Boolean(nickName && avatarUrl && nickName !== "微信用户");
 }
 
 function formatWechatLocation(profile) {
@@ -172,6 +172,8 @@ Page({
     isWechatLoggedIn: false,
   },
 
+  _lastSyncedProfileSignature: "",
+
   onLoad() {
     this.syncWechatProfile();
     this.fetchMePage();
@@ -225,15 +227,16 @@ Page({
     const profile = normalizeWechatProfileForDisplay(storedProfile);
     const isWechatLoggedIn = hasLoggedWechatProfile(profile);
 
-    if (!profile && storedProfile && typeof app?.setWechatUserProfile === "function") {
+    if (!isWechatLoggedIn && storedProfile && typeof app?.setWechatUserProfile === "function") {
       app.setWechatUserProfile(null);
     }
 
-    const displayProfile = buildDisplayProfile(profile);
+    const safeProfile = isWechatLoggedIn ? profile : null;
+    const displayProfile = buildDisplayProfile(safeProfile);
 
     this.setData({
-      wechatUserProfile: profile,
-      wechatProfileLocation: formatWechatLocation(profile),
+      wechatUserProfile: safeProfile,
+      wechatProfileLocation: formatWechatLocation(safeProfile),
       displayName: displayProfile.displayName,
       avatarText: displayProfile.avatarText,
       isWechatLoggedIn,
@@ -241,6 +244,46 @@ Page({
       draftWechatNickName: profile?.nickName || this.data.draftWechatNickName,
       draftWechatAvatarUrl: profile?.avatarUrl || this.data.draftWechatAvatarUrl,
     });
+
+    this.syncWechatProfileToBackend(safeProfile, { silent: true });
+  },
+
+  syncWechatProfileToBackend(profile, options = {}) {
+    const normalizedProfile = normalizeWechatProfilePayload(profile);
+    if (!hasLoggedWechatProfile(normalizedProfile)) {
+      this._lastSyncedProfileSignature = "";
+      return Promise.resolve(null);
+    }
+
+    const signature = JSON.stringify({
+      nickName: normalizedProfile.nickName,
+      avatarUrl: normalizedProfile.avatarUrl,
+      city: normalizedProfile.city,
+      province: normalizedProfile.province,
+      country: normalizedProfile.country,
+      gender: normalizedProfile.gender,
+    });
+    if (signature === this._lastSyncedProfileSignature) {
+      return Promise.resolve(null);
+    }
+
+    return request({
+      path: API_PATHS.meProfile,
+      method: "POST",
+      data: normalizedProfile,
+    })
+      .then((payload) => {
+        if (payload?.ok) {
+          this._lastSyncedProfileSignature = signature;
+        }
+        return payload;
+      })
+      .catch((error) => {
+        if (!options.silent) {
+          wx.showToast({ title: error?.message || "同步资料失败", icon: "none" });
+        }
+        return null;
+      });
   },
 
   handleShowWechatProfileEditor() {
@@ -330,6 +373,12 @@ Page({
         return;
       }
 
+      if (!hasLoggedWechatProfile(normalizedProfile)) {
+        this.setData({ isAuthorizing: false });
+        wx.showToast({ title: "未获取到微信头像昵称", icon: "none" });
+        return;
+      }
+
       const app = getApp();
       const storedProfile = typeof app?.setWechatUserProfile === "function"
         ? app.setWechatUserProfile(normalizedProfile)
@@ -348,7 +397,7 @@ Page({
       // Read back from app storage to keep UI and persisted state consistent.
       this.syncWechatProfile();
 
-      if (storedProfile) {
+      if (hasLoggedWechatProfile(storedProfile)) {
         wx.showToast({ title: "登录成功", icon: "none" });
         return;
       }
@@ -403,7 +452,11 @@ Page({
       displayName: "点击登录",
       avatarText: DEFAULT_AVATAR_TEXT,
       isWechatLoggedIn: false,
+      showWechatProfileEditor: false,
+      draftWechatNickName: "",
+      draftWechatAvatarUrl: "",
     });
+    this._lastSyncedProfileSignature = "";
 
     wx.showToast({
       title: "已清除资料",
@@ -435,6 +488,7 @@ Page({
           draftWechatNickName: "",
           draftWechatAvatarUrl: "",
         });
+        this._lastSyncedProfileSignature = "";
 
         wx.showToast({ title: "已退出登录", icon: "none" });
       },

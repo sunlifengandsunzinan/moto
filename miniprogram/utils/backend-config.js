@@ -21,6 +21,7 @@ const API_PATHS = {
   },
   spots: "/moto/spots",
   me: "/moto/me",
+  meProfile: "/moto/me/profile",
   meNavigationPreferences: "/moto/me/navigation-preferences",
 };
 

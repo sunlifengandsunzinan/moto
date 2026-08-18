@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="moto-admin" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>沈阳-新驿马山庄-南杂木镇-苏子河银龙湾环线</name>
+    <time>2026-08-18T02:33:45Z</time>
+  </metadata>
+  <trk>
+    <name>沈阳-新驿马山庄-南杂木镇-苏子河银龙湾环线</name>
+    <trkseg>
+    <trkpt lat="41.677576" lon="123.464675">
+      <name>沈阳</name>
+    </trkpt>
+    <trkpt lat="41.938076" lon="124.180247">
+      <name>新驿马山庄</name>
+    </trkpt>
+    <trkpt lat="41.969922" lon="124.416024">
+      <name>南杂木镇</name>
+    </trkpt>
+    <trkpt lat="41.817080" lon="124.487826">
+      <name>苏子河银龙湾</name>
+    </trkpt>
+    <trkpt lat="41.677576" lon="123.464675">
+      <name>沈阳</name>
+    </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

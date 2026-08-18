@@ -32,7 +32,7 @@ App({
     ).trim();
 
     return {
-      nickName: nickName || "微信用户",
+      nickName,
       avatarUrl,
       city: String(storedProfile.city || "").trim(),
       province: String(storedProfile.province || "").trim(),
@@ -61,12 +61,7 @@ App({
         }
       : null;
 
-    const sanitizedProfile = normalizedProfile
-      ? {
-          ...normalizedProfile,
-          nickName: normalizedProfile.nickName || "微信用户",
-        }
-      : null;
+    const sanitizedProfile = normalizedProfile ? { ...normalizedProfile } : null;
 
     this.globalData.wechatUserProfile = sanitizedProfile;
 

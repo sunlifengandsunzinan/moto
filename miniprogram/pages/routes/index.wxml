@@ -81,7 +81,7 @@
       <view class="route-kpi-row">
         <view class="route-kpi-box"><text>总里程数：{{route.distance_km}}km</text></view>
         <view class="route-kpi-box"><text>预估时长：{{route.estimated_duration_label}}</text></view>
-        <view class="route-kpi-box"><text>跑完奖励积分：{{route.reward_points_label}}</text></view>
+        <view class="route-kpi-box"><text>建议天数：{{route.suggested_days_label}}</text></view>
       </view>
 
       <view class="route-action-row">

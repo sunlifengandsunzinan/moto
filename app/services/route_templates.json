@@ -477,5 +477,152 @@
       }
     ],
     "gpx_file": "douyin---67.gpx"
+  },
+  {
+    "slug": "douyin-沈阳新驿马山庄南杂木镇苏子河银龙湾环线-68",
+    "title": "沈阳-新驿马山庄-南杂木镇-苏子河银龙湾-白家店度假村环线",
+    "region": "northeast",
+    "liaoning_scope": "include",
+    "spot_slugs": [],
+    "days": 1,
+    "difficulty": "medium",
+    "scenery_type": [
+      "mountain",
+      "scenic",
+      "countryside"
+    ],
+    "bike_types": [
+      "150-250cc",
+      "300-500cc",
+      "500cc+"
+    ],
+    "experience_levels": [
+      "intermediate",
+      "advanced"
+    ],
+    "best_season": "春 / 夏 / 秋",
+    "distance_km": 250.2,
+    "budget_range": "300-800",
+    "summary": "沈阳出发，途经新驿马山庄、南杂木镇、苏子河银龙湾、白家店度假村后回到沈阳，适合单日山景与乡道组合环线。",
+    "navigation": {
+      "provider": "amap",
+      "waypoints": [
+        {
+          "name": "沈阳",
+          "lng": 123.464675,
+          "lat": 41.677576,
+          "has_coordinates": true
+        },
+        {
+          "name": "新驿马山庄",
+          "lng": 124.180247,
+          "lat": 41.938076,
+          "has_coordinates": true
+        },
+        {
+          "name": "南杂木镇",
+          "lng": 124.416024,
+          "lat": 41.969922,
+          "has_coordinates": true
+        },
+        {
+          "name": "苏子河银龙湾",
+          "lng": 124.487826,
+          "lat": 41.81708,
+          "has_coordinates": true
+        },
+        {
+          "name": "白家店度假村",
+          "lng": 124.105369,
+          "lat": 41.832064,
+          "has_coordinates": true
+        },
+        {
+          "name": "沈阳",
+          "lng": 123.464675,
+          "lat": 41.677576,
+          "has_coordinates": true
+        }
+      ],
+      "amap_locked_href": "https://www.amap.com/dir?from%5Badcode%5D=210100&from%5Bname%5D=%E8%BE%BD%E5%AE%81%E7%9C%81%E6%B2%88%E9%98%B3%E5%B8%82&from%5Bid%5D=2101001787018770513-from&from%5Bpoitype%5D=&from%5Blnglat%5D=123.464675%2C41.677576&from%5Bmodxy%5D=&to%5Badcode%5D=210100&to%5Bname%5D=%E8%BE%BD%E5%AE%81%E7%9C%81%E6%B2%88%E9%98%B3%E5%B8%82&to%5Bid%5D=2101001787019067203-to&to%5Bpoitype%5D=&to%5Blnglat%5D=123.464675%2C41.677576&to%5Bmodxy%5D=&policy=1&type=car&via%5B0%5D%5Bid%5D=B0FFF2WZ5V&via%5B0%5D%5Bname%5D=%E6%96%B0%E9%A9%BF%E9%A9%AC%E5%B1%B1%E5%BA%84&via%5B0%5D%5Blnglat%5D=124.180247%2C41.938076&via%5B0%5D%5Bmodxy%5D=124.180577%2C41.938451&via%5B0%5D%5Bpoitype%5D=080401%7C080500&via%5B0%5D%5Badcode%5D=210403&via%5B1%5D%5Badcode%5D=210422&via%5B1%5D%5Bname%5D=%E5%8D%97%E6%9D%82%E6%9C%A8%E9%95%87&via%5B1%5D%5Bid%5D=B019D0NV1W&via%5B1%5D%5Bpoitype%5D=190106&via%5B1%5D%5Blnglat%5D=124.416024%2C41.969922&via%5B1%5D%5Bmodxy%5D=124.416037%2C41.969635&via%5B2%5D%5Badcode%5D=210422&via%5B2%5D%5Bname%5D=%E8%8B%8F%E5%AD%90%E6%B2%B3%E9%93%B6%E9%BE%99%E6%B9%BE&via%5B2%5D%5Bid%5D=B0L1VXCNJW&via%5B2%5D%5Bpoitype%5D=110200&via%5B2%5D%5Blnglat%5D=124.48782599999998%2C41.81708&via%5B2%5D%5Bmodxy%5D=&via%5B3%5D%5Bid%5D=B0FFFKVMSQ&via%5B3%5D%5Bname%5D=%E7%99%BD%E5%AE%B6%E5%BA%97%E5%BA%A6%E5%81%87%E6%9D%91&via%5B3%5D%5Blnglat%5D=124.105369%2C41.832064&via%5B3%5D%5Bmodxy%5D=124.105369%2C41.832064&via%5B3%5D%5Bpoitype%5D=050100&via%5B3%5D%5Badcode%5D=210403"
+    },
+    "days_plan": [
+      {
+        "day": 1,
+        "title": "沈阳 -> 新驿马山庄 -> 南杂木镇 -> 苏子河银龙湾 -> 白家店度假村 -> 沈阳",
+        "ride_time": "建议骑行 7-9 小时，含 2-3 次停靠",
+        "distance": 250.2,
+        "highlights": [
+          "山路弯道",
+          "河谷风景",
+          "当日往返环线"
+        ],
+        "note": "建议早出发，抚顺山区路段注意补油与路面变化。"
+      }
+    ],
+    "pois": {
+      "fuel": [],
+      "repair": [],
+      "lodging": [],
+      "viewpoint": [],
+      "emergency": []
+    },
+    "source": "manual",
+    "amap_href": "https://www.amap.com/dir?from%5Badcode%5D=210100&from%5Bname%5D=%E8%BE%BD%E5%AE%81%E7%9C%81%E6%B2%88%E9%98%B3%E5%B8%82&from%5Bid%5D=2101001787018770513-from&from%5Bpoitype%5D=&from%5Blnglat%5D=123.464675%2C41.677576&from%5Bmodxy%5D=&to%5Badcode%5D=210100&to%5Bname%5D=%E8%BE%BD%E5%AE%81%E7%9C%81%E6%B2%88%E9%98%B3%E5%B8%82&to%5Bid%5D=2101001787019067203-to&to%5Bpoitype%5D=&to%5Blnglat%5D=123.464675%2C41.677576&to%5Bmodxy%5D=&policy=1&type=car&via%5B0%5D%5Bid%5D=B0FFF2WZ5V&via%5B0%5D%5Bname%5D=%E6%96%B0%E9%A9%BF%E9%A9%AC%E5%B1%B1%E5%BA%84&via%5B0%5D%5Blnglat%5D=124.180247%2C41.938076&via%5B0%5D%5Bmodxy%5D=124.180577%2C41.938451&via%5B0%5D%5Bpoitype%5D=080401%7C080500&via%5B0%5D%5Badcode%5D=210403&via%5B1%5D%5Badcode%5D=210422&via%5B1%5D%5Bname%5D=%E5%8D%97%E6%9D%82%E6%9C%A8%E9%95%87&via%5B1%5D%5Bid%5D=B019D0NV1W&via%5B1%5D%5Bpoitype%5D=190106&via%5B1%5D%5Blnglat%5D=124.416024%2C41.969922&via%5B1%5D%5Bmodxy%5D=124.416037%2C41.969635&via%5B2%5D%5Badcode%5D=210422&via%5B2%5D%5Bname%5D=%E8%8B%8F%E5%AD%90%E6%B2%B3%E9%93%B6%E9%BE%99%E6%B9%BE&via%5B2%5D%5Bid%5D=B0L1VXCNJW&via%5B2%5D%5Bpoitype%5D=110200&via%5B2%5D%5Blnglat%5D=124.48782599999998%2C41.81708&via%5B2%5D%5Bmodxy%5D=&via%5B3%5D%5Bid%5D=B0FFFKVMSQ&via%5B3%5D%5Bname%5D=%E7%99%BD%E5%AE%B6%E5%BA%97%E5%BA%A6%E5%81%87%E6%9D%91&via%5B3%5D%5Blnglat%5D=124.105369%2C41.832064&via%5B3%5D%5Bmodxy%5D=124.105369%2C41.832064&via%5B3%5D%5Bpoitype%5D=050100&via%5B3%5D%5Badcode%5D=210403",
+    "is_visible": true,
+    "detail_highlights": [],
+    "detail_notes": [],
+    "checkpoints": [
+      {
+        "name": "沈阳",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "新驿马山庄",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "南杂木镇",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "苏子河银龙湾",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "白家店度假村",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      },
+      {
+        "name": "沈阳",
+        "summary": "后台维护",
+        "timing": "后台维护",
+        "distance_text": "",
+        "hit_count_text": "",
+        "image": "route-checkpoint-placeholder.jpg"
+      }
+    ],
+    "cover_image_url": "/static/uploads/routes/douyin--68-cover-061ea9b6.jpg",
+    "gpx_file": "douyin---68.gpx"
   }
 ]

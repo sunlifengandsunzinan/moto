@@ -1814,10 +1814,19 @@ def _route_index_card(
     routed_polyline_points = routed_polyline.get("points", []) if isinstance(routed_polyline.get("points"), list) else []
     routed_polyline_status = str(routed_polyline.get("status") or "waypoint-straight-line").strip() or "waypoint-straight-line"
 
-    # Locked Amap routes should never display straight fallback segments that can visibly cut across terrain.
+    # Locked routes still allow preview polyline rendering when Tencent returns a complete road path.
+    # Only suppress preview when result indicates fallback/unreliable status.
     if locked_amap_href and (
-        "partial-fallback" in routed_polyline_status
-        or routed_polyline_status == "waypoint-straight-line"
+        "segment-failed" in routed_polyline_status
+        or "partial-fallback" in routed_polyline_status
+        or routed_polyline_status in {
+            "waypoint-straight-line",
+            "request-failed",
+            "missing-webservice-key",
+            "insufficient-waypoints",
+            "empty-polyline",
+        }
+        or routed_polyline_status.startswith("tencent-status-")
     ):
         routed_polyline_points = []
         routed_polyline_status = f"locked-amap-road-polyline-unavailable:{routed_polyline_status}"
@@ -2379,7 +2388,6 @@ def _fetch_tencent_route_polyline_uncached(serialized_points: str, tencent_key: 
         return {"points": [], "status": "insufficient-waypoints"}
 
     merged_points: list[dict[str, float]] = []
-    failed_segments: list[str] = []
     for index in range(len(coordinate_points) - 1):
         start = coordinate_points[index]
         end = coordinate_points[index + 1]
@@ -2387,8 +2395,11 @@ def _fetch_tencent_route_polyline_uncached(serialized_points: str, tencent_key: 
         segment_points = segment_result.get("points") if isinstance(segment_result.get("points"), list) else []
         segment_status = str(segment_result.get("status") or "request-failed").strip() or "request-failed"
         if len(segment_points) < 2:
-            failed_segments.append(f"{index + 1}:{segment_status}")
-            segment_points = _build_straight_segment_points(start, end)
+            # Never synthesize straight-line fallback segments: they visibly drift away from actual roads.
+            return {
+                "points": [],
+                "status": f"tencent-direction-segment-failed-{index + 1}:{segment_status}",
+            }
 
         if merged_points and merged_points[-1] == segment_points[0]:
             merged_points.extend(segment_points[1:])
@@ -2396,35 +2407,8 @@ def _fetch_tencent_route_polyline_uncached(serialized_points: str, tencent_key: 
             merged_points.extend(segment_points)
 
     if len(merged_points) >= 2:
-        if failed_segments:
-            return {
-                "points": _downsample_polyline(merged_points, max_points=2200),
-                "status": "tencent-direction-segmented-partial-fallback-" + ",".join(failed_segments),
-            }
         return {"points": _downsample_polyline(merged_points, max_points=2200), "status": "tencent-direction-segmented"}
     return {"points": [], "status": "empty-polyline"}
-
-
-def _build_straight_segment_points(start: Mapping[str, Any], end: Mapping[str, Any], *, min_parts: int = 8) -> list[dict[str, float]]:
-    try:
-        start_lat = float(start["lat"])
-        start_lng = float(start["lng"])
-        end_lat = float(end["lat"])
-        end_lng = float(end["lng"])
-    except (KeyError, TypeError, ValueError):
-        return []
-
-    if not (_is_valid_coordinate(start_lat, start_lng) and _is_valid_coordinate(end_lat, end_lng)):
-        return []
-
-    segments = max(1, int(min_parts))
-    return [
-        {
-            "lat": start_lat + ((end_lat - start_lat) * step / segments),
-            "lng": start_lng + ((end_lng - start_lng) * step / segments),
-        }
-        for step in range(segments + 1)
-    ]
 
 
 def _fetch_tencent_segment_polyline(start: Mapping[str, Any], end: Mapping[str, Any], tencent_key: str) -> dict[str, Any]:
