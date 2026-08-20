@@ -10,6 +10,8 @@ const {
 const { downloadRemoteFile } = require("../../../utils/file-download");
 
 const IMPORT_PREFERENCE_STORAGE_KEY = "routeImportPreferredMapApp";
+const ROUTE_DETAIL_SEED_STORAGE_PREFIX = "routeDetailSeed:";
+const ROUTE_DETAIL_CACHE_STORAGE_PREFIX = "routeDetailCache:";
 const WANT_GO_PLAN_OPTIONS = [
   { key: "this_month", label: "这个月" },
   { key: "next_month", label: "下个月" },
@@ -51,6 +53,78 @@ function getRouteDetailFallback() {
       daily_plan: [],
     },
   };
+}
+
+function getRouteDetailSeedStorageKey(slug) {
+  return `${ROUTE_DETAIL_SEED_STORAGE_PREFIX}${String(slug || "").trim()}`;
+}
+
+function getRouteDetailCacheStorageKey(slug) {
+  return `${ROUTE_DETAIL_CACHE_STORAGE_PREFIX}${String(slug || "").trim()}`;
+}
+
+function readStoredValue(key) {
+  if (!key) {
+    return null;
+  }
+
+  try {
+    return wx.getStorageSync(key) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeStoredValue(key, value) {
+  if (!key) {
+    return;
+  }
+
+  try {
+    wx.setStorageSync(key, value);
+  } catch (_) {
+    // Ignore storage write failures.
+  }
+}
+
+function buildSeedPayload(seedRoute) {
+  if (!seedRoute || typeof seedRoute !== "object") {
+    return null;
+  }
+
+  return {
+    page: {
+      title: String(seedRoute.title || "路线详情").trim() || "路线详情",
+      eyebrow: "路线详情",
+    },
+    route: seedRoute,
+    detail_sections: {
+      daily_plan: Array.isArray(seedRoute.days_plan) ? seedRoute.days_plan : [],
+      checkpoints: [],
+      trip_advice: { title: "行途建议", comment: "", items: [], source_line: "" },
+      linked_spots: [],
+      navigation_import_assistant: {},
+    },
+  };
+}
+
+function readCachedRoutePayload(slug) {
+  const normalizedSlug = String(slug || "").trim();
+  if (!normalizedSlug) {
+    return null;
+  }
+
+  const cachedPayload = readStoredValue(getRouteDetailCacheStorageKey(normalizedSlug));
+  if (cachedPayload && typeof cachedPayload === "object" && cachedPayload.route) {
+    return cachedPayload;
+  }
+
+  const seedWrapper = readStoredValue(getRouteDetailSeedStorageKey(normalizedSlug));
+  if (seedWrapper && typeof seedWrapper === "object" && seedWrapper.route) {
+    return buildSeedPayload(seedWrapper.route);
+  }
+
+  return null;
 }
 
 function normalizeCoordinatePoint(point) {
@@ -170,7 +244,53 @@ function downsamplePolylinePoints(points, maxPoints = 900) {
   return dedupePolylinePoints(result);
 }
 
-function buildMapPayload(amapExport) {
+function buildCheckpointMapMarkers(checkpointItems, routePolylinePoints, fallbackWaypointPoints) {
+  const checkpoints = Array.isArray(checkpointItems) ? checkpointItems : [];
+  if (!checkpoints.length) {
+    return [];
+  }
+
+  const polylinePoints = Array.isArray(routePolylinePoints) ? routePolylinePoints : [];
+  const waypointPoints = Array.isArray(fallbackWaypointPoints) ? fallbackWaypointPoints : [];
+  const markerAnchors = polylinePoints.length >= 2 ? polylinePoints : waypointPoints;
+  if (!markerAnchors.length) {
+    return [];
+  }
+
+  const safeCheckpoints = checkpoints.slice(0, 20);
+  return safeCheckpoints
+    .map((checkpoint, index) => {
+      const ratio = safeCheckpoints.length <= 1 ? 0 : (index / (safeCheckpoints.length - 1));
+      const anchorIndex = Math.round(ratio * Math.max(markerAnchors.length - 1, 0));
+      const anchor = markerAnchors[Math.min(anchorIndex, markerAnchors.length - 1)] || markerAnchors[0];
+      const snappedAnchor = findNearestPolylinePoint(anchor, polylinePoints);
+      const name = String(checkpoint?.name || `打卡点${index + 1}`).trim() || `打卡点${index + 1}`;
+      const checkpointIndex = Number(checkpoint?.index || (index + 1));
+
+      return {
+        id: 1000 + index,
+        longitude: Number(snappedAnchor?.longitude),
+        latitude: Number(snappedAnchor?.latitude),
+        width: 26,
+        height: 34,
+        anchor: { x: 0.5, y: 1 },
+        zIndex: 16,
+        callout: {
+          content: `${checkpointIndex}. ${name}`,
+          display: "ALWAYS",
+          padding: 6,
+          borderRadius: 8,
+          bgColor: "#FFE4BF",
+          color: "#4A2A00",
+          fontSize: 10,
+          textAlign: "center",
+        },
+      };
+    })
+    .filter((item) => Number.isFinite(item.longitude) && Number.isFinite(item.latitude));
+}
+
+function buildMapPayload(amapExport, checkpointItems = []) {
   const coordinatePoints = (amapExport?.waypoints || [])
     .map(normalizeCoordinatePoint)
     .filter(Boolean);
@@ -185,22 +305,11 @@ function buildMapPayload(amapExport) {
     })
     .filter(Boolean);
   const safePolylinePoints = downsamplePolylinePoints(dedupePolylinePoints(routedPolylinePoints), 900);
-  const previewPolylineStatus = String(amapExport?.preview_polyline_status || "").trim();
-  const hasFallbackStatus = (
-    previewPolylineStatus.includes("segment-failed")
-    || previewPolylineStatus.includes("partial-fallback")
-    || previewPolylineStatus.includes("waypoint-straight-line")
-    || previewPolylineStatus.includes("missing-webservice-key")
-    || previewPolylineStatus.includes("insufficient-waypoints")
-    || previewPolylineStatus.includes("empty-polyline")
-    || previewPolylineStatus.includes("request-failed")
-    || previewPolylineStatus.includes("tencent-status-")
-  );
-  const hasTrustedPolylineStatus = (
-    previewPolylineStatus === "tencent-direction-segmented"
-    || previewPolylineStatus === "cached-tencent-direction"
-    || previewPolylineStatus === "tencent-direction"
-  );
+  const hasRoadPolyline = safePolylinePoints.length >= 2;
+  const fallbackPolylinePoints = !hasRoadPolyline && coordinatePoints.length >= 2
+    ? coordinatePoints.map((point) => ({ longitude: point.longitude, latitude: point.latitude }))
+    : [];
+  const visiblePolylinePoints = hasRoadPolyline ? safePolylinePoints : fallbackPolylinePoints;
 
   const markerPoints = coordinatePoints;
 
@@ -219,22 +328,15 @@ function buildMapPayload(amapExport) {
     longitude: point.longitude,
     latitude: point.latitude,
   }));
-  const visiblePolylinePoints = (
-    !hasFallbackStatus && hasTrustedPolylineStatus && safePolylinePoints.length >= 2
-  ) ? safePolylinePoints : [];
-
-  return {
-    // Keep the real map visible for locked routes even when road polyline is intentionally hidden.
-    preview_available: markerPoints.length >= 1,
-    center: {
-      longitude: markerPoints[0].longitude,
-      latitude: markerPoints[0].latitude,
-    },
-    include_points: markerPoints.map((point) => ({
-      longitude: point.longitude,
-      latitude: point.latitude,
-    })),
-    markers: markerPoints.map((point, index) => {
+  const usingFallbackPolyline = !hasRoadPolyline && visiblePolylinePoints.length >= 2;
+  const checkpointMarkers = buildCheckpointMapMarkers(
+    checkpointItems,
+    visiblePolylinePoints,
+    coordinatePoints,
+  );
+  const mapMarkers = checkpointMarkers.length
+    ? checkpointMarkers
+    : markerPoints.map((point, index) => {
       const callout = buildMarkerCallout(point, index, markerPoints.length);
       return {
         id: index + 1,
@@ -255,15 +357,30 @@ function buildMapPayload(amapExport) {
           textAlign: "center",
         },
       };
-    }),
+    });
+
+  return {
+    // Keep the real map visible for locked routes even when road polyline is intentionally hidden.
+    preview_available: markerPoints.length >= 1,
+    has_road_polyline: hasRoadPolyline,
+    using_fallback_polyline: usingFallbackPolyline,
+    center: {
+      longitude: markerPoints[0].longitude,
+      latitude: markerPoints[0].latitude,
+    },
+    include_points: markerPoints.map((point) => ({
+      longitude: point.longitude,
+      latitude: point.latitude,
+    })),
+    markers: mapMarkers,
     polyline: visiblePolylinePoints.length >= 2
       ? [{
           points: visiblePolylinePoints,
-          color: "#1372CFFF",
+          color: usingFallbackPolyline ? "#B98B4A" : "#1372CF",
           width: 8,
-          dottedLine: false,
+          dottedLine: usingFallbackPolyline,
           arrowLine: false,
-          borderColor: "#FFFFFFD9",
+          borderColor: "#FFFFFF",
           borderWidth: 2,
         }]
       : [],
@@ -292,7 +409,8 @@ function normalizeConfiguredCheckpoints(checkpoints) {
       const timing = String(item?.timing || item?.duration_text || "").trim();
       const summary = String(item?.summary || item?.score_text || "").trim();
       const distanceText = String(item?.distance_text || item?.distance || "后台维护").trim() || "后台维护";
-      const hitCountText = String(item?.hit_count_text || item?.hit_count || "--").trim() || "--";
+      const hitCount = Math.max(0, Number(item?.hit_count || 0));
+      const hitCountText = `${hitCount}人打过卡`;
 
       return {
         index: index + 1,
@@ -315,19 +433,17 @@ function buildCheckpointTimeline(route, dailyPlan, configuredCheckpoints) {
 
   const waypoints = Array.isArray(route?.amap_export?.waypoints) ? route.amap_export.waypoints : [];
   const routeDistance = Number(route?.distance_km || 0);
-
   if (waypoints.length) {
     const segmentDistance = waypoints.length > 1
       ? Math.max(1, Math.round(routeDistance / (waypoints.length - 1)))
-      : routeDistance;
-
+      : Math.max(1, routeDistance || 1);
     return waypoints.map((waypoint, index) => ({
       index: index + 1,
       name: String(waypoint?.name || `打卡点${index + 1}`),
       score_text: "可获得打卡积分0点",
       distance_text: index === 0 ? "起点" : `${segmentDistance}km`,
       duration_text: index === 0 ? "" : `00小时${String(10 + index * 2).padStart(2, "0")}分钟`,
-      hit_count_text: `${Math.max(0, Number(route?.engagement?.navigation_count || 0) - index * 3)}次`,
+      hit_count_text: "0人打过卡",
       is_last: index === waypoints.length - 1,
     }));
   }
@@ -343,7 +459,7 @@ function buildCheckpointTimeline(route, dailyPlan, configuredCheckpoints) {
     score_text: "可获得打卡积分0点",
     distance_text: String(day?.distance || "--"),
     duration_text: String(day?.ride_time || ""),
-    hit_count_text: "--",
+    hit_count_text: "0人打过卡",
     is_last: index === fallbackDailyPlan.length - 1,
   }));
 }
@@ -462,7 +578,6 @@ function resolveMapAppView(importAssistant, selectedMapAppKey, platformKey) {
 
 function resolveDirectNavigationOptions(route) {
   const amapUrl = resolveManualNavigationUrl(route, "amap");
-  const tencentUrl = resolveManualNavigationUrl(route, "tencent");
   const coordinateTarget = getRouteNavigationTarget(route);
   return [
     {
@@ -472,21 +587,86 @@ function resolveDirectNavigationOptions(route) {
       manualUrl: amapUrl,
       isAvailable: Boolean(amapUrl || coordinateTarget),
     },
-    {
-      key: "tencent",
-      label: "腾讯地图",
-      url: "",
-      manualUrl: tencentUrl,
-      isAvailable: Boolean(tencentUrl || coordinateTarget),
-    },
   ];
+}
+
+function buildTencentWebRouteUrlFromWaypoints(route) {
+  const coordinatePoints = (route?.amap_export?.waypoints || [])
+    .map(normalizeCoordinatePoint)
+    .filter(Boolean);
+  if (coordinatePoints.length < 2) {
+    return "";
+  }
+
+  const start = coordinatePoints[0];
+  const destination = coordinatePoints[coordinatePoints.length - 1];
+  const viaPoints = coordinatePoints.slice(1, -1);
+  const params = [
+    `type=${encodeURIComponent("drive")}`,
+    `from=${encodeURIComponent(start.name || "起点")}`,
+    `fromcoord=${encodeURIComponent(`${start.latitude},${start.longitude}`)}`,
+    `to=${encodeURIComponent(destination.name || "终点")}`,
+    `tocoord=${encodeURIComponent(`${destination.latitude},${destination.longitude}`)}`,
+    `policy=${encodeURIComponent("0")}`,
+    `referer=${encodeURIComponent("xingtu")}`,
+  ];
+
+  if (viaPoints.length) {
+    const viaNames = viaPoints
+      .map((point) => String(point.name || "途径点").trim() || "途径点")
+      .join(";");
+    const viaCoords = viaPoints
+      .map((point) => `${point.latitude},${point.longitude}`)
+      .join(";");
+    const encodedViaNames = encodeURIComponent(viaNames);
+    const encodedViaCoords = encodeURIComponent(viaCoords);
+    params.push(`via=${encodedViaNames}`);
+    params.push(`viacoord=${encodedViaCoords}`);
+    params.push(`waypoints=${encodedViaCoords}`);
+    params.push(`waypointcoords=${encodedViaCoords}`);
+  }
+
+  return `https://apis.map.qq.com/uri/v1/routeplan?${params.join("&")}`;
 }
 
 function resolveManualNavigationUrl(route, mapKey) {
   if (mapKey === "tencent") {
-    return String(route?.tencent_export?.href || route?.tencent_export?.app_href || "").trim();
+    return String(
+      route?.tencent_export?.app_href
+      || route?.tencent_export?.href
+      || buildTencentWebRouteUrlFromWaypoints(route)
+      || "",
+    ).trim();
   }
   return String(route?.amap_export?.app_href || route?.amap_export?.href || route?.amap_export?.browser_href || "").trim();
+}
+
+function resolveCopyableNavigationUrl(route, mapKey) {
+  if (mapKey === "tencent") {
+    return String(
+      route?.tencent_export?.href
+      || buildTencentWebRouteUrlFromWaypoints(route)
+      || route?.tencent_export?.app_href
+      || "",
+    ).trim();
+  }
+
+  const browserHref = String(route?.amap_export?.browser_href || "").trim();
+  if (browserHref) {
+    return browserHref;
+  }
+
+  const publicHref = String(route?.amap_export?.href || "").trim();
+  if (publicHref) {
+    return publicHref;
+  }
+
+  const slug = String(route?.slug || "").trim();
+  if (slug) {
+    return buildWebUrl(`/moto/routes/${slug}/amap-launch`);
+  }
+
+  return String(route?.amap_export?.browser_href || route?.amap_export?.href || route?.amap_export?.app_href || "").trim();
 }
 
 function buildWaypointSummary(route) {
@@ -514,11 +694,70 @@ function buildRouteSharePayload(route, fallbackSlug) {
   };
 }
 
+function normalizeRouteCollection(route, checkpointTimeline) {
+  const sourceCollection = route?.collection && typeof route.collection === "object"
+    ? route.collection
+    : {};
+  const fallbackTotal = Array.isArray(checkpointTimeline) ? checkpointTimeline.length : 0;
+  const checkpointTotal = Math.max(0, Number(sourceCollection.checkpoint_total || fallbackTotal || 0));
+  const checkedIndexes = Array.isArray(sourceCollection.checked_indexes)
+    ? sourceCollection.checked_indexes
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value > 0)
+    : [];
+  const checkedIndexSet = new Set(checkedIndexes);
+  const checkedCount = checkedIndexSet.size;
+  const completionPercent = checkpointTotal > 0
+    ? Math.min(100, Math.round((checkedCount / checkpointTotal) * 100))
+    : 0;
+  const isCompleted = checkpointTotal > 0 && checkedCount >= checkpointTotal;
+  const badge = sourceCollection.badge && typeof sourceCollection.badge === "object"
+    ? sourceCollection.badge
+    : {};
+
+  return {
+    ...sourceCollection,
+    checkpoint_total: checkpointTotal,
+    checked_indexes: [...checkedIndexSet].sort((left, right) => left - right),
+    checked_count: checkedCount,
+    completion_percent: completionPercent,
+    is_completed: isCompleted,
+    has_badge: Boolean(sourceCollection.has_badge || badge.awarded_at),
+    badge,
+  };
+}
+
+function applyCheckpointCollection(timeline, collection) {
+  const sourceItems = Array.isArray(timeline) ? timeline : [];
+  const checkedSet = new Set(Array.isArray(collection?.checked_indexes) ? collection.checked_indexes : []);
+  return sourceItems.map((item) => ({
+    ...item,
+    is_checked: checkedSet.has(Number(item.index || 0)),
+  }));
+}
+
 function normalizePayload(payload) {
   const route = payload?.route || {};
   const amapExport = route.amap_export || {};
-  const mapPayload = buildMapPayload(amapExport);
   const slug = String(route.slug || "").trim();
+  const dailyPlan = payload?.detail_sections?.daily_plan || [];
+  const configuredCheckpoints = normalizeConfiguredCheckpoints(payload?.detail_sections?.checkpoints || []);
+  const checkpointTimeline = buildCheckpointTimeline(route, dailyPlan, configuredCheckpoints);
+  const safeCheckpointTimeline = checkpointTimeline.length
+    ? checkpointTimeline
+    : normalizeConfiguredCheckpoints(payload?.detail_sections?.checkpoints || []);
+  const mapPayload = buildMapPayload(amapExport, safeCheckpointTimeline);
+  const previewPolylineStatus = String(amapExport?.preview_polyline_status || "").trim();
+  const shouldShowPolylineNotice = Boolean(
+    mapPayload.preview_available
+      && !mapPayload.has_road_polyline
+      && mapPayload.markers.length >= 2,
+  );
+  const polylineHintText = shouldShowPolylineNotice
+    ? (mapPayload.using_fallback_polyline
+      ? `当前路线暂无道路折线，已用途经点连线做示意。`
+      : `当前路线暂无道路折线，已显示地图标记。`)
+    : "";
 
   const normalizedRoute = {
     ...route,
@@ -572,11 +811,14 @@ function normalizePayload(payload) {
         ...((amapExport && amapExport.mini_program) || {}),
       },
       map_preview_available: mapPayload.preview_available,
+      map_has_road_polyline: mapPayload.has_road_polyline,
       map_center: mapPayload.center,
       map_include_points: mapPayload.include_points,
       map_markers: mapPayload.markers,
       map_polyline: mapPayload.polyline,
       map_scale: mapPayload.scale,
+      map_polyline_notice: "",
+      map_polyline_hint: polylineHintText,
       screenshot_url: amapExport.screenshot_href ? buildWebUrl(amapExport.screenshot_href) : "",
     },
     tencent_export: {
@@ -590,8 +832,8 @@ function normalizePayload(payload) {
     },
   };
 
-  const dailyPlan = payload?.detail_sections?.daily_plan || [];
-  const configuredCheckpoints = normalizeConfiguredCheckpoints(payload?.detail_sections?.checkpoints || []);
+  const normalizedCollection = normalizeRouteCollection(normalizedRoute, safeCheckpointTimeline);
+  normalizedRoute.collection = normalizedCollection;
 
   return {
     page: payload?.page || { title: route.title || "路线详情", eyebrow: "路线详情" },
@@ -604,7 +846,7 @@ function normalizePayload(payload) {
       navigation_import_assistant: normalizeImportAssistant(payload?.detail_sections?.navigation_import_assistant || {}, normalizedRoute),
     },
     overview_stats: buildOverviewStats(normalizedRoute),
-    checkpoint_timeline: buildCheckpointTimeline(normalizedRoute, dailyPlan, configuredCheckpoints),
+    checkpoint_timeline: applyCheckpointCollection(safeCheckpointTimeline, normalizedCollection),
     want_go_action_label: normalizeWantGoPlanLabel(normalizedRoute?.want_go?.plan_bucket),
   };
 }
@@ -621,16 +863,27 @@ Page({
       amap_export: {
         screenshot_url: "",
         map_preview_available: false,
+        map_has_road_polyline: false,
         map_center: { longitude: 0, latitude: 0 },
         map_include_points: [],
         map_markers: [],
         map_polyline: [],
         map_scale: 8,
+        map_polyline_notice: "",
       },
     },
     detailSections: { daily_plan: [], trip_advice: { title: "行途建议", comment: "", items: [], source_line: "" } },
     overviewStats: [],
     checkpointTimeline: [],
+    routeCollection: {
+      checkpoint_total: 0,
+      checked_count: 0,
+      completion_percent: 0,
+      checked_indexes: [],
+      is_completed: false,
+      has_badge: false,
+      badge: {},
+    },
     linkedSpots: [],
     primaryMapActionLabel: "直接导航",
     wantGoActionLabel: "想去",
@@ -652,13 +905,20 @@ Page({
     importDownloadMessage: "",
     downloadedGpxPath: "",
     runtimePlatformKey: "general",
+    preparingBadgeShare: false,
   },
 
   onLoad(options) {
-    const slug = decodeURIComponent(options.slug || "");
+    const slug = decodeURIComponent(options.slug || options.routeSlug || options.id || "");
     this.slug = slug;
     this.runtimePlatformKey = detectPlatformKey();
     this.enableNativeSharing();
+
+    const cachedPayload = readCachedRoutePayload(slug);
+    if (cachedPayload) {
+      this.applyNormalizedData(normalizePayload(cachedPayload), true);
+    }
+
     this.fetchData(slug);
   },
 
@@ -682,22 +942,91 @@ Page({
 
   onShareAppMessage() {
     const sharePayload = buildRouteSharePayload(this.data.route || {}, this.slug);
+    const routeCollection = this.data.routeCollection || {};
+    const badge = routeCollection.badge && typeof routeCollection.badge === "object"
+      ? routeCollection.badge
+      : {};
+    const routeTitle = String(this.data.route?.title || "摩旅路线").trim() || "摩旅路线";
+    const shareTitle = this.data.preparingBadgeShare && routeCollection.is_completed
+      ? String(badge.share_text || `我已完成 ${routeTitle} 全部打卡点，解锁路线徽章！`).trim()
+      : sharePayload.title;
+    const imageUrl = this.data.preparingBadgeShare
+      ? String(this.data.route?.amap_export?.screenshot_url || "").trim()
+      : "";
+    if (this.data.preparingBadgeShare) {
+      this.setData({ preparingBadgeShare: false });
+    }
     return {
-      title: sharePayload.title,
+      title: shareTitle,
       path: sharePayload.path,
+      imageUrl,
     };
   },
 
   onShareTimeline() {
     const sharePayload = buildRouteSharePayload(this.data.route || {}, this.slug);
+    const routeCollection = this.data.routeCollection || {};
+    const badge = routeCollection.badge && typeof routeCollection.badge === "object"
+      ? routeCollection.badge
+      : {};
+    const routeTitle = String(this.data.route?.title || "摩旅路线").trim() || "摩旅路线";
+    const shareTitle = this.data.preparingBadgeShare && routeCollection.is_completed
+      ? String(badge.share_text || `我已完成 ${routeTitle} 全部打卡点，解锁路线徽章！`).trim()
+      : sharePayload.title;
+    if (this.data.preparingBadgeShare) {
+      this.setData({ preparingBadgeShare: false });
+    }
     return {
-      title: sharePayload.title,
+      title: shareTitle,
       query: sharePayload.query,
     };
   },
 
   onPullDownRefresh() {
     this.fetchData(this.slug, true);
+  },
+
+  applyNormalizedData(normalized, keepLoading = false) {
+    if (!normalized || typeof normalized !== "object") {
+      return;
+    }
+
+    const importAssistant = normalized.detail_sections.navigation_import_assistant || {
+      enabled: false,
+      map_apps: [],
+      default_map_app: "",
+      preferred_map_app: "",
+      helper_entry_label: "不会导入？",
+      troubleshooting: { title: "常见问题", items: [] },
+    };
+    const selectedImportMapAppKey = resolvePreferredMapApp(
+      importAssistant.map_apps || [],
+      importAssistant.preferred_map_app || importAssistant.default_map_app || "",
+    );
+    const importView = resolveMapAppView(importAssistant, selectedImportMapAppKey, this.runtimePlatformKey || "general");
+
+    this.setData({
+      loading: keepLoading,
+      page: normalized.page,
+      route: normalized.route,
+      detailSections: normalized.detail_sections,
+      overviewStats: normalized.overview_stats,
+      checkpointTimeline: normalized.checkpoint_timeline,
+      routeCollection: normalized.route.collection || this.data.routeCollection,
+      linkedSpots: normalized.detail_sections.linked_spots || [],
+      primaryMapActionLabel: "直接导航",
+      wantGoActionLabel: normalized.want_go_action_label,
+      importAssistant,
+      selectedImportMapAppKey,
+      selectedImportMapApp: importView.selectedMapApp,
+      selectedImportSteps: importView.selectedSteps,
+      showImportAssistant: false,
+      showImportTroubleshooting: false,
+      importDownloadStatus: "idle",
+      importDownloadMessage: "",
+      downloadedGpxPath: "",
+      runtimePlatformKey: this.runtimePlatformKey || "general",
+    });
   },
 
   fetchData(slug, stopRefresh = false) {
@@ -714,44 +1043,20 @@ Page({
     })
       .then((payload) => {
         const normalized = normalizePayload(payload);
-        const importAssistant = normalized.detail_sections.navigation_import_assistant || {
-          enabled: false,
-          map_apps: [],
-          default_map_app: "",
-          preferred_map_app: "",
-          helper_entry_label: "不会导入？",
-          troubleshooting: { title: "常见问题", items: [] },
-        };
-        const selectedImportMapAppKey = resolvePreferredMapApp(
-          importAssistant.map_apps || [],
-          importAssistant.preferred_map_app || importAssistant.default_map_app || "",
-        );
-        const importView = resolveMapAppView(importAssistant, selectedImportMapAppKey, this.runtimePlatformKey || "general");
-        const primaryMapActionLabel = "直接导航";
-
-        this.setData({
-          loading: false,
-          page: normalized.page,
-          route: normalized.route,
-          detailSections: normalized.detail_sections,
-          overviewStats: normalized.overview_stats,
-          checkpointTimeline: normalized.checkpoint_timeline,
-          linkedSpots: normalized.detail_sections.linked_spots || [],
-          primaryMapActionLabel,
-          wantGoActionLabel: normalized.want_go_action_label,
-          importAssistant,
-          selectedImportMapAppKey,
-          selectedImportMapApp: importView.selectedMapApp,
-          selectedImportSteps: importView.selectedSteps,
-          showImportAssistant: false,
-          showImportTroubleshooting: false,
-          importDownloadStatus: "idle",
-          importDownloadMessage: "",
-          downloadedGpxPath: "",
-          runtimePlatformKey: this.runtimePlatformKey || "general",
-        });
+        writeStoredValue(getRouteDetailCacheStorageKey(slug), payload);
+        this.applyNormalizedData(normalized, false);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.warn("[route-detail] request failed", {
+          slug,
+          error: error && error.message ? error.message : error,
+        });
+        const cachedPayload = readCachedRoutePayload(slug);
+        if (cachedPayload) {
+          this.applyNormalizedData(normalizePayload(cachedPayload), false);
+          return;
+        }
+
         this.useFallback(slug, stopRefresh, false);
       })
       .finally(() => {
@@ -771,6 +1076,7 @@ Page({
       detailSections: fallback.detail_sections,
       overviewStats: fallback.overview_stats,
       checkpointTimeline: fallback.checkpoint_timeline,
+      routeCollection: fallback.route.collection || this.data.routeCollection,
       linkedSpots: fallback.detail_sections.linked_spots || [],
       primaryMapActionLabel: "直接导航",
       wantGoActionLabel: fallback.want_go_action_label,
@@ -889,30 +1195,19 @@ Page({
 
   copyNavigationLinkForManualOpen(mapKey = "amap", showFeedback = true) {
     const route = this.data.route || {};
-    const mapLabel = mapKey === "tencent" ? "腾讯地图" : "高德地图";
-    const manualUrl = resolveManualNavigationUrl(route, mapKey);
+    const manualUrl = resolveCopyableNavigationUrl(route, mapKey);
     if (!manualUrl) {
       return;
     }
 
-    const waypointSummary = buildWaypointSummary(route);
-    const payload = [
-      `路线：${String(route.title || "未命名路线")}`,
-      `地图：${mapLabel}`,
-      `链接：${manualUrl}`,
-      waypointSummary ? `途径：${waypointSummary}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
-
     wx.setClipboardData({
-      data: payload,
+      data: manualUrl,
       success: () => {
         if (!showFeedback) {
           return;
         }
         wx.showToast({
-          title: "路线链接已复制",
+          title: "导航链接已复制",
           icon: "none",
           duration: 1800,
         });
@@ -925,17 +1220,78 @@ Page({
       return;
     }
 
-    const navigationOptions = resolveDirectNavigationOptions(this.data.route || {});
-    wx.showActionSheet({
-      itemList: navigationOptions.map((item) => item.label),
-      success: (result) => {
-        const index = Number(result.tapIndex);
-        if (!Number.isFinite(index) || index < 0 || index >= navigationOptions.length) {
+    this.handleDirectNavigate("amap");
+  },
+
+  handleCheckpointCheckin(event) {
+    if (!this.ensureLoggedInForRouteAction()) {
+      return;
+    }
+
+    const route = this.data.route || {};
+    const slug = String(route.slug || "").trim();
+    const checkpointIndex = Number(event?.currentTarget?.dataset?.index || 0);
+    if (!slug || !Number.isFinite(checkpointIndex) || checkpointIndex <= 0) {
+      return;
+    }
+
+    const existingCheckedSet = new Set(Array.isArray(this.data.routeCollection?.checked_indexes) ? this.data.routeCollection.checked_indexes : []);
+    if (existingCheckedSet.has(checkpointIndex)) {
+      wx.showToast({ title: "该打卡点已完成", icon: "none" });
+      return;
+    }
+
+    request({
+      path: API_PATHS.routeCheckpointCheckin(slug, checkpointIndex),
+      method: "POST",
+    })
+      .then((payload) => {
+        if (!payload?.ok) {
+          wx.showToast({ title: String(payload?.error || "打卡失败，请重试"), icon: "none" });
           return;
         }
-        this.handleDirectNavigate(navigationOptions[index].key);
-      },
-    });
+
+        const nextCollection = normalizeRouteCollection(
+          {
+            ...(this.data.route || {}),
+            collection: payload.collection || {},
+          },
+          this.data.checkpointTimeline,
+        );
+        const nextTimeline = applyCheckpointCollection(this.data.checkpointTimeline, nextCollection);
+        const nextRoute = {
+          ...this.data.route,
+          collection: nextCollection,
+        };
+
+        this.setData({
+          route: nextRoute,
+          routeCollection: nextCollection,
+          checkpointTimeline: nextTimeline,
+        });
+
+        if (payload.badge_unlocked) {
+          wx.showModal({
+            title: "徽章解锁",
+            content: `你为俱乐部贡献了1个打卡点。${String(payload?.badge?.title || "路线征服者")}，现在可以分享海报啦。`,
+            showCancel: false,
+          });
+          return;
+        }
+
+        wx.showToast({ title: "打卡成功，为俱乐部+1", icon: "success" });
+      })
+      .catch((error) => {
+        wx.showToast({
+          title: String(error?.message || "打卡失败，请重试"),
+          icon: "none",
+          duration: 2200,
+        });
+      });
+  },
+
+  handlePrepareBadgeShare() {
+    this.setData({ preparingBadgeShare: true });
   },
 
   ensureLoggedInForRouteAction() {

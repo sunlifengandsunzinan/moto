@@ -46,6 +46,7 @@
               <th>注册时间</th>
               <th>最近活跃</th>
               <th>行为统计</th>
+              <th>我的爱车</th>
             </tr>
           </thead>
           <tbody>
@@ -82,10 +83,31 @@
                     {% endfor %}
                   </ul>
                 </td>
+                <td>
+                  {% if item.garage_lines %}
+                    <ul class="planner-chip-list admin-table__chips">
+                      {% for car in item.garage_lines %}
+                        <li>
+                          {{ car.title }}
+                          {% if car.plate_no %}
+                            · {{ car.plate_no }}
+                          {% endif %}
+                          · 保养 {{ car.maintenance_count }}
+                          {% if car.maintenance_preview %}
+                            <br>
+                            <span class="admin-spot-table__text">{{ car.maintenance_preview|join('；') }}</span>
+                          {% endif %}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <span class="admin-spot-table__empty">未填写爱车</span>
+                  {% endif %}
+                </td>
               </tr>
             {% else %}
               <tr>
-                <td colspan="6">当前还没有已同步到后端的用户资料。</td>
+                <td colspan="7">当前还没有已同步到后端的用户资料。</td>
               </tr>
             {% endfor %}
           </tbody>

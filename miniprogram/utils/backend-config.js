@@ -21,8 +21,32 @@ const API_PATHS = {
   },
   spots: "/moto/spots",
   me: "/moto/me",
+  meCollection: "/moto/me/collection",
   meProfile: "/moto/me/profile",
   meNavigationPreferences: "/moto/me/navigation-preferences",
+  meVehicles: "/moto/me/vehicles",
+  meVehicle(vehicleId) {
+    const normalizedId = encodeURIComponent(String(vehicleId || "").trim());
+    return `/moto/me/vehicles/${normalizedId}`;
+  },
+  meVehicleMaintenance(vehicleId) {
+    const normalizedId = encodeURIComponent(String(vehicleId || "").trim());
+    return `/moto/me/vehicles/${normalizedId}/maintenance`;
+  },
+  meVehicleMaintenanceRecord(vehicleId, recordId) {
+    const normalizedVehicleId = encodeURIComponent(String(vehicleId || "").trim());
+    const normalizedRecordId = encodeURIComponent(String(recordId || "").trim());
+    return `/moto/me/vehicles/${normalizedVehicleId}/maintenance/${normalizedRecordId}`;
+  },
+  clubActivitySignup(activitySlug) {
+    const normalizedSlug = encodeURIComponent(String(activitySlug || "").trim());
+    return `/moto/clubs/activities/${normalizedSlug}/signup`;
+  },
+  routeCheckpointCheckin(slug, checkpointIndex) {
+    const normalizedSlug = encodeURIComponent(String(slug || "").trim());
+    const normalizedIndex = Number(checkpointIndex || 0);
+    return `/moto/routes/${normalizedSlug}/checkpoints/${normalizedIndex}/checkin`;
+  },
 };
 
 const WEB_PATHS = {
@@ -40,6 +64,8 @@ const MINI_PROGRAM_PATHS = {
   meTab: "/pages/me/index",
   meFavorites: "/pages/me/favorites/index",
   meUpload: "/pages/me/upload/index",
+  meCollection: "/pages/me/collection/index",
+  meVehicles: "/pages/me/vehicles/index",
   webview: "/pages/webview/index",
   routeDetail(slug) {
     return buildMiniProgramUrl("/pages/routes/detail/index", { slug });

@@ -58,16 +58,16 @@
     </view>
   </view>
 
-  <view class="me-club-banner">
+  <view class="me-club-banner" bindtap="handleOpenClubFeatureModal">
     <view class="me-club-banner__pattern"></view>
     <view class="me-club-banner__copy">
-      <text class="me-club-banner__line">您还未绑定俱乐部</text>
-      <text class="me-club-banner__line">点击绑定俱乐部</text>
+      <text class="me-club-banner__title">俱乐部功能（即将运行）</text>
+      <text class="me-club-banner__line">点击查看功能</text>
     </view>
   </view>
 
   <view class="me-grid-card">
-    <view wx:for="{{quickActions}}" wx:key="key" class="me-grid-card__item" data-index="{{index}}" bindtap="handleQuickAction">
+    <view wx:for="{{quickActions}}" wx:key="key" class="me-grid-card__item {{item.isVisible ? '' : 'me-grid-card__item--hidden'}}" data-index="{{index}}" bindtap="handleQuickAction">
       <text class="me-grid-card__icon">{{item.icon}}</text>
       <text class="me-grid-card__label">{{item.label}}</text>
     </view>
@@ -77,5 +77,16 @@
     <text class="me-legal-row__link" bindtap="handleOpenUserTerms">用户服务协议</text>
     <text class="me-legal-row__divider">|</text>
     <text class="me-legal-row__link" bindtap="handleOpenPrivacyPolicy">隐私政策</text>
+  </view>
+
+  <view wx:if="{{showClubFeatureModal}}" class="me-modal-mask" bindtap="handleCloseClubFeatureModal">
+    <view class="me-modal-dialog" catchtap="noop">
+      <view class="me-modal-title">俱乐部功能说明</view>
+      <view class="me-modal-subtitle">功能介绍：</view>
+      <view class="me-modal-line">1. 活动报名：可直接报名公开活动并查看报名人数</view>
+      <view class="me-modal-line">2. 路线榜：展示本周打卡点总数与完成路线数</view>
+      <view class="me-modal-line">3. 完成率对比：在我的收集册查看俱乐部成员完成率</view>
+      <button class="me-modal-confirm" bindtap="handleCloseClubFeatureModal">我知道了</button>
+    </view>
   </view>
 </view>

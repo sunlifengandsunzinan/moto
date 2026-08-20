@@ -1,0 +1,73 @@
+<view class="page-shell me-vehicles-page">
+  <view wx:if="{{loading}}" class="card">
+    <text class="subtle">正在加载我的爱车...</text>
+  </view>
+
+  <view wx:elif="{{error}}" class="card">
+    <text class="subtle">{{error}}</text>
+  </view>
+
+  <block wx:else>
+    <view class="vehicles-toolbar">
+      <view>
+        <text class="vehicles-toolbar__title">我的爱车</text>
+        <text class="vehicles-toolbar__hint">重点记录保养，车辆信息尽量少填</text>
+      </view>
+      <button class="vehicles-toolbar__button" bindtap="handleOpenCreateVehicle">新增爱车</button>
+    </view>
+
+    <view wx:if="{{vehicles.length}}" class="vehicle-list">
+      <view wx:for="{{vehicles}}" wx:for-item="vehicle" wx:key="id" class="vehicle-card">
+        <view class="vehicle-card__head">
+          <view class="vehicle-card__title-block">
+            <text class="vehicle-card__title">{{vehicle.title}}</text>
+            <text wx:if="{{vehicle.meta}}" class="vehicle-card__meta">{{vehicle.meta}}</text>
+          </view>
+          <view class="vehicle-card__actions">
+            <button class="mini-btn" data-vehicle-id="{{vehicle.id}}" bindtap="handleOpenEditVehicle">编辑</button>
+            <button class="mini-btn" data-vehicle-id="{{vehicle.id}}" bindtap="handleOpenUpdateMaintenance">更新保养</button>
+            <button class="mini-btn mini-btn--danger" data-vehicle-id="{{vehicle.id}}" bindtap="handleDeleteVehicle">删除</button>
+          </view>
+        </view>
+
+        <view class="maintenance-header">
+          <text class="maintenance-header__title">当前保养</text>
+          <text class="maintenance-header__count">{{vehicle.maintenance_count ? '已更新' : '未更新'}}</text>
+        </view>
+        <view wx:if="{{vehicle.maintenance.item}}" class="maintenance-card">
+          <view class="maintenance-item__row">
+            <text class="maintenance-item__title">{{vehicle.maintenance.item}}</text>
+            <text class="maintenance-item__meta">{{vehicle.maintenance.date || '未填日期'}}</text>
+          </view>
+          <view class="maintenance-item__row maintenance-item__row--sub">
+            <text class="maintenance-item__meta">里程：{{vehicle.maintenance.mileage_km || '-'}} km</text>
+            <text class="maintenance-item__meta">最近更新：{{vehicle.maintenance.updated_at || '-'}}</text>
+          </view>
+          <text wx:if="{{vehicle.maintenance.note}}" class="maintenance-item__note">备注：{{vehicle.maintenance.note}}</text>
+        </view>
+        <view wx:else class="card card--subtle">
+          <text class="subtle">还没有保养信息，点“更新保养”补上最新记录。</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="card">
+      <text class="subtle">还没有添加爱车，点“新增爱车”开始记录。</text>
+    </view>
+  </block>
+
+  <view wx:if="{{showVehicleEditor}}" class="editor-mask" bindtap="handleCloseVehicleEditor">
+    <view class="editor-dialog" catchtap="noop">
+      <view class="editor-title">{{vehicleEditorTitle}}</view>
+      <input class="editor-input" placeholder="爱车名称，例如：CB500X、踏板、我的爱车" data-field="nickname" value="{{vehicleDraft.nickname}}" bindinput="handleVehicleDraftInput" />
+      <input class="editor-input" placeholder="保养日期（YYYY-MM-DD）" data-field="maintenance_date" value="{{vehicleDraft.maintenance_date}}" bindinput="handleVehicleDraftInput" />
+      <input class="editor-input" placeholder="保养项目（例如：机油+机滤）" data-field="maintenance_item" value="{{vehicleDraft.maintenance_item}}" bindinput="handleVehicleDraftInput" />
+      <input class="editor-input" placeholder="当前里程（km）" data-field="maintenance_mileage_km" value="{{vehicleDraft.maintenance_mileage_km}}" bindinput="handleVehicleDraftInput" />
+      <textarea class="editor-textarea" placeholder="保养备注（可选）" data-field="maintenance_note" value="{{vehicleDraft.maintenance_note}}" bindinput="handleVehicleDraftInput"></textarea>
+      <view class="editor-actions">
+        <button class="editor-btn editor-btn--ghost" bindtap="handleCloseVehicleEditor">取消</button>
+        <button class="editor-btn" loading="{{saving}}" bindtap="handleSaveVehicle">保存</button>
+      </view>
+    </view>
+  </view>
+</view>

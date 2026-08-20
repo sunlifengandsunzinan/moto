@@ -4,21 +4,32 @@ from pathlib import Path
 from flask import jsonify, request, send_file
 
 from ...services import (
+    add_user_vehicle_maintenance_record,
     build_route_detail_context,
     build_routes_index_context,
     clear_user_route_want_go_plan,
+    create_user_vehicle,
+    delete_user_vehicle,
+    delete_user_vehicle_maintenance_record,
+    get_moto_collection_context,
     get_route_want_go_stats,
+    get_user_vehicles,
+    get_user_route_checkpoint_collection,
     get_user_favorite_slugs,
     get_moto_me_context,
     get_liaoning_route_templates,
     get_user_navigation_preferences,
     get_user_want_go_route_plans,
     mark_user_route_checkin,
+    mark_user_route_checkpoint_checkin,
     get_route_by_slug,
     get_route_waypoint_collection_api_payload,
     set_user_navigation_preferences,
     set_user_route_favorite,
     set_user_route_want_go_plan,
+    signup_user_club_activity,
+    update_user_vehicle,
+    update_user_vehicle_maintenance_record,
     get_spots_index_context,
     upsert_user_profile,
     gpx_service,
@@ -66,6 +77,89 @@ def moto_me():
     return jsonify(get_moto_me_context(_resolve_user_id()))
 
 
+@api_bp.get("/moto/me/collection")
+def moto_me_collection():
+    return jsonify(get_moto_collection_context(_resolve_user_id()))
+
+
+@api_bp.route("/moto/me/vehicles", methods=["GET", "POST"])
+def moto_me_vehicles():
+    user_id = _resolve_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "error": "Missing user id"}), 400
+
+    if request.method == "GET":
+        return jsonify({"ok": True, "vehicles": get_user_vehicles(user_id)})
+
+    data = request.get_json(silent=True) or {}
+    result = create_user_vehicle(user_id, data)
+    if not result.get("ok"):
+        return jsonify({"ok": False, "error": str(result.get("error") or "Failed to create vehicle")}), 400
+    return jsonify(result)
+
+
+@api_bp.route("/moto/me/vehicles/<vehicle_id>", methods=["PUT", "DELETE"])
+def moto_me_vehicle_detail(vehicle_id: str):
+    user_id = _resolve_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "error": "Missing user id"}), 400
+
+    if request.method == "DELETE":
+        result = delete_user_vehicle(user_id, vehicle_id)
+    else:
+        data = request.get_json(silent=True) or {}
+        result = update_user_vehicle(user_id, vehicle_id, data)
+
+    if not result.get("ok"):
+        return jsonify({"ok": False, "error": str(result.get("error") or "Vehicle operation failed")}), 400
+    return jsonify(result)
+
+
+@api_bp.route("/moto/me/vehicles/<vehicle_id>/maintenance", methods=["POST"])
+def moto_me_vehicle_maintenance_create(vehicle_id: str):
+    user_id = _resolve_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "error": "Missing user id"}), 400
+
+    data = request.get_json(silent=True) or {}
+    result = add_user_vehicle_maintenance_record(user_id, vehicle_id, data)
+    if not result.get("ok"):
+        return jsonify({"ok": False, "error": str(result.get("error") or "Failed to create maintenance record")}), 400
+    return jsonify(result)
+
+
+@api_bp.route("/moto/me/vehicles/<vehicle_id>/maintenance/<record_id>", methods=["PUT", "DELETE"])
+def moto_me_vehicle_maintenance_detail(vehicle_id: str, record_id: str):
+    user_id = _resolve_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "error": "Missing user id"}), 400
+
+    if request.method == "DELETE":
+        result = delete_user_vehicle_maintenance_record(user_id, vehicle_id, record_id)
+    else:
+        data = request.get_json(silent=True) or {}
+        result = update_user_vehicle_maintenance_record(user_id, vehicle_id, record_id, data)
+
+    if not result.get("ok"):
+        return jsonify({"ok": False, "error": str(result.get("error") or "Failed to update maintenance record")}), 400
+    return jsonify(result)
+
+
+@api_bp.post("/moto/clubs/activities/<activity_slug>/signup")
+def moto_club_activity_signup(activity_slug: str):
+    user_id = _resolve_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "error": "Missing user id"}), 400
+
+    data = request.get_json(silent=True) or {}
+    activity_title = str(data.get("title") or request.form.get("title") or "").strip()
+    result = signup_user_club_activity(user_id, activity_slug, activity_title=activity_title)
+    if not result.get("ok"):
+        return jsonify({"ok": False, "error": "Failed to signup activity"}), 400
+
+    return jsonify(result)
+
+
 @api_bp.get("/moto/routes/<slug>")
 def moto_route_detail(slug: str):
     route = get_route_by_slug(slug)
@@ -77,6 +171,7 @@ def moto_route_detail(slug: str):
     want_go_plans = get_user_want_go_route_plans(user_id)
     user_navigation_preferences = get_user_navigation_preferences(user_id)
     want_go_stats = get_route_want_go_stats(slug)
+    detail_sections = payload.get("detail_sections") if isinstance(payload.get("detail_sections"), dict) else {}
     payload["route"] = {
         **payload.get("route", {}),
         "is_favorite": str(slug).strip() in favorite_slugs,
@@ -92,14 +187,59 @@ def moto_route_detail(slug: str):
             "later_count": int(want_go_stats.get("later_count") or 0),
             "total_count": int(want_go_stats.get("total_count") or 0),
         },
+        "collection": get_user_route_checkpoint_collection(
+            user_id,
+            slug,
+            checkpoint_total=len(detail_sections.get("checkpoints") or []),
+        ),
     }
-    detail_sections = payload.get("detail_sections") if isinstance(payload.get("detail_sections"), dict) else {}
     navigation_import_assistant = detail_sections.get("navigation_import_assistant") if isinstance(detail_sections.get("navigation_import_assistant"), dict) else {}
     if navigation_import_assistant:
         navigation_import_assistant["preferred_map_app"] = str(user_navigation_preferences.get("preferred_map_app") or "").strip()
         detail_sections["navigation_import_assistant"] = navigation_import_assistant
         payload["detail_sections"] = detail_sections
     return jsonify(payload)
+
+
+@api_bp.post("/moto/routes/<slug>/checkpoints/<int:checkpoint_index>/checkin")
+def moto_route_checkpoint_checkin(slug: str, checkpoint_index: int):
+    route = get_route_by_slug(slug)
+    if route is None:
+        return jsonify({"ok": False, "error": "Route not found"}), 404
+
+    user_id = _resolve_user_id()
+    if not user_id:
+        return jsonify({"ok": False, "error": "Missing user id"}), 400
+
+    payload = build_route_detail_context(route)
+    detail_sections = payload.get("detail_sections") if isinstance(payload.get("detail_sections"), dict) else {}
+    checkpoints = detail_sections.get("checkpoints") if isinstance(detail_sections.get("checkpoints"), list) else []
+    checkpoint_total = len(checkpoints)
+    if checkpoint_total <= 0:
+        return jsonify({"ok": False, "error": "No checkpoints configured"}), 400
+    if checkpoint_index < 1 or checkpoint_index > checkpoint_total:
+        return jsonify({"ok": False, "error": "Invalid checkpoint index"}), 400
+
+    result = mark_user_route_checkpoint_checkin(
+        user_id,
+        slug,
+        checkpoint_index=checkpoint_index,
+        checkpoint_total=checkpoint_total,
+        route_title=str(route.get("title") or "").strip(),
+    )
+    if not result.get("ok"):
+        return jsonify({"ok": False, "error": "Failed to check in checkpoint"}), 400
+
+    return jsonify(
+        {
+            "ok": True,
+            "slug": slug,
+            "checkpoint_index": checkpoint_index,
+            "collection": result.get("collection") or {},
+            "badge_unlocked": bool(result.get("badge_unlocked")),
+            "badge": result.get("badge") or {},
+        }
+    )
 
 
 @api_bp.route("/moto/routes/<slug>/want-go", methods=["POST", "DELETE"])

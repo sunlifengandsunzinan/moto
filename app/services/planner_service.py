@@ -30,7 +30,16 @@ from . import gpx_service
 from .navigation_import_assistant import build_navigation_import_assistant_payload
 from .route_engagement import get_route_engagement, get_route_engagement_map
 from .route_templates_config import load_route_templates
-from .user_me_state import get_route_want_go_stats, get_route_want_go_stats_map, get_user_me_metrics
+from .user_me_state import (
+    get_club_activity_signup_counts,
+    get_route_collection_community_stats,
+    get_route_checkpoint_checkin_counts,
+    get_route_want_go_stats,
+    get_route_want_go_stats_map,
+    get_user_club_activity_signup_slugs,
+    get_user_me_metrics,
+    get_user_route_collections,
+)
 
 
 RouteDict = dict[str, Any]
@@ -1007,6 +1016,143 @@ def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
             _with_mini_program_action({"label": "定制需求", "href": "/moto/custom", "kind": "secondary"}),
             _with_mini_program_action({"label": "采集导航点", "href": "/moto/routes/collect", "kind": "secondary"}),
         ],
+    }
+
+
+def get_moto_collection_context(user_id: str | None = None) -> dict[str, Any]:
+    route_templates = get_route_templates()
+    route_lookup = {
+        str(route.get("slug") or "").strip(): route
+        for route in route_templates
+        if str(route.get("slug") or "").strip()
+    }
+    user_collections = get_user_route_collections(user_id)
+    community_stats = get_route_collection_community_stats()
+    route_community_stats = community_stats.get("route_stats") if isinstance(community_stats.get("route_stats"), dict) else {}
+    signed_activity_slugs = get_user_club_activity_signup_slugs(user_id)
+
+    routes: list[dict[str, Any]] = []
+    badges: list[dict[str, Any]] = []
+    completed_count = 0
+
+    for slug, collection in user_collections.items():
+        route = route_lookup.get(slug, {})
+        route_title = str(collection.get("route_title") or route.get("title") or slug).strip() or slug
+        badge = collection.get("badge") if isinstance(collection.get("badge"), dict) else {}
+        is_completed = bool(collection.get("is_completed"))
+        if is_completed:
+            completed_count += 1
+
+        poster_href = f"/moto/routes/{slug}/amap-route.svg"
+        route_item = {
+            "slug": slug,
+            "title": route_title,
+            "distance_km": route.get("distance_km") or 0,
+            "days": route.get("days") or 0,
+            "checked_count": int(collection.get("checked_count") or 0),
+            "checkpoint_total": int(collection.get("checkpoint_total") or 0),
+            "completion_percent": int(collection.get("completion_percent") or 0),
+            "is_completed": is_completed,
+            "updated_at": str(collection.get("updated_at") or "").strip(),
+            "poster_href": poster_href,
+            "share_text": str((badge or {}).get("share_text") or f"我正在挑战 {route_title} 打卡路线").strip(),
+            "mini_program_action": _mini_program_route_detail_action(slug),
+            "club_avg_completion_percent": int((route_community_stats.get(slug) or {}).get("avg_completion_percent") or 0),
+            "club_member_count": int((route_community_stats.get(slug) or {}).get("members") or 0),
+        }
+        routes.append(route_item)
+
+        if badge:
+            badges.append(
+                {
+                    "slug": slug,
+                    "title": str(badge.get("title") or f"{route_title} 征服者").strip(),
+                    "subtitle": str(badge.get("subtitle") or "路线打卡已集齐").strip(),
+                    "awarded_at": str(badge.get("awarded_at") or "").strip(),
+                    "share_text": str(badge.get("share_text") or route_item["share_text"]).strip(),
+                    "poster_href": poster_href,
+                    "mini_program_action": _mini_program_route_detail_action(slug),
+                }
+            )
+
+    routes.sort(key=lambda item: (item["completion_percent"], item["updated_at"], item["title"]), reverse=True)
+    badges.sort(key=lambda item: (item["awarded_at"], item["title"]), reverse=True)
+
+    club_route_board = []
+    for item in routes[:10]:
+        community_item = route_community_stats.get(item["slug"]) if isinstance(route_community_stats, dict) else {}
+        club_route_board.append(
+            {
+                "slug": item["slug"],
+                "title": item["title"],
+                "member_count": int((community_item or {}).get("members") or 0),
+                "completed_member_count": int((community_item or {}).get("completed_members") or 0),
+                "avg_completion_percent": int((community_item or {}).get("avg_completion_percent") or 0),
+            }
+        )
+
+    style_counts: dict[str, int] = {}
+    for route in route_templates:
+        difficulty_text = difficulty_label(str(route.get("difficulty") or ""))
+        style_key = difficulty_text or "综合路线"
+        style_counts[style_key] = style_counts.get(style_key, 0) + 1
+
+    style_tags = [
+        {"label": key, "count": value}
+        for key, value in sorted(style_counts.items(), key=lambda pair: pair[1], reverse=True)[:3]
+    ]
+
+    public_routes = [
+        {
+            "slug": route.get("slug") or "",
+            "title": route.get("title") or "未命名路线",
+            "poster_href": f"/moto/routes/{route.get('slug')}/amap-route.svg",
+        }
+        for route in route_templates[:3]
+        if str(route.get("slug") or "").strip()
+    ]
+    public_route_slugs = [str(item.get("slug") or "").strip() for item in public_routes if str(item.get("slug") or "").strip()]
+    signup_counts = get_club_activity_signup_counts(public_route_slugs)
+    public_routes = [
+        {
+            **item,
+            "signup_count": int(signup_counts.get(str(item.get("slug") or "").strip()) or 0),
+            "is_signed_up": str(item.get("slug") or "").strip() in signed_activity_slugs,
+        }
+        for item in public_routes
+    ]
+
+    weekly_checkpoint_total = int(community_stats.get("weekly_checkpoint_total") or 0)
+    weekly_completed_routes = int(community_stats.get("weekly_completed_routes") or 0)
+    activity_level = "高"
+    if weekly_checkpoint_total < 10:
+        activity_level = "低"
+    elif weekly_checkpoint_total < 30:
+        activity_level = "中"
+
+    return {
+        "page": {
+            "title": "我的收集册",
+            "description": "手动打卡点亮每条路线，集齐即可获得征服者徽章。",
+        },
+        "summary": {
+            "route_count": len(routes),
+            "completed_route_count": completed_count,
+            "badge_count": len(badges),
+        },
+        "club_public": {
+            "title": "俱乐部公开内容",
+            "route_styles": style_tags,
+            "activity_level": activity_level,
+            "activity_posters": public_routes,
+        },
+        "club_route_board": {
+            "weekly_checkpoint_total": weekly_checkpoint_total,
+            "weekly_completed_routes": weekly_completed_routes,
+            "routes": club_route_board,
+        },
+        "badges": badges,
+        "routes": routes,
     }
 
 
@@ -2763,7 +2909,7 @@ def _route_tencent_export_params(waypoints: list[Mapping[str, Any]]) -> list[tup
 
     start = coordinate_points[0]
     destination = coordinate_points[-1]
-    via_points = coordinate_points[1:-1][:6]
+    via_points = _select_tencent_via_points(coordinate_points[1:-1], max_points=6)
     params: list[tuple[str, str]] = [
         ("type", "drive"),
         ("from", str(start.get("name") or "起点")),
@@ -2775,14 +2921,41 @@ def _route_tencent_export_params(waypoints: list[Mapping[str, Any]]) -> list[tup
     ]
 
     if via_points:
+        via_names = ";".join(str(point.get("name") or "途径点") for point in via_points)
         via_coords = ";".join(f"{float(point['lat'])},{float(point['lng'])}" for point in via_points)
-        # Tencent route URI compatibility differs across app/web containers.
-        # Send common aliases together to maximize via-point recognition.
-        params.append(("via", via_coords))
+        # Tencent route URI is most stable with via names + viacoord coordinates.
+        # Keep compatibility aliases for legacy containers.
+        params.append(("via", via_names))
+        params.append(("viacoord", via_coords))
         params.append(("waypoints", via_coords))
         params.append(("waypointcoords", via_coords))
 
     return params
+
+
+def _select_tencent_via_points(points: list[Mapping[str, Any]], *, max_points: int) -> list[Mapping[str, Any]]:
+    if max_points <= 0 or len(points) <= max_points:
+        return list(points)
+
+    if max_points == 1:
+        return [points[len(points) // 2]]
+
+    last_index = len(points) - 1
+    step = last_index / (max_points - 1)
+    selected_indexes: list[int] = []
+    for index in range(max_points):
+        source_index = int(round(index * step))
+        source_index = max(0, min(last_index, source_index))
+        if selected_indexes and source_index <= selected_indexes[-1]:
+            source_index = min(last_index, selected_indexes[-1] + 1)
+        selected_indexes.append(source_index)
+
+    deduped_indexes: list[int] = []
+    for source_index in selected_indexes:
+        if not deduped_indexes or source_index != deduped_indexes[-1]:
+            deduped_indexes.append(source_index)
+
+    return [points[source_index] for source_index in deduped_indexes[:max_points]]
 
 
 def _tencent_uri_referer() -> str:
@@ -2904,9 +3077,11 @@ def _route_waypoint_preview_path(waypoint_count: int) -> str:
 
 def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
     gpx_lookup = _build_gpx_lookup()
-    route_card = _route_index_card(route, gpx_lookup=gpx_lookup, use_cached_preview_polyline=False)
+    route_card = _route_index_card(route, gpx_lookup=gpx_lookup, use_cached_preview_polyline=True)
     linked_spots = _build_route_linked_spots(route)
     import_assistant = build_navigation_import_assistant_payload(route_card)
+    checkpoints = route.get("checkpoints", [])
+    checkpoint_checkin_counts = get_route_checkpoint_checkin_counts(route.get("slug"), len(checkpoints))
     return {
         "page": {"title": route["title"], "eyebrow": "路线详情"},
         "route": {
@@ -2952,8 +3127,9 @@ def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
                     "summary": checkpoint["summary"],
                     "timing": checkpoint["timing"],
                     "image_url": f"/static/{str(checkpoint.get('image') or 'route-checkpoint-placeholder.jpg').strip()}",
+                    "hit_count": int(checkpoint_checkin_counts.get(index + 1) or 0),
                 }
-                for checkpoint in route.get("checkpoints", [])
+                for index, checkpoint in enumerate(checkpoints)
             ],
             "linked_spots": linked_spots,
             "navigation_import_assistant": import_assistant,

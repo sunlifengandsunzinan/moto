@@ -223,6 +223,21 @@ def get_admin_dashboard_context(
                         f"收藏 {int(item.get('favorite_count') or 0)}",
                         f"想去 {int(item.get('want_go_count') or 0)}",
                         f"打卡 {int(item.get('checkin_count') or 0)}",
+                        f"爱车 {int(item.get('vehicle_count') or 0)}",
+                        f"保养记录 {int(item.get('maintenance_record_count') or 0)}",
+                    ],
+                    "garage_lines": [
+                        {
+                            "title": str(vehicle.get("title") or "未命名爱车"),
+                            "plate_no": str(vehicle.get("plate_no") or "").strip(),
+                            "maintenance_count": int(vehicle.get("maintenance_count") or 0),
+                            "maintenance_preview": [
+                                str(line).strip()
+                                for line in (vehicle.get("maintenance_preview") if isinstance(vehicle.get("maintenance_preview"), list) else [])
+                                if str(line).strip()
+                            ],
+                        }
+                        for vehicle in (item.get("vehicles") if isinstance(item.get("vehicles"), list) else [])
                     ],
                 }
                 for item in users

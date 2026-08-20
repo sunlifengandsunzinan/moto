@@ -5,24 +5,33 @@ const DEFAULT_AVATAR_TEXT = "行途";
 
 function normalizeMetricList(metrics) {
   const sourceMetrics = Array.isArray(metrics) ? metrics : [];
+  const sourceByLabel = sourceMetrics.reduce((result, item) => {
+    const label = String(item?.label || "").trim();
+    if (label) {
+      result[label] = item;
+    }
+    return result;
+  }, {});
+
   const defaults = [
     { key: "want-go", value: "0", label: "我想去的" },
-    { key: "points", value: "0", label: "我的积分" },
     { key: "checkins", value: "0", label: "我打卡过的" },
   ];
 
-  return defaults.map((fallback, index) => {
-    const source = sourceMetrics[index] || {};
+  return defaults.map((fallback) => {
+    const source = sourceByLabel[fallback.label] || {};
     return {
       key: fallback.key,
       value: String(source.value ?? fallback.value),
-      label: String(source.label || fallback.label),
+      label: fallback.label,
     };
   });
 }
 
 function normalizeQuickActions(sections) {
   const preferredLabels = [
+    "我的收集册",
+    "我的爱车",
     "VIP识别",
     "活动照片",
     "我的打卡",
@@ -34,7 +43,7 @@ function normalizeQuickActions(sections) {
     "驿站入驻",
     "商户报名",
   ];
-  const fallbackIcons = ["▦", "⚑", "⌖", "◌", "▥", "☰", "⛭", "◎", "▤", "☑"];
+  const fallbackIcons = ["▦", "◍", "⚑", "⌖", "◌", "▥", "☰", "⛭", "◎", "▤", "☑"];
 
   const sourceItems = (Array.isArray(sections) ? sections : [])
     .flatMap((section) => (Array.isArray(section?.items) ? section.items : []));
@@ -45,6 +54,7 @@ function normalizeQuickActions(sections) {
       key: `action-${index + 1}`,
       label,
       icon: fallbackIcons[index] || "•",
+      isVisible: index <= 1,
       miniProgramAction: source.mini_program_action || null,
       href: String(source.href || ""),
       description: String(source.description || ""),
@@ -170,6 +180,7 @@ Page({
     displayName: "点击登录",
     avatarText: DEFAULT_AVATAR_TEXT,
     isWechatLoggedIn: false,
+    showClubFeatureModal: false,
   },
 
   _lastSyncedProfileSignature: "",
@@ -528,14 +539,48 @@ Page({
     this.handleShowWechatProfileEditor();
   },
 
+  handleOpenClubFeatureModal() {
+    this.setData({ showClubFeatureModal: true });
+  },
+
+  handleCloseClubFeatureModal() {
+    this.setData({ showClubFeatureModal: false });
+  },
+
+  noop() {},
+
   handleQuickAction(event) {
     const action = this.data.quickActions[Number(event.currentTarget.dataset.index)];
-    if (!action) {
+    if (!action || action.isVisible === false) {
       return;
     }
 
     if (action.label === "我的排名") {
       this.handleOpenFavorites();
+      return;
+    }
+
+    if (action.label === "我的收集册") {
+      if (!this.data.isWechatLoggedIn) {
+        wx.showToast({ title: "请先登录", icon: "none" });
+        this.handleShowWechatProfileEditor();
+        return;
+      }
+      wx.navigateTo({
+        url: MINI_PROGRAM_PATHS.meCollection,
+      });
+      return;
+    }
+
+    if (action.label === "我的爱车") {
+      if (!this.data.isWechatLoggedIn) {
+        wx.showToast({ title: "请先登录", icon: "none" });
+        this.handleShowWechatProfileEditor();
+        return;
+      }
+      wx.navigateTo({
+        url: MINI_PROGRAM_PATHS.meVehicles,
+      });
       return;
     }
 

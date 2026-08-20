@@ -32,6 +32,23 @@ const WANT_GO_PLAN_OPTIONS = [
 ];
 
 const SHARE_MENUS = ["shareAppMessage", "shareTimeline"];
+const ROUTE_DETAIL_SEED_STORAGE_PREFIX = "routeDetailSeed:";
+
+function cacheRouteDetailSeed(route) {
+  const slug = String(route?.slug || "").trim();
+  if (!slug) {
+    return;
+  }
+
+  try {
+    wx.setStorageSync(`${ROUTE_DETAIL_SEED_STORAGE_PREFIX}${slug}`, {
+      route,
+      cached_at: Date.now(),
+    });
+  } catch (_) {
+    // Ignore storage write failures.
+  }
+}
 
 function hasLoggedWechatProfile(profile) {
   if (!profile || typeof profile !== "object") {
@@ -538,11 +555,13 @@ Page({
     const slug = event.currentTarget.dataset.slug;
     const route = this.findRoute(slug);
     if (route && route.mini_program_action) {
+      cacheRouteDetailSeed(route);
       this.navigateByAction(route.mini_program_action, route.href);
       return;
     }
 
     if (slug) {
+      cacheRouteDetailSeed(route);
       wx.navigateTo({ url: MINI_PROGRAM_PATHS.routeDetail(slug) });
       return;
     }

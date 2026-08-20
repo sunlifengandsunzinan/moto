@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from pathlib import Path
 from typing import Any
+import uuid
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -53,11 +54,8 @@ def get_user_me_metrics(user_id: str | None) -> dict[str, int]:
         for slug in user_state.get("favorite_route_slugs", [])
         if str(slug).strip()
     }
-    checkins = {
-        str(slug).strip()
-        for slug in user_state.get("checked_route_slugs", [])
-        if str(slug).strip()
-    }
+    route_collections = _normalized_route_checkpoint_collections(user_state)
+    checkin_count = sum(int(collection.get("checked_count") or 0) for collection in route_collections.values())
     want_go_plans = _normalized_want_go_plans(user_state)
     want_go_bucket_counts = {
         "this_month": 0,
@@ -70,7 +68,7 @@ def get_user_me_metrics(user_id: str | None) -> dict[str, int]:
 
     return {
         "favorite_count": len(favorites),
-        "checkin_count": len(checkins),
+        "checkin_count": checkin_count,
         "want_go_count": len(want_go_plans),
         "want_go_this_month_count": want_go_bucket_counts["this_month"],
         "want_go_next_month_count": want_go_bucket_counts["next_month"],
@@ -120,6 +118,50 @@ def get_admin_user_summaries() -> list[dict[str, Any]]:
 
         user_state = _ensure_user_state(raw_user_state)
         profile = user_state.get("profile") if isinstance(user_state.get("profile"), dict) else {}
+        vehicles = _normalized_vehicles(user_state)
+        maintenance_record_count = sum(
+            len(vehicle.get("maintenance_records") if isinstance(vehicle.get("maintenance_records"), list) else [])
+            for vehicle in vehicles
+        )
+        vehicle_summaries = [
+            {
+                "vehicle_id": str(vehicle.get("id") or "").strip(),
+                "title": " ".join(
+                    part
+                    for part in [
+                        str(vehicle.get("nickname") or "").strip(),
+                        str(vehicle.get("brand") or "").strip(),
+                        str(vehicle.get("model") or "").strip(),
+                    ]
+                    if part
+                ).strip()
+                or "未命名爱车",
+                "plate_no": str(vehicle.get("plate_no") or "").strip(),
+                "maintenance_count": len(vehicle.get("maintenance_records") if isinstance(vehicle.get("maintenance_records"), list) else []),
+                "maintenance_preview": [
+                    " / ".join(
+                        part
+                        for part in [
+                            str(record.get("date") or "").strip(),
+                            str(record.get("item") or "").strip(),
+                            (
+                                f"{str(record.get('mileage_km') or '').strip()}km"
+                                if str(record.get("mileage_km") or "").strip()
+                                else ""
+                            ),
+                        ]
+                        if part
+                    ).strip()
+                    for record in (
+                        vehicle.get("maintenance_records")
+                        if isinstance(vehicle.get("maintenance_records"), list)
+                        else []
+                    )[:5]
+                ],
+                "updated_at": str(vehicle.get("updated_at") or "").strip(),
+            }
+            for vehicle in vehicles
+        ]
         metrics = get_user_me_metrics(normalized_user_id)
         display_name = str(profile.get("nickName") or "").strip() or "未填写昵称"
         avatar_url = str(profile.get("avatarUrl") or "").strip()
@@ -135,6 +177,9 @@ def get_admin_user_summaries() -> list[dict[str, Any]]:
                 "favorite_count": int(metrics.get("favorite_count") or 0),
                 "want_go_count": int(metrics.get("want_go_count") or 0),
                 "checkin_count": int(metrics.get("checkin_count") or 0),
+                "vehicle_count": len(vehicles),
+                "maintenance_record_count": int(maintenance_record_count),
+                "vehicles": vehicle_summaries,
             }
         )
 
@@ -367,6 +412,596 @@ def mark_user_route_checkin(user_id: str | None, slug: str) -> dict[str, Any]:
     }
 
 
+def get_user_route_checkpoint_collection(
+    user_id: str | None,
+    slug: str,
+    *,
+    checkpoint_total: int | None = None,
+) -> dict[str, Any]:
+    normalized_user_id = normalize_user_id(user_id)
+    normalized_slug = str(slug or "").strip()
+    normalized_total = _normalize_checkpoint_total(checkpoint_total)
+    if not normalized_user_id or not normalized_slug:
+        return _empty_route_checkpoint_collection(normalized_slug, normalized_total)
+
+    user_state = _read_user_state(normalized_user_id)
+    collections = _normalized_route_checkpoint_collections(user_state)
+    collection = collections.get(normalized_slug)
+    if not collection:
+        return _empty_route_checkpoint_collection(normalized_slug, normalized_total)
+
+    total = max(int(collection.get("checkpoint_total") or 0), normalized_total)
+    checked_indexes = sorted({
+        int(index)
+        for index in collection.get("checked_indexes", [])
+        if isinstance(index, int) and index > 0
+    })
+    if total > 0:
+        checked_indexes = [index for index in checked_indexes if index <= total]
+    checked_count = len(checked_indexes)
+    completion_percent = int(round((checked_count / total) * 100)) if total > 0 else 0
+    badge = collection.get("badge") if isinstance(collection.get("badge"), dict) else None
+
+    return {
+        "slug": normalized_slug,
+        "route_title": str(collection.get("route_title") or "").strip(),
+        "checkpoint_total": total,
+        "checked_indexes": checked_indexes,
+        "checked_count": checked_count,
+        "completion_percent": completion_percent,
+        "is_completed": bool(total > 0 and checked_count >= total),
+        "badge": badge or {},
+        "has_badge": bool(badge),
+        "updated_at": str(collection.get("updated_at") or "").strip(),
+    }
+
+
+def mark_user_route_checkpoint_checkin(
+    user_id: str | None,
+    slug: str,
+    *,
+    checkpoint_index: int,
+    checkpoint_total: int,
+    route_title: str | None = None,
+) -> dict[str, Any]:
+    normalized_user_id = normalize_user_id(user_id)
+    normalized_slug = str(slug or "").strip()
+    normalized_total = _normalize_checkpoint_total(checkpoint_total)
+    normalized_index = _normalize_checkpoint_index(checkpoint_index, normalized_total)
+    normalized_route_title = str(route_title or "").strip()
+    if not normalized_user_id or not normalized_slug or normalized_total <= 0 or normalized_index <= 0:
+        return {
+            "ok": False,
+            "changed": False,
+            "collection": _empty_route_checkpoint_collection(normalized_slug, normalized_total),
+            "badge_unlocked": False,
+        }
+
+    payload = _read_payload()
+    users = payload.setdefault("users", {})
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
+    collections = _normalized_route_checkpoint_collections(user_state)
+    collection = collections.setdefault(
+        normalized_slug,
+        {
+            "route_title": normalized_route_title,
+            "checkpoint_total": normalized_total,
+            "checked_indexes": [],
+            "badge": {},
+            "updated_at": _current_timestamp(),
+        },
+    )
+
+    if normalized_route_title:
+        collection["route_title"] = normalized_route_title
+    collection["checkpoint_total"] = max(int(collection.get("checkpoint_total") or 0), normalized_total)
+
+    checked_indexes = {
+        int(index)
+        for index in collection.get("checked_indexes", [])
+        if isinstance(index, int) and index > 0
+    }
+    before_checked_count = len(checked_indexes)
+    checked_indexes.add(normalized_index)
+    changed = len(checked_indexes) != before_checked_count
+    total = int(collection.get("checkpoint_total") or 0)
+    checked_indexes = {index for index in checked_indexes if index <= total}
+    checked_count = len(checked_indexes)
+    is_completed = bool(total > 0 and checked_count >= total)
+
+    existing_badge = collection.get("badge") if isinstance(collection.get("badge"), dict) else {}
+    has_existing_badge = bool(existing_badge.get("awarded_at"))
+    badge_unlocked = False
+    badge_payload: dict[str, Any] = dict(existing_badge) if isinstance(existing_badge, dict) else {}
+    if is_completed and not has_existing_badge:
+        awarded_at = _current_timestamp()
+        route_title_text = str(collection.get("route_title") or normalized_slug).strip() or normalized_slug
+        badge_payload = {
+            "title": f"{route_title_text} 征服者",
+            "subtitle": "路线打卡已集齐",
+            "awarded_at": awarded_at,
+            "share_text": f"我已完成 {route_title_text} 全部打卡点，拿到征服者徽章！",
+        }
+        badge_unlocked = True
+        changed = True
+
+    collection["checked_indexes"] = sorted(checked_indexes)
+    collection["badge"] = badge_payload
+    collection["updated_at"] = _current_timestamp()
+    collections[normalized_slug] = collection
+    _assign_route_checkpoint_collections(user_state, collections)
+
+    if changed:
+        user_state["updated_at"] = _current_timestamp()
+        _write_payload(payload)
+
+    current_collection = get_user_route_checkpoint_collection(
+        normalized_user_id,
+        normalized_slug,
+        checkpoint_total=normalized_total,
+    )
+    return {
+        "ok": True,
+        "changed": changed,
+        "collection": current_collection,
+        "badge_unlocked": badge_unlocked,
+        "badge": current_collection.get("badge") or {},
+    }
+
+
+def get_user_route_collections(user_id: str | None) -> dict[str, dict[str, Any]]:
+    normalized_user_id = normalize_user_id(user_id)
+    if not normalized_user_id:
+        return {}
+
+    user_state = _read_user_state(normalized_user_id)
+    collections = _normalized_route_checkpoint_collections(user_state)
+    result: dict[str, dict[str, Any]] = {}
+    for slug in sorted(collections.keys()):
+        result[slug] = get_user_route_checkpoint_collection(normalized_user_id, slug)
+    return result
+
+
+def get_route_collection_community_stats() -> dict[str, Any]:
+    payload = _read_payload()
+    users = payload.get("users") if isinstance(payload.get("users"), dict) else {}
+    now = datetime.now()
+    week_ago = now - timedelta(days=7)
+
+    weekly_checkpoint_total = 0
+    weekly_completed_routes = 0
+    by_route: dict[str, dict[str, Any]] = {}
+
+    for raw_user_state in users.values():
+        if not isinstance(raw_user_state, dict):
+            continue
+
+        collections = _normalized_route_checkpoint_collections(_ensure_user_state(raw_user_state))
+        for slug, collection in collections.items():
+            total = int(collection.get("checkpoint_total") or 0)
+            checked_count = int(collection.get("checked_count") or len(collection.get("checked_indexes", [])) or 0)
+            completion_percent = int(round((checked_count / total) * 100)) if total > 0 else 0
+            is_completed = bool(total > 0 and checked_count >= total)
+            updated_at = str(collection.get("updated_at") or "").strip()
+
+            route_item = by_route.setdefault(
+                slug,
+                {
+                    "members": 0,
+                    "completed_members": 0,
+                    "completion_percent_sum": 0,
+                },
+            )
+            route_item["members"] += 1
+            route_item["completion_percent_sum"] += completion_percent
+            if is_completed:
+                route_item["completed_members"] += 1
+
+            is_recent = False
+            if updated_at:
+                try:
+                    is_recent = datetime.fromisoformat(updated_at) >= week_ago
+                except ValueError:
+                    is_recent = False
+
+            if is_recent:
+                weekly_checkpoint_total += checked_count
+                if is_completed:
+                    weekly_completed_routes += 1
+
+    for item in by_route.values():
+        members = int(item.get("members") or 0)
+        completion_sum = int(item.get("completion_percent_sum") or 0)
+        item["avg_completion_percent"] = int(round(completion_sum / members)) if members > 0 else 0
+
+    return {
+        "weekly_checkpoint_total": max(0, weekly_checkpoint_total),
+        "weekly_completed_routes": max(0, weekly_completed_routes),
+        "route_stats": by_route,
+    }
+
+
+def get_user_club_activity_signup_slugs(user_id: str | None) -> set[str]:
+    normalized_user_id = normalize_user_id(user_id)
+    if not normalized_user_id:
+        return set()
+
+    user_state = _read_user_state(normalized_user_id)
+    raw_signups = user_state.get("club_activity_signups")
+    if not isinstance(raw_signups, dict):
+        return set()
+
+    return {
+        str(slug).strip()
+        for slug in raw_signups.keys()
+        if str(slug).strip()
+    }
+
+
+def get_club_activity_signup_counts(activity_slugs: list[str] | None = None) -> dict[str, int]:
+    payload = _read_payload()
+    users = payload.get("users") if isinstance(payload.get("users"), dict) else {}
+    scoped_slugs = {
+        str(slug).strip()
+        for slug in (activity_slugs or [])
+        if str(slug).strip()
+    }
+
+    counts: dict[str, int] = {}
+    for raw_user_state in users.values():
+        if not isinstance(raw_user_state, dict):
+            continue
+
+        user_state = _ensure_user_state(raw_user_state)
+        raw_signups = user_state.get("club_activity_signups")
+        if not isinstance(raw_signups, dict):
+            continue
+
+        for slug in raw_signups.keys():
+            normalized_slug = str(slug).strip()
+            if not normalized_slug:
+                continue
+            if scoped_slugs and normalized_slug not in scoped_slugs:
+                continue
+            counts[normalized_slug] = int(counts.get(normalized_slug) or 0) + 1
+
+    return counts
+
+
+def signup_user_club_activity(
+    user_id: str | None,
+    activity_slug: str,
+    *,
+    activity_title: str | None = None,
+) -> dict[str, Any]:
+    normalized_user_id = normalize_user_id(user_id)
+    normalized_slug = str(activity_slug or "").strip()
+    normalized_title = str(activity_title or "").strip()
+    if not normalized_user_id or not normalized_slug:
+        return {"ok": False, "activity_slug": normalized_slug, "is_signed_up": False, "signup_count": 0}
+
+    payload = _read_payload()
+    users = payload.setdefault("users", {})
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
+    raw_signups = user_state.setdefault("club_activity_signups", {})
+    if not isinstance(raw_signups, dict):
+        raw_signups = {}
+        user_state["club_activity_signups"] = raw_signups
+
+    already_signed = normalized_slug in raw_signups
+    if not already_signed:
+        raw_signups[normalized_slug] = {
+            "activity_title": normalized_title,
+            "signed_up_at": _current_timestamp(),
+        }
+        user_state["updated_at"] = _current_timestamp()
+        _write_payload(payload)
+
+    signup_count = int(get_club_activity_signup_counts([normalized_slug]).get(normalized_slug) or 0)
+    return {
+        "ok": True,
+        "activity_slug": normalized_slug,
+        "is_signed_up": True,
+        "already_signed_up": already_signed,
+        "signup_count": signup_count,
+    }
+
+
+def get_user_vehicles(user_id: str | None) -> list[dict[str, Any]]:
+    normalized_user_id = normalize_user_id(user_id)
+    if not normalized_user_id:
+        return []
+
+    user_state = _read_user_state(normalized_user_id)
+    return _normalized_vehicles(user_state)
+
+
+def create_user_vehicle(user_id: str | None, vehicle_payload: dict[str, Any] | None) -> dict[str, Any]:
+    normalized_user_id = normalize_user_id(user_id)
+    if not normalized_user_id:
+        return {"ok": False, "error": "Missing user id"}
+
+    normalized_vehicle = _normalize_vehicle_payload(vehicle_payload, existing=None)
+    if not normalized_vehicle.get("brand") and not normalized_vehicle.get("model") and not normalized_vehicle.get("nickname"):
+        normalized_vehicle["nickname"] = "我的爱车"
+
+    payload = _read_payload()
+    users = payload.setdefault("users", {})
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
+    vehicles = _normalized_vehicles(user_state)
+
+    vehicle_id = _new_id("veh")
+    now = _current_timestamp()
+    new_vehicle = {
+        "id": vehicle_id,
+        "nickname": normalized_vehicle["nickname"],
+        "brand": normalized_vehicle["brand"],
+        "model": normalized_vehicle["model"],
+        "year": normalized_vehicle["year"],
+        "plate_no": normalized_vehicle["plate_no"],
+        "purchase_date": normalized_vehicle["purchase_date"],
+        "note": normalized_vehicle["note"],
+        "maintenance": normalized_vehicle["maintenance"],
+        "maintenance_records": normalized_vehicle["maintenance_records"],
+        "created_at": now,
+        "updated_at": now,
+    }
+    vehicles.append(new_vehicle)
+    user_state["vehicles"] = vehicles
+    user_state["updated_at"] = now
+    _write_payload(payload)
+
+    return {
+        "ok": True,
+        "vehicle": new_vehicle,
+        "vehicles": vehicles,
+    }
+
+
+def update_user_vehicle(user_id: str | None, vehicle_id: str, vehicle_payload: dict[str, Any] | None) -> dict[str, Any]:
+    normalized_user_id = normalize_user_id(user_id)
+    normalized_vehicle_id = str(vehicle_id or "").strip()
+    if not normalized_user_id or not normalized_vehicle_id:
+        return {"ok": False, "error": "Invalid vehicle id"}
+
+    payload = _read_payload()
+    users = payload.setdefault("users", {})
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
+    vehicles = _normalized_vehicles(user_state)
+
+    target_index = -1
+    for index, vehicle in enumerate(vehicles):
+        if str(vehicle.get("id") or "").strip() == normalized_vehicle_id:
+            target_index = index
+            break
+    if target_index < 0:
+        return {"ok": False, "error": "Vehicle not found"}
+
+    existing = vehicles[target_index]
+    normalized_vehicle = _normalize_vehicle_payload(vehicle_payload, existing=existing)
+    if not normalized_vehicle.get("brand") and not normalized_vehicle.get("model") and not normalized_vehicle.get("nickname"):
+        normalized_vehicle["nickname"] = str(existing.get("nickname") or "我的爱车").strip() or "我的爱车"
+
+    now = _current_timestamp()
+    updated_vehicle = {
+        **existing,
+        "nickname": normalized_vehicle["nickname"],
+        "brand": normalized_vehicle["brand"],
+        "model": normalized_vehicle["model"],
+        "year": normalized_vehicle["year"],
+        "plate_no": normalized_vehicle["plate_no"],
+        "purchase_date": normalized_vehicle["purchase_date"],
+        "note": normalized_vehicle["note"],
+        "maintenance": normalized_vehicle["maintenance"],
+        "updated_at": now,
+    }
+    updated_vehicle["maintenance_records"] = normalized_vehicle["maintenance_records"]
+
+    vehicles[target_index] = updated_vehicle
+    user_state["vehicles"] = vehicles
+    user_state["updated_at"] = now
+    _write_payload(payload)
+
+    return {
+        "ok": True,
+        "vehicle": updated_vehicle,
+        "vehicles": vehicles,
+    }
+
+
+def delete_user_vehicle(user_id: str | None, vehicle_id: str) -> dict[str, Any]:
+    normalized_user_id = normalize_user_id(user_id)
+    normalized_vehicle_id = str(vehicle_id or "").strip()
+    if not normalized_user_id or not normalized_vehicle_id:
+        return {"ok": False, "error": "Invalid vehicle id"}
+
+    payload = _read_payload()
+    users = payload.setdefault("users", {})
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
+    vehicles = _normalized_vehicles(user_state)
+    next_vehicles = [
+        vehicle
+        for vehicle in vehicles
+        if str(vehicle.get("id") or "").strip() != normalized_vehicle_id
+    ]
+    if len(next_vehicles) == len(vehicles):
+        return {"ok": False, "error": "Vehicle not found"}
+
+    user_state["vehicles"] = next_vehicles
+    user_state["updated_at"] = _current_timestamp()
+    _write_payload(payload)
+    return {
+        "ok": True,
+        "vehicle_id": normalized_vehicle_id,
+        "vehicles": next_vehicles,
+    }
+
+
+def add_user_vehicle_maintenance_record(
+    user_id: str | None,
+    vehicle_id: str,
+    record_payload: dict[str, Any] | None,
+) -> dict[str, Any]:
+    normalized_user_id = normalize_user_id(user_id)
+    normalized_vehicle_id = str(vehicle_id or "").strip()
+    if not normalized_user_id or not normalized_vehicle_id:
+        return {"ok": False, "error": "Invalid vehicle id"}
+
+    payload = _read_payload()
+    users = payload.setdefault("users", {})
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
+    vehicles = _normalized_vehicles(user_state)
+    vehicle = _find_vehicle(vehicles, normalized_vehicle_id)
+    if not vehicle:
+        return {"ok": False, "error": "Vehicle not found"}
+
+    normalized_record = _normalize_maintenance_record(record_payload, existing=None)
+    if not normalized_record.get("item"):
+        return {"ok": False, "error": "保养项目不能为空"}
+
+    now = _current_timestamp()
+    record = {
+        "id": _new_id("mt"),
+        "date": normalized_record["date"],
+        "item": normalized_record["item"],
+        "mileage_km": normalized_record["mileage_km"],
+        "cost": normalized_record["cost"],
+        "note": normalized_record["note"],
+        "created_at": now,
+        "updated_at": now,
+    }
+    vehicle["maintenance"] = record
+    vehicle["maintenance_records"] = [record]
+    vehicle["updated_at"] = now
+    user_state["vehicles"] = vehicles
+    user_state["updated_at"] = now
+    _write_payload(payload)
+
+    return {
+        "ok": True,
+        "vehicle": vehicle,
+        "record": record,
+    }
+
+
+def update_user_vehicle_maintenance_record(
+    user_id: str | None,
+    vehicle_id: str,
+    record_id: str,
+    record_payload: dict[str, Any] | None,
+) -> dict[str, Any]:
+    normalized_user_id = normalize_user_id(user_id)
+    normalized_vehicle_id = str(vehicle_id or "").strip()
+    normalized_record_id = str(record_id or "").strip()
+    if not normalized_user_id or not normalized_vehicle_id or not normalized_record_id:
+        return {"ok": False, "error": "Invalid record id"}
+
+    payload = _read_payload()
+    users = payload.setdefault("users", {})
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
+    vehicles = _normalized_vehicles(user_state)
+    vehicle = _find_vehicle(vehicles, normalized_vehicle_id)
+    if not vehicle:
+        return {"ok": False, "error": "Vehicle not found"}
+
+    existing = _normalize_vehicle_maintenance(vehicle.get("maintenance"), vehicle.get("maintenance_records"))
+    if normalized_record_id and str(existing.get("id") or "").strip() not in {"", normalized_record_id}:
+        return {"ok": False, "error": "Maintenance record not found"}
+
+    normalized_record = _normalize_maintenance_record(record_payload, existing=existing)
+    if not normalized_record.get("item"):
+        return {"ok": False, "error": "保养项目不能为空"}
+
+    now = _current_timestamp()
+    updated_record = {
+        **(existing if isinstance(existing, dict) else {}),
+        "id": str(existing.get("id") or normalized_record_id or _new_id("mt")).strip(),
+        "date": normalized_record["date"],
+        "item": normalized_record["item"],
+        "mileage_km": normalized_record["mileage_km"],
+        "cost": normalized_record["cost"],
+        "note": normalized_record["note"],
+        "updated_at": now,
+    }
+    updated_record.setdefault("created_at", str(existing.get("created_at") or now).strip())
+    vehicle["maintenance"] = updated_record
+    vehicle["maintenance_records"] = [updated_record]
+    vehicle["updated_at"] = now
+    user_state["vehicles"] = vehicles
+    user_state["updated_at"] = now
+    _write_payload(payload)
+
+    return {
+        "ok": True,
+        "vehicle": vehicle,
+        "record": updated_record,
+    }
+
+
+def delete_user_vehicle_maintenance_record(
+    user_id: str | None,
+    vehicle_id: str,
+    record_id: str,
+) -> dict[str, Any]:
+    normalized_user_id = normalize_user_id(user_id)
+    normalized_vehicle_id = str(vehicle_id or "").strip()
+    normalized_record_id = str(record_id or "").strip()
+    if not normalized_user_id or not normalized_vehicle_id or not normalized_record_id:
+        return {"ok": False, "error": "Invalid record id"}
+
+    payload = _read_payload()
+    users = payload.setdefault("users", {})
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
+    vehicles = _normalized_vehicles(user_state)
+    vehicle = _find_vehicle(vehicles, normalized_vehicle_id)
+    if not vehicle:
+        return {"ok": False, "error": "Vehicle not found"}
+
+    now = _current_timestamp()
+    vehicle["maintenance"] = {}
+    vehicle["maintenance_records"] = []
+    vehicle["updated_at"] = now
+    user_state["vehicles"] = vehicles
+    user_state["updated_at"] = now
+    _write_payload(payload)
+
+    return {
+        "ok": True,
+        "vehicle": vehicle,
+        "record_id": normalized_record_id,
+    }
+
+
+def get_route_checkpoint_checkin_counts(slug: str | None, checkpoint_total: int | None = None) -> dict[int, int]:
+    normalized_slug = str(slug or "").strip()
+    normalized_total = _normalize_checkpoint_total(checkpoint_total)
+    if not normalized_slug or normalized_total <= 0:
+        return {}
+
+    payload = _read_payload()
+    users = payload.get("users") if isinstance(payload.get("users"), dict) else {}
+    counts = {index: 0 for index in range(1, normalized_total + 1)}
+
+    for raw_user_state in users.values():
+        if not isinstance(raw_user_state, dict):
+            continue
+
+        collections = _normalized_route_checkpoint_collections(_ensure_user_state(raw_user_state))
+        collection = collections.get(normalized_slug)
+        if not isinstance(collection, dict):
+            continue
+
+        checked_indexes = {
+            int(index)
+            for index in collection.get("checked_indexes", [])
+            if isinstance(index, int) and 1 <= int(index) <= normalized_total
+        }
+        for index in checked_indexes:
+            counts[index] += 1
+
+    return counts
+
+
 def get_user_navigation_preferences(user_id: str | None) -> dict[str, Any]:
     normalized_user_id = normalize_user_id(user_id)
     if not normalized_user_id:
@@ -409,6 +1044,9 @@ def _new_user_state() -> dict[str, Any]:
         "favorite_route_slugs": [],
         "checked_route_slugs": [],
         "want_go_plans": {},
+        "route_checkpoint_collections": {},
+        "club_activity_signups": {},
+        "vehicles": [],
         "profile": {},
         "navigation_preferences": {
             "preferred_map_app": "",
@@ -471,13 +1109,108 @@ def _ensure_user_state(user_state: dict[str, Any]) -> dict[str, Any]:
     user_state.setdefault("favorite_route_slugs", [])
     user_state.setdefault("checked_route_slugs", [])
     user_state.setdefault("want_go_plans", {})
+    user_state.setdefault("route_checkpoint_collections", {})
+    user_state.setdefault("club_activity_signups", {})
+    user_state.setdefault("vehicles", [])
     user_state["profile"] = _normalize_user_profile(profile) or {}
+    user_state["vehicles"] = _normalized_vehicles(user_state)
     user_state["navigation_preferences"] = {
         "preferred_map_app": str(navigation_preferences.get("preferred_map_app") or "").strip(),
     }
     user_state["created_at"] = created_at
     user_state["updated_at"] = updated_at
     return user_state
+
+
+def _empty_route_checkpoint_collection(slug: str, checkpoint_total: int) -> dict[str, Any]:
+    total = _normalize_checkpoint_total(checkpoint_total)
+    return {
+        "slug": str(slug or "").strip(),
+        "route_title": "",
+        "checkpoint_total": total,
+        "checked_indexes": [],
+        "checked_count": 0,
+        "completion_percent": 0,
+        "is_completed": False,
+        "badge": {},
+        "has_badge": False,
+        "updated_at": "",
+    }
+
+
+def _normalize_checkpoint_total(value: Any) -> int:
+    try:
+        normalized = int(value or 0)
+    except (TypeError, ValueError):
+        normalized = 0
+    return max(0, normalized)
+
+
+def _normalize_checkpoint_index(value: Any, checkpoint_total: int) -> int:
+    try:
+        normalized = int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+    if checkpoint_total > 0 and normalized > checkpoint_total:
+        return 0
+    return normalized if normalized > 0 else 0
+
+
+def _normalized_route_checkpoint_collections(user_state: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    raw = user_state.get("route_checkpoint_collections")
+    if not isinstance(raw, dict):
+        return {}
+
+    collections: dict[str, dict[str, Any]] = {}
+    for slug, raw_collection in raw.items():
+        normalized_slug = str(slug or "").strip()
+        if not normalized_slug or not isinstance(raw_collection, dict):
+            continue
+
+        total = _normalize_checkpoint_total(raw_collection.get("checkpoint_total"))
+        checked_indexes = sorted({
+            int(index)
+            for index in raw_collection.get("checked_indexes", [])
+            if isinstance(index, int) and int(index) > 0
+        })
+        if total > 0:
+            checked_indexes = [index for index in checked_indexes if index <= total]
+
+        badge = raw_collection.get("badge") if isinstance(raw_collection.get("badge"), dict) else {}
+        collections[normalized_slug] = {
+            "route_title": str(raw_collection.get("route_title") or "").strip(),
+            "checkpoint_total": total,
+            "checked_indexes": checked_indexes,
+            "checked_count": len(checked_indexes),
+            "badge": badge,
+            "updated_at": str(raw_collection.get("updated_at") or "").strip(),
+        }
+
+    return collections
+
+
+def _assign_route_checkpoint_collections(user_state: dict[str, Any], collections: dict[str, dict[str, Any]]) -> None:
+    normalized: dict[str, dict[str, Any]] = {}
+    for slug in sorted(collections.keys()):
+        collection = collections.get(slug)
+        if not isinstance(collection, dict):
+            continue
+        total = _normalize_checkpoint_total(collection.get("checkpoint_total"))
+        checked_indexes = sorted({
+            int(index)
+            for index in collection.get("checked_indexes", [])
+            if isinstance(index, int) and int(index) > 0
+        })
+        if total > 0:
+            checked_indexes = [index for index in checked_indexes if index <= total]
+        normalized[slug] = {
+            "route_title": str(collection.get("route_title") or "").strip(),
+            "checkpoint_total": total,
+            "checked_indexes": checked_indexes,
+            "badge": collection.get("badge") if isinstance(collection.get("badge"), dict) else {},
+            "updated_at": str(collection.get("updated_at") or _current_timestamp()).strip() or _current_timestamp(),
+        }
+    user_state["route_checkpoint_collections"] = normalized
 
 
 def _normalize_user_profile(profile: dict[str, Any] | None) -> dict[str, Any]:
@@ -502,6 +1235,148 @@ def _normalize_user_profile(profile: dict[str, Any] | None) -> dict[str, Any]:
         "country": country,
         "gender": gender,
     }
+
+
+def _new_id(prefix: str) -> str:
+    return f"{prefix}_{uuid.uuid4().hex[:12]}"
+
+
+def _find_vehicle(vehicles: list[dict[str, Any]], vehicle_id: str) -> dict[str, Any] | None:
+    for vehicle in vehicles:
+        if str(vehicle.get("id") or "").strip() == vehicle_id:
+            return vehicle
+    return None
+
+
+def _normalize_vehicle_payload(vehicle_payload: dict[str, Any] | None, *, existing: dict[str, Any] | None) -> dict[str, Any]:
+    source = vehicle_payload if isinstance(vehicle_payload, dict) else {}
+    fallback = existing if isinstance(existing, dict) else {}
+    fallback_maintenance = fallback.get("maintenance") if isinstance(fallback.get("maintenance"), dict) else {}
+    maintenance_source = {
+        "id": source.get("maintenance_id") or source.get("id") or fallback_maintenance.get("id") or "",
+        "date": source.get("maintenance_date") if source.get("maintenance_date") is not None else source.get("date"),
+        "item": source.get("maintenance_item") if source.get("maintenance_item") is not None else source.get("item"),
+        "mileage_km": source.get("maintenance_mileage_km") if source.get("maintenance_mileage_km") is not None else source.get("mileage_km"),
+        "cost": source.get("maintenance_cost") if source.get("maintenance_cost") is not None else source.get("cost"),
+        "note": source.get("maintenance_note") if source.get("maintenance_note") is not None else source.get("note"),
+    }
+    maintenance = _normalize_vehicle_maintenance(
+        maintenance_source,
+        source.get("maintenance"),
+        source.get("maintenance_records"),
+        fallback.get("maintenance"),
+        fallback.get("maintenance_records"),
+    )
+    return {
+        "nickname": str(source.get("nickname") if source.get("nickname") is not None else fallback.get("nickname") or "").strip(),
+        "brand": str(source.get("brand") if source.get("brand") is not None else fallback.get("brand") or "").strip(),
+        "model": str(source.get("model") if source.get("model") is not None else fallback.get("model") or "").strip(),
+        "year": str(source.get("year") if source.get("year") is not None else fallback.get("year") or "").strip()[:8],
+        "plate_no": str(source.get("plate_no") if source.get("plate_no") is not None else fallback.get("plate_no") or "").strip()[:32],
+        "purchase_date": str(source.get("purchase_date") if source.get("purchase_date") is not None else fallback.get("purchase_date") or "").strip()[:20],
+        "note": str(source.get("note") if source.get("note") is not None else fallback.get("note") or "").strip()[:500],
+        "maintenance": maintenance,
+        "maintenance_records": [maintenance] if maintenance else [],
+    }
+
+
+def _normalize_maintenance_record(record_payload: dict[str, Any] | None, *, existing: dict[str, Any] | None) -> dict[str, Any]:
+    source = record_payload if isinstance(record_payload, dict) else {}
+    fallback = existing if isinstance(existing, dict) else {}
+    return {
+        "date": str(source.get("date") if source.get("date") is not None else fallback.get("date") or "").strip()[:20],
+        "item": str(source.get("item") if source.get("item") is not None else fallback.get("item") or "").strip()[:120],
+        "mileage_km": str(source.get("mileage_km") if source.get("mileage_km") is not None else fallback.get("mileage_km") or "").strip()[:16],
+        "cost": str(source.get("cost") if source.get("cost") is not None else fallback.get("cost") or "").strip()[:32],
+        "note": str(source.get("note") if source.get("note") is not None else fallback.get("note") or "").strip()[:500],
+    }
+
+
+def _normalize_maintenance_records(records: Any) -> list[dict[str, Any]]:
+    source = records if isinstance(records, list) else []
+    normalized: list[dict[str, Any]] = []
+    for raw_item in source:
+        if not isinstance(raw_item, dict):
+            continue
+        normalized_item = _normalize_maintenance_record(raw_item, existing=None)
+        record_id = str(raw_item.get("id") or "").strip() or _new_id("mt")
+        if not normalized_item.get("item"):
+            continue
+        normalized.append(
+            {
+                "id": record_id,
+                "date": normalized_item["date"],
+                "item": normalized_item["item"],
+                "mileage_km": normalized_item["mileage_km"],
+                "cost": normalized_item["cost"],
+                "note": normalized_item["note"],
+                "created_at": str(raw_item.get("created_at") or raw_item.get("updated_at") or "").strip(),
+                "updated_at": str(raw_item.get("updated_at") or raw_item.get("created_at") or "").strip(),
+            }
+        )
+    normalized.sort(key=lambda item: (str(item.get("date") or ""), str(item.get("created_at") or "")), reverse=True)
+    return normalized
+
+
+def _normalize_vehicle_maintenance(*candidates: Any) -> dict[str, Any]:
+    for candidate in candidates:
+        if isinstance(candidate, dict):
+            normalized = _normalize_maintenance_record(candidate, existing=None)
+            if normalized.get("item") or normalized.get("date") or normalized.get("mileage_km") or normalized.get("note"):
+                return {
+                    "id": str(candidate.get("id") or "").strip(),
+                    "date": normalized["date"],
+                    "item": normalized["item"],
+                    "mileage_km": normalized["mileage_km"],
+                    "cost": normalized["cost"],
+                    "note": normalized["note"],
+                    "created_at": str(candidate.get("created_at") or candidate.get("updated_at") or "").strip(),
+                    "updated_at": str(candidate.get("updated_at") or candidate.get("created_at") or "").strip(),
+                }
+        if isinstance(candidate, list) and candidate:
+            first_record = _normalize_maintenance_records(candidate)[:1]
+            if first_record:
+                record = first_record[0]
+                return {**record}
+    return {}
+
+
+def _normalized_vehicles(user_state: dict[str, Any]) -> list[dict[str, Any]]:
+    raw = user_state.get("vehicles")
+    source = raw if isinstance(raw, list) else []
+    normalized: list[dict[str, Any]] = []
+    for raw_vehicle in source:
+        if not isinstance(raw_vehicle, dict):
+            continue
+        normalized_vehicle = _normalize_vehicle_payload(raw_vehicle, existing=None)
+        vehicle_id = str(raw_vehicle.get("id") or "").strip() or _new_id("veh")
+        maintenance = _normalize_vehicle_maintenance(raw_vehicle.get("maintenance"), raw_vehicle.get("maintenance_records"))
+        normalized.append(
+            {
+                "id": vehicle_id,
+                "nickname": normalized_vehicle["nickname"],
+                "brand": normalized_vehicle["brand"],
+                "model": normalized_vehicle["model"],
+                "year": normalized_vehicle["year"],
+                "plate_no": normalized_vehicle["plate_no"],
+                "purchase_date": normalized_vehicle["purchase_date"],
+                "note": normalized_vehicle["note"],
+                "maintenance": maintenance,
+                "maintenance_records": [maintenance] if maintenance else [],
+                "created_at": str(raw_vehicle.get("created_at") or raw_vehicle.get("updated_at") or "").strip(),
+                "updated_at": str(raw_vehicle.get("updated_at") or raw_vehicle.get("created_at") or "").strip(),
+            }
+        )
+
+    normalized.sort(
+        key=lambda item: (
+            str(item.get("updated_at") or ""),
+            str(item.get("created_at") or ""),
+            str(item.get("id") or ""),
+        ),
+        reverse=True,
+    )
+    return normalized
 
 
 def _read_payload() -> dict[str, Any]:

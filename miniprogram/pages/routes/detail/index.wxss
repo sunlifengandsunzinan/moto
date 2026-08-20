@@ -88,6 +88,18 @@
   letter-spacing: 0;
 }
 
+.route-map-panel__hint {
+  padding: 10rpx 14rpx 14rpx;
+  background: #faf6ef;
+  border-top: 1rpx solid #eee1cd;
+}
+
+.route-map-panel__hint-text {
+  color: #6c5631;
+  font-size: 19rpx;
+  line-height: 1.4;
+}
+
 .route-import-helper-entry {
   margin-top: 12rpx;
   display: flex;
@@ -152,9 +164,16 @@
 }
 
 .checkpoint-left {
-  position: relative;
   display: flex;
+  position: relative;
   justify-content: center;
+}
+
+.checkpoint-meta-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12rpx;
 }
 
 .checkpoint-dot {
@@ -165,6 +184,11 @@
   border: 2rpx solid #0f0f0f;
   background: #fff;
   z-index: 1;
+}
+
+.checkpoint-dot--checked {
+  background: #ffb133;
+  border-color: #be7d1f;
 }
 
 .checkpoint-line {
@@ -226,6 +250,51 @@
   align-items: center;
   gap: 12rpx;
   margin-top: 6rpx;
+}
+
+.checkpoint-checkin-button {
+  margin: 0;
+  min-height: 40rpx;
+  line-height: 40rpx;
+  border-radius: 999rpx;
+  padding: 0 14rpx;
+  font-size: 18rpx;
+  color: #6a3f07;
+  border: 2rpx solid #cf9a58;
+  background: #fff7eb;
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.checkpoint-checkin-button::after {
+  border: 0;
+}
+
+.checkpoint-checkin-button__icon {
+  display: inline-block;
+  width: 20rpx;
+  height: 20rpx;
+  line-height: 20rpx;
+  text-align: center;
+  font-size: 16rpx;
+  border-radius: 999rpx;
+  background: rgba(207, 154, 88, 0.16);
+}
+
+.checkpoint-checkin-button__label {
+  font-size: 18rpx;
+  line-height: 1;
+}
+
+.checkpoint-checkin-button--done {
+  color: #63705b;
+  border-color: #b7c6aa;
+  background: #eff6e7;
+}
+
+.checkpoint-checkin-button--done .checkpoint-checkin-button__icon {
+  background: rgba(124, 156, 99, 0.18);
 }
 
 .checkpoint-distance,

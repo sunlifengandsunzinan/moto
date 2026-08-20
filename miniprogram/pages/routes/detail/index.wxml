@@ -27,6 +27,10 @@
       <view class="route-map-panel__cta" bindtap="handlePrimaryMapAction">
         <text class="route-map-panel__cta-text">{{primaryMapActionLabel}}</text>
       </view>
+
+      <view wx:if="{{route.amap_export.map_polyline_hint}}" class="route-map-panel__hint">
+        <text class="route-map-panel__hint-text">{{route.amap_export.map_polyline_hint}}</text>
+      </view>
     </view>
 
     <view class="route-detail-actions-row">
@@ -38,7 +42,7 @@
     <view class="checkpoint-list">
       <view wx:for="{{checkpointTimeline}}" wx:key="index" class="checkpoint-item">
         <view class="checkpoint-left">
-          <view class="checkpoint-dot"></view>
+          <view class="checkpoint-dot {{item.is_checked ? 'checkpoint-dot--checked' : ''}}"></view>
           <view wx:if="{{!item.is_last}}" class="checkpoint-line"></view>
         </view>
 
@@ -53,7 +57,13 @@
           <text class="checkpoint-score">{{item.score_text}}</text>
           <view class="checkpoint-meta-row">
             <text class="checkpoint-distance">{{item.distance_text}}</text>
-            <text class="checkpoint-hit">打卡{{item.hit_count_text}}</text>
+            <view class="checkpoint-meta-actions">
+              <text class="checkpoint-hit">{{item.hit_count_text}}</text>
+              <button class="checkpoint-checkin-button {{item.is_checked ? 'checkpoint-checkin-button--done' : ''}}" data-index="{{item.index}}" bindtap="handleCheckpointCheckin" disabled="{{item.is_checked}}">
+                <text class="checkpoint-checkin-button__icon">{{item.is_checked ? '✓' : '+'}}</text>
+                <text class="checkpoint-checkin-button__label">{{item.is_checked ? '已打卡' : '打卡'}}</text>
+              </button>
+            </view>
           </view>
         </view>
       </view>

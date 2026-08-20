@@ -31,7 +31,7 @@ function request({ path, data = {}, method = "GET" }) {
             return;
           }
 
-          reject(new Error(payload?.message || `Request failed with status ${statusCode}`));
+          reject(new Error(payload?.message || payload?.error || `Request failed with status ${statusCode}`));
         },
         fail: () => {
           reject(new Error("无法连接 Flask 接口，请确认后端运行在配置地址。"));

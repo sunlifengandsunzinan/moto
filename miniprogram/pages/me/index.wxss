@@ -223,10 +223,10 @@
 
 .me-stats-card {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0;
   margin-top: 16rpx;
-  padding: 26rpx 12rpx;
+  padding: 24rpx 16rpx;
   border-radius: 28rpx;
   background: #2d2d2d;
   box-shadow: 0 10rpx 26rpx rgba(0, 0, 0, 0.16);
@@ -280,13 +280,83 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12rpx;
+  gap: 8rpx;
+}
+
+.me-club-banner__title {
+  font-size: 30rpx;
+  color: #111;
+  font-weight: 700;
+  margin-bottom: 2rpx;
 }
 
 .me-club-banner__line {
   font-size: 24rpx;
   color: #151515;
   font-weight: 500;
+}
+
+.me-club-banner__line--small {
+  font-size: 22rpx;
+  color: #2f2f2f;
+  font-weight: 400;
+}
+
+.me-modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99;
+  padding: 0 34rpx;
+  box-sizing: border-box;
+}
+
+.me-modal-dialog {
+  width: 100%;
+  border-radius: 24rpx;
+  background: #fff;
+  padding: 30rpx 26rpx 24rpx;
+  box-sizing: border-box;
+}
+
+.me-modal-title {
+  font-size: 34rpx;
+  color: #171717;
+  font-weight: 700;
+  text-align: center;
+}
+
+.me-modal-subtitle {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #2f2f2f;
+  font-weight: 500;
+}
+
+.me-modal-line {
+  margin-top: 8rpx;
+  font-size: 23rpx;
+  color: #444;
+  line-height: 1.45;
+}
+
+.me-modal-confirm {
+  margin-top: 20rpx;
+  height: 66rpx;
+  line-height: 66rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid #d8c4a5;
+  background: #fff6e9;
+  color: #6e4a1e;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.me-modal-confirm::after {
+  border: 0;
 }
 
 .me-grid-card {
@@ -307,6 +377,10 @@
   justify-content: flex-start;
   gap: 12rpx;
   min-width: 0;
+}
+
+.me-grid-card__item--hidden {
+  visibility: hidden;
 }
 
 .me-grid-card__icon {
