@@ -52,6 +52,8 @@
             </view>
             <view class="maintenance-item__row maintenance-item__row--sub">
               <text class="maintenance-item__meta">花费：{{record.cost || '-'}} 元</text>
+            </view>
+            <view class="maintenance-item__row maintenance-item__row--sub">
               <text class="maintenance-item__meta">最近更新：{{record.updated_at || '-'}}</text>
             </view>
             <text wx:if="{{record.note}}" class="maintenance-item__note">备注：{{record.note}}</text>
