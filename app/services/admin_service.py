@@ -61,6 +61,7 @@ ROUTE_FORM_GROUPS = [
         "description": "高德导航、路线地图和详情日程都依赖这里的数据；其中打卡点可独立维护，不会改动原始线路。",
         "fields": [
             ("amap_locked_href", "高德锁定链接", "text", "粘贴你在高德手工规划后的完整链接，保存后优先使用该路线"),
+            ("amap_app_href", "高德 App 链接", "text", "可填写高德短链或 App 唤起链接，详情页“直接导航”会优先打开它"),
             ("manual_navigation_points", "手工导航点", "textarea", "每行一个点：名称 | 经度 | 纬度，例如 沈阳 | 123.4315 | 41.8057"),
             ("navigation_waypoints", "导航途径点 JSON", "textarea", "必须至少 2 个点，包含 name 和经纬度"),
             ("manual_checkpoints", "手工打卡点（仅详情展示）", "textarea", "每行一个点：名称 | 摘要 | 时长 | 距离 | 打卡数。例如 小灯线 | 山路转折点 | 10分钟 | 18km | 23次。只影响详情页打卡点，不改地图路线和导航点。"),
@@ -454,6 +455,7 @@ def save_route_from_form(form_data: Mapping[str, Any], uploaded_cover_image_url:
     navigation_waypoints = manual_navigation_points or _parse_json_text(form_data.get("navigation_waypoints"), "导航途径点 JSON", default=[])
     manual_checkpoints = _parse_manual_checkpoints(form_data.get("manual_checkpoints"))
     amap_locked_href = str(form_data.get("amap_locked_href") or "").strip()
+    amap_app_href = str(form_data.get("amap_app_href") or "").strip()
 
     navigation_payload: dict[str, Any] = {
         "provider": "amap",
@@ -461,6 +463,8 @@ def save_route_from_form(form_data: Mapping[str, Any], uploaded_cover_image_url:
     }
     if amap_locked_href:
         navigation_payload["amap_locked_href"] = amap_locked_href
+    if amap_app_href:
+        navigation_payload["amap_app_href"] = amap_app_href
 
     route.update({
         "slug": _required_text(form_data, "slug", "路线 slug"),
@@ -658,6 +662,7 @@ def _route_form_values(route: Mapping[str, Any] | None, form_data: Mapping[str, 
         "detail_highlights": _field_value(form_data, "detail_highlights", _stringify_list(source.get("detail_highlights", []))),
         "detail_notes": _field_value(form_data, "detail_notes", _stringify_list(source.get("detail_notes", []))),
         "amap_locked_href": _field_value(form_data, "amap_locked_href", source_navigation.get("amap_locked_href", "")),
+        "amap_app_href": _field_value(form_data, "amap_app_href", source_navigation.get("amap_app_href", "")),
         "manual_navigation_points": _field_value(form_data, "manual_navigation_points", _stringify_manual_navigation_points(source_navigation.get("waypoints", []))),
         "navigation_waypoints": _field_value(form_data, "navigation_waypoints", _json_text(source_navigation.get("waypoints", []))),
         "manual_checkpoints": _field_value(

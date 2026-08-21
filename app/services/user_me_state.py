@@ -864,14 +864,17 @@ def add_user_vehicle_maintenance_record(
         "id": _new_id("mt"),
         "date": normalized_record["date"],
         "item": normalized_record["item"],
+        "location": normalized_record["location"],
         "mileage_km": normalized_record["mileage_km"],
         "cost": normalized_record["cost"],
         "note": normalized_record["note"],
         "created_at": now,
         "updated_at": now,
     }
-    vehicle["maintenance"] = record
-    vehicle["maintenance_records"] = [record]
+    existing_records = _normalize_maintenance_records(vehicle.get("maintenance_records"))
+    next_records = [record, *existing_records]
+    vehicle["maintenance"] = next_records[0]
+    vehicle["maintenance_records"] = next_records
     vehicle["updated_at"] = now
     user_state["vehicles"] = vehicles
     user_state["updated_at"] = now
@@ -904,9 +907,15 @@ def update_user_vehicle_maintenance_record(
     if not vehicle:
         return {"ok": False, "error": "Vehicle not found"}
 
-    existing = _normalize_vehicle_maintenance(vehicle.get("maintenance"), vehicle.get("maintenance_records"))
-    if normalized_record_id and str(existing.get("id") or "").strip() not in {"", normalized_record_id}:
+    existing_records = _normalize_maintenance_records(vehicle.get("maintenance_records"))
+    existing_index = -1
+    for index, record in enumerate(existing_records):
+        if str(record.get("id") or "").strip() == normalized_record_id:
+            existing_index = index
+            break
+    if existing_index < 0:
         return {"ok": False, "error": "Maintenance record not found"}
+    existing = existing_records[existing_index]
 
     normalized_record = _normalize_maintenance_record(record_payload, existing=existing)
     if not normalized_record.get("item"):
@@ -918,14 +927,17 @@ def update_user_vehicle_maintenance_record(
         "id": str(existing.get("id") or normalized_record_id or _new_id("mt")).strip(),
         "date": normalized_record["date"],
         "item": normalized_record["item"],
+        "location": normalized_record["location"],
         "mileage_km": normalized_record["mileage_km"],
         "cost": normalized_record["cost"],
         "note": normalized_record["note"],
         "updated_at": now,
     }
     updated_record.setdefault("created_at", str(existing.get("created_at") or now).strip())
-    vehicle["maintenance"] = updated_record
-    vehicle["maintenance_records"] = [updated_record]
+    existing_records[existing_index] = updated_record
+    existing_records.sort(key=lambda item: (str(item.get("updated_at") or ""), str(item.get("created_at") or "")), reverse=True)
+    vehicle["maintenance"] = existing_records[0] if existing_records else {}
+    vehicle["maintenance_records"] = existing_records
     vehicle["updated_at"] = now
     user_state["vehicles"] = vehicles
     user_state["updated_at"] = now
@@ -957,9 +969,18 @@ def delete_user_vehicle_maintenance_record(
     if not vehicle:
         return {"ok": False, "error": "Vehicle not found"}
 
+    existing_records = _normalize_maintenance_records(vehicle.get("maintenance_records"))
+    next_records = [
+        record
+        for record in existing_records
+        if str(record.get("id") or "").strip() != normalized_record_id
+    ]
+    if len(next_records) == len(existing_records):
+        return {"ok": False, "error": "Maintenance record not found"}
+
     now = _current_timestamp()
-    vehicle["maintenance"] = {}
-    vehicle["maintenance_records"] = []
+    vehicle["maintenance"] = next_records[0] if next_records else {}
+    vehicle["maintenance_records"] = next_records
     vehicle["updated_at"] = now
     user_state["vehicles"] = vehicles
     user_state["updated_at"] = now
@@ -1251,22 +1272,41 @@ def _find_vehicle(vehicles: list[dict[str, Any]], vehicle_id: str) -> dict[str, 
 def _normalize_vehicle_payload(vehicle_payload: dict[str, Any] | None, *, existing: dict[str, Any] | None) -> dict[str, Any]:
     source = vehicle_payload if isinstance(vehicle_payload, dict) else {}
     fallback = existing if isinstance(existing, dict) else {}
+    fallback_records = _normalize_maintenance_records(fallback.get("maintenance_records"))
+    source_records = _normalize_maintenance_records(source.get("maintenance_records")) if isinstance(source.get("maintenance_records"), list) else []
+    has_flat_maintenance_input = any(
+        source.get(key) is not None
+        for key in [
+            "maintenance_id",
+            "maintenance_date",
+            "maintenance_item",
+            "maintenance_location",
+            "maintenance_mileage_km",
+            "maintenance_cost",
+            "maintenance_note",
+        ]
+    )
     fallback_maintenance = fallback.get("maintenance") if isinstance(fallback.get("maintenance"), dict) else {}
     maintenance_source = {
         "id": source.get("maintenance_id") or source.get("id") or fallback_maintenance.get("id") or "",
         "date": source.get("maintenance_date") if source.get("maintenance_date") is not None else source.get("date"),
         "item": source.get("maintenance_item") if source.get("maintenance_item") is not None else source.get("item"),
+        "location": source.get("maintenance_location") if source.get("maintenance_location") is not None else source.get("location"),
         "mileage_km": source.get("maintenance_mileage_km") if source.get("maintenance_mileage_km") is not None else source.get("mileage_km"),
         "cost": source.get("maintenance_cost") if source.get("maintenance_cost") is not None else source.get("cost"),
         "note": source.get("maintenance_note") if source.get("maintenance_note") is not None else source.get("note"),
     }
-    maintenance = _normalize_vehicle_maintenance(
-        maintenance_source,
-        source.get("maintenance"),
-        source.get("maintenance_records"),
-        fallback.get("maintenance"),
-        fallback.get("maintenance_records"),
-    )
+    if source_records:
+        maintenance_records = source_records
+    elif has_flat_maintenance_input or isinstance(source.get("maintenance"), dict):
+        normalized_maintenance = _normalize_vehicle_maintenance(maintenance_source, source.get("maintenance"))
+        maintenance_records = [normalized_maintenance] if normalized_maintenance else []
+    else:
+        maintenance_records = fallback_records
+
+    maintenance = _normalize_vehicle_maintenance(source.get("maintenance"), maintenance_records, fallback.get("maintenance"), fallback_records)
+    if maintenance and not maintenance_records:
+        maintenance_records = [maintenance]
     return {
         "nickname": str(source.get("nickname") if source.get("nickname") is not None else fallback.get("nickname") or "").strip(),
         "brand": str(source.get("brand") if source.get("brand") is not None else fallback.get("brand") or "").strip(),
@@ -1276,7 +1316,7 @@ def _normalize_vehicle_payload(vehicle_payload: dict[str, Any] | None, *, existi
         "purchase_date": str(source.get("purchase_date") if source.get("purchase_date") is not None else fallback.get("purchase_date") or "").strip()[:20],
         "note": str(source.get("note") if source.get("note") is not None else fallback.get("note") or "").strip()[:500],
         "maintenance": maintenance,
-        "maintenance_records": [maintenance] if maintenance else [],
+        "maintenance_records": maintenance_records,
     }
 
 
@@ -1286,6 +1326,7 @@ def _normalize_maintenance_record(record_payload: dict[str, Any] | None, *, exis
     return {
         "date": str(source.get("date") if source.get("date") is not None else fallback.get("date") or "").strip()[:20],
         "item": str(source.get("item") if source.get("item") is not None else fallback.get("item") or "").strip()[:120],
+        "location": str(source.get("location") if source.get("location") is not None else fallback.get("location") or "").strip()[:160],
         "mileage_km": str(source.get("mileage_km") if source.get("mileage_km") is not None else fallback.get("mileage_km") or "").strip()[:16],
         "cost": str(source.get("cost") if source.get("cost") is not None else fallback.get("cost") or "").strip()[:32],
         "note": str(source.get("note") if source.get("note") is not None else fallback.get("note") or "").strip()[:500],
@@ -1307,6 +1348,7 @@ def _normalize_maintenance_records(records: Any) -> list[dict[str, Any]]:
                 "id": record_id,
                 "date": normalized_item["date"],
                 "item": normalized_item["item"],
+                "location": normalized_item["location"],
                 "mileage_km": normalized_item["mileage_km"],
                 "cost": normalized_item["cost"],
                 "note": normalized_item["note"],
@@ -1327,6 +1369,7 @@ def _normalize_vehicle_maintenance(*candidates: Any) -> dict[str, Any]:
                     "id": str(candidate.get("id") or "").strip(),
                     "date": normalized["date"],
                     "item": normalized["item"],
+                    "location": normalized["location"],
                     "mileage_km": normalized["mileage_km"],
                     "cost": normalized["cost"],
                     "note": normalized["note"],
@@ -1350,7 +1393,10 @@ def _normalized_vehicles(user_state: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         normalized_vehicle = _normalize_vehicle_payload(raw_vehicle, existing=None)
         vehicle_id = str(raw_vehicle.get("id") or "").strip() or _new_id("veh")
-        maintenance = _normalize_vehicle_maintenance(raw_vehicle.get("maintenance"), raw_vehicle.get("maintenance_records"))
+        maintenance_records = _normalize_maintenance_records(raw_vehicle.get("maintenance_records"))
+        maintenance = _normalize_vehicle_maintenance(raw_vehicle.get("maintenance"), maintenance_records)
+        if maintenance and not maintenance_records:
+            maintenance_records = [maintenance]
         normalized.append(
             {
                 "id": vehicle_id,
@@ -1362,7 +1408,7 @@ def _normalized_vehicles(user_state: dict[str, Any]) -> list[dict[str, Any]]:
                 "purchase_date": normalized_vehicle["purchase_date"],
                 "note": normalized_vehicle["note"],
                 "maintenance": maintenance,
-                "maintenance_records": [maintenance] if maintenance else [],
+                "maintenance_records": maintenance_records,
                 "created_at": str(raw_vehicle.get("created_at") or raw_vehicle.get("updated_at") or "").strip(),
                 "updated_at": str(raw_vehicle.get("updated_at") or raw_vehicle.get("created_at") or "").strip(),
             }

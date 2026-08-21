@@ -30,8 +30,8 @@ function normalizeMetricList(metrics) {
 
 function normalizeQuickActions(sections) {
   const preferredLabels = [
+    "爱车保养",
     "我的收集册",
-    "我的爱车",
     "VIP识别",
     "活动照片",
     "我的打卡",
@@ -572,7 +572,7 @@ Page({
       return;
     }
 
-    if (action.label === "我的爱车") {
+    if (action.label === "爱车保养") {
       if (!this.data.isWechatLoggedIn) {
         wx.showToast({ title: "请先登录", icon: "none" });
         this.handleShowWechatProfileEditor();

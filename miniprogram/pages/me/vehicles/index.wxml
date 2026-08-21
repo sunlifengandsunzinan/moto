@@ -1,6 +1,6 @@
 <view class="page-shell me-vehicles-page">
   <view wx:if="{{loading}}" class="card">
-    <text class="subtle">正在加载我的爱车...</text>
+    <text class="subtle">正在加载爱车保养...</text>
   </view>
 
   <view wx:elif="{{error}}" class="card">
@@ -10,7 +10,7 @@
   <block wx:else>
     <view class="vehicles-toolbar">
       <view>
-        <text class="vehicles-toolbar__title">我的爱车</text>
+        <text class="vehicles-toolbar__title">爱车保养</text>
         <text class="vehicles-toolbar__hint">重点记录保养，车辆信息尽量少填</text>
       </view>
       <button class="vehicles-toolbar__button" bindtap="handleOpenCreateVehicle">新增爱车</button>
@@ -24,29 +24,44 @@
             <text wx:if="{{vehicle.meta}}" class="vehicle-card__meta">{{vehicle.meta}}</text>
           </view>
           <view class="vehicle-card__actions">
-            <button class="mini-btn" data-vehicle-id="{{vehicle.id}}" bindtap="handleOpenEditVehicle">编辑</button>
-            <button class="mini-btn" data-vehicle-id="{{vehicle.id}}" bindtap="handleOpenUpdateMaintenance">更新保养</button>
-            <button class="mini-btn mini-btn--danger" data-vehicle-id="{{vehicle.id}}" bindtap="handleDeleteVehicle">删除</button>
+            <button class="mini-btn" data-vehicle-id="{{vehicle.id}}" bindtap="handleOpenUpdateActions">更新</button>
           </view>
         </view>
 
-        <view class="maintenance-header">
-          <text class="maintenance-header__title">当前保养</text>
-          <text class="maintenance-header__count">{{vehicle.maintenance_count ? '已更新' : '未更新'}}</text>
-        </view>
-        <view wx:if="{{vehicle.maintenance.item}}" class="maintenance-card">
-          <view class="maintenance-item__row">
-            <text class="maintenance-item__title">{{vehicle.maintenance.item}}</text>
-            <text class="maintenance-item__meta">{{vehicle.maintenance.date || '未填日期'}}</text>
+        <view class="maintenance-header" data-vehicle-id="{{vehicle.id}}" bindtap="handleToggleMaintenance">
+          <text class="maintenance-header__title">保养记录</text>
+          <view class="maintenance-header__right">
+            <text class="maintenance-header__count">{{vehicle.maintenance_count}} 条</text>
+            <button class="icon-btn" data-vehicle-id="{{vehicle.id}}" catchtap="handleOpenMaintenanceEditor">+</button>
+            <text class="maintenance-fold-tag">{{vehicle.maintenance_expanded ? '收起' : '展开'}}</text>
           </view>
-          <view class="maintenance-item__row maintenance-item__row--sub">
-            <text class="maintenance-item__meta">里程：{{vehicle.maintenance.mileage_km || '-'}} km</text>
-            <text class="maintenance-item__meta">最近更新：{{vehicle.maintenance.updated_at || '-'}}</text>
-          </view>
-          <text wx:if="{{vehicle.maintenance.note}}" class="maintenance-item__note">备注：{{vehicle.maintenance.note}}</text>
         </view>
-        <view wx:else class="card card--subtle">
-          <text class="subtle">还没有保养信息，点“更新保养”补上最新记录。</text>
+        <view wx:if="{{vehicle.maintenance_expanded}}" class="maintenance-list">
+          <view wx:for="{{vehicle.maintenance_records}}" wx:key="id" wx:for-item="record" wx:for-index="recordIndex" class="maintenance-item">
+            <view class="maintenance-item__row">
+              <text class="maintenance-item__title">保养{{recordIndex + 1}} · {{record.item || '未命名项目'}}</text>
+              <view class="maintenance-item__right">
+                <text class="maintenance-item__meta">{{record.date || '未填日期'}}</text>
+                <button class="icon-btn icon-btn--danger" data-vehicle-id="{{vehicle.id}}" data-record-id="{{record.id}}" catchtap="handleDeleteMaintenanceRecord">-</button>
+              </view>
+            </view>
+            <view class="maintenance-item__row maintenance-item__row--sub">
+              <text class="maintenance-item__meta">地点：{{record.location || '-'}} </text>
+              <text class="maintenance-item__meta">里程：{{record.mileage_km || '-'}} km</text>
+            </view>
+            <view class="maintenance-item__row maintenance-item__row--sub">
+              <text class="maintenance-item__meta">花费：{{record.cost || '-'}} 元</text>
+              <text class="maintenance-item__meta">最近更新：{{record.updated_at || '-'}}</text>
+            </view>
+            <text wx:if="{{record.note}}" class="maintenance-item__note">备注：{{record.note}}</text>
+          </view>
+          <view wx:if="{{!vehicle.maintenance_records.length}}" class="card card--subtle">
+            <text class="subtle">还没有保养信息，点右侧 + 新增记录。</text>
+          </view>
+        </view>
+
+        <view wx:if="{{!vehicle.maintenance_expanded}}" class="card card--subtle">
+          <text class="subtle">已折叠，点击展开查看明细。</text>
         </view>
       </view>
     </view>
@@ -59,14 +74,26 @@
   <view wx:if="{{showVehicleEditor}}" class="editor-mask" bindtap="handleCloseVehicleEditor">
     <view class="editor-dialog" catchtap="noop">
       <view class="editor-title">{{vehicleEditorTitle}}</view>
-      <input class="editor-input" placeholder="爱车名称，例如：CB500X、踏板、我的爱车" data-field="nickname" value="{{vehicleDraft.nickname}}" bindinput="handleVehicleDraftInput" />
-      <input class="editor-input" placeholder="保养日期（YYYY-MM-DD）" data-field="maintenance_date" value="{{vehicleDraft.maintenance_date}}" bindinput="handleVehicleDraftInput" />
-      <input class="editor-input" placeholder="保养项目（例如：机油+机滤）" data-field="maintenance_item" value="{{vehicleDraft.maintenance_item}}" bindinput="handleVehicleDraftInput" />
-      <input class="editor-input" placeholder="当前里程（km）" data-field="maintenance_mileage_km" value="{{vehicleDraft.maintenance_mileage_km}}" bindinput="handleVehicleDraftInput" />
-      <textarea class="editor-textarea" placeholder="保养备注（可选）" data-field="maintenance_note" value="{{vehicleDraft.maintenance_note}}" bindinput="handleVehicleDraftInput"></textarea>
+      <input class="editor-input" placeholder="车型号，例如：CB500X" data-field="model" value="{{vehicleDraft.model}}" bindinput="handleVehicleDraftInput" />
       <view class="editor-actions">
         <button class="editor-btn editor-btn--ghost" bindtap="handleCloseVehicleEditor">取消</button>
         <button class="editor-btn" loading="{{saving}}" bindtap="handleSaveVehicle">保存</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{showMaintenanceEditor}}" class="editor-mask" bindtap="handleCloseMaintenanceEditor">
+    <view class="editor-dialog" catchtap="noop">
+      <view class="editor-title">{{maintenanceEditorTitle}}</view>
+      <input class="editor-input" placeholder="保养日期（YYYY-MM-DD）" data-field="date" value="{{maintenanceDraft.date}}" bindinput="handleMaintenanceDraftInput" />
+      <input class="editor-input" placeholder="保养项目（例如：机油+机滤）" data-field="item" value="{{maintenanceDraft.item}}" bindinput="handleMaintenanceDraftInput" />
+      <input class="editor-input" placeholder="保养地点（例如：XX机车维修店）" data-field="location" value="{{maintenanceDraft.location}}" bindinput="handleMaintenanceDraftInput" />
+      <input class="editor-input" placeholder="当前里程（km）" data-field="mileage_km" value="{{maintenanceDraft.mileage_km}}" bindinput="handleMaintenanceDraftInput" />
+      <input class="editor-input" placeholder="保养花费（元）" data-field="cost" value="{{maintenanceDraft.cost}}" bindinput="handleMaintenanceDraftInput" />
+      <textarea class="editor-textarea" placeholder="保养备注（可选）" data-field="note" value="{{maintenanceDraft.note}}" bindinput="handleMaintenanceDraftInput"></textarea>
+      <view class="editor-actions">
+        <button class="editor-btn editor-btn--ghost" bindtap="handleCloseMaintenanceEditor">取消</button>
+        <button class="editor-btn" loading="{{saving}}" bindtap="handleSaveMaintenance">保存</button>
       </view>
     </view>
   </view>

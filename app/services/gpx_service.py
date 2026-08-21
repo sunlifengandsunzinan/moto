@@ -146,6 +146,50 @@ def get_gpx_waypoints(filename: str, max_points: int = 16) -> list[dict]:
     return waypoints
 
 
+def get_gpx_track_polyline(filename: str, max_points: int = 2200) -> list[dict]:
+    """Extract dense track polyline points from GPX for map preview fallback."""
+    content = get_gpx_content(filename)
+    if not content:
+        return []
+
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return []
+
+    namespace = {"gpx": "http://www.topografix.com/GPX/1/1"}
+    points: list[dict] = []
+
+    for track_point in root.findall(".//gpx:trkpt", namespace):
+        lat = track_point.attrib.get("lat")
+        lng = track_point.attrib.get("lon")
+        if lat in {None, ""} or lng in {None, ""}:
+            continue
+
+        try:
+            parsed_point = {
+                "lat": float(lat),
+                "lng": float(lng),
+            }
+        except ValueError:
+            continue
+
+        if points and points[-1]["lat"] == parsed_point["lat"] and points[-1]["lng"] == parsed_point["lng"]:
+            continue
+
+        points.append(parsed_point)
+
+    if len(points) <= max_points:
+        return points
+
+    # Uniformly sample to keep response payload bounded for Mini Program map.
+    step = max(1, len(points) // max_points)
+    sampled = points[::step]
+    if sampled and sampled[-1] != points[-1]:
+        sampled.append(points[-1])
+    return sampled[:max_points]
+
+
 def write_route_waypoints_gpx(*, route_slug: str, route_title: str, waypoints: list[dict[str, Any]]) -> str:
     normalized_slug = _slugify_gpx_filename(route_slug) or f"route-{int(time.time())}"
     if len(waypoints) < 2:

@@ -10,8 +10,8 @@ const {
 const { downloadRemoteFile } = require("../../../utils/file-download");
 
 const IMPORT_PREFERENCE_STORAGE_KEY = "routeImportPreferredMapApp";
-const ROUTE_DETAIL_SEED_STORAGE_PREFIX = "routeDetailSeed:";
-const ROUTE_DETAIL_CACHE_STORAGE_PREFIX = "routeDetailCache:";
+const ROUTE_DETAIL_SEED_STORAGE_PREFIX = "routeDetailSeed:v4:";
+const ROUTE_DETAIL_CACHE_STORAGE_PREFIX = "routeDetailCache:v4:";
 const WANT_GO_PLAN_OPTIONS = [
   { key: "this_month", label: "这个月" },
   { key: "next_month", label: "下个月" },
@@ -578,14 +578,13 @@ function resolveMapAppView(importAssistant, selectedMapAppKey, platformKey) {
 
 function resolveDirectNavigationOptions(route) {
   const amapUrl = resolveManualNavigationUrl(route, "amap");
-  const coordinateTarget = getRouteNavigationTarget(route);
   return [
     {
       key: "amap",
       label: "高德地图",
       url: "",
       manualUrl: amapUrl,
-      isAvailable: Boolean(amapUrl || coordinateTarget),
+      isAvailable: Boolean(amapUrl),
     },
   ];
 }
@@ -651,22 +650,7 @@ function resolveCopyableNavigationUrl(route, mapKey) {
     ).trim();
   }
 
-  const browserHref = String(route?.amap_export?.browser_href || "").trim();
-  if (browserHref) {
-    return browserHref;
-  }
-
-  const publicHref = String(route?.amap_export?.href || "").trim();
-  if (publicHref) {
-    return publicHref;
-  }
-
-  const slug = String(route?.slug || "").trim();
-  if (slug) {
-    return buildWebUrl(`/moto/routes/${slug}/amap-launch`);
-  }
-
-  return String(route?.amap_export?.browser_href || route?.amap_export?.href || route?.amap_export?.app_href || "").trim();
+  return String(route?.amap_export?.app_href || "").trim();
 }
 
 function buildWaypointSummary(route) {
@@ -885,7 +869,7 @@ Page({
       badge: {},
     },
     linkedSpots: [],
-    primaryMapActionLabel: "直接导航",
+    primaryMapActionLabel: "复制到浏览器",
     wantGoActionLabel: "想去",
     showImportAssistant: false,
     showImportTroubleshooting: false,
@@ -1014,7 +998,7 @@ Page({
       checkpointTimeline: normalized.checkpoint_timeline,
       routeCollection: normalized.route.collection || this.data.routeCollection,
       linkedSpots: normalized.detail_sections.linked_spots || [],
-      primaryMapActionLabel: "直接导航",
+      primaryMapActionLabel: "复制到浏览器",
       wantGoActionLabel: normalized.want_go_action_label,
       importAssistant,
       selectedImportMapAppKey,
@@ -1078,7 +1062,7 @@ Page({
       checkpointTimeline: fallback.checkpoint_timeline,
       routeCollection: fallback.route.collection || this.data.routeCollection,
       linkedSpots: fallback.detail_sections.linked_spots || [],
-      primaryMapActionLabel: "直接导航",
+      primaryMapActionLabel: "复制到浏览器",
       wantGoActionLabel: fallback.want_go_action_label,
       importAssistant: {
         enabled: false,
@@ -1152,8 +1136,7 @@ Page({
     const route = this.data.route || {};
     const navigationOptions = resolveDirectNavigationOptions(route);
     const selectedOption = navigationOptions.find((item) => item.key === mapKey);
-    const navigateUrl = selectedOption?.url || "";
-    const manualUrl = selectedOption?.manualUrl || resolveManualNavigationUrl(route, mapKey);
+    const manualUrl = selectedOption?.manualUrl || resolveCopyableNavigationUrl(route, mapKey);
 
     if (manualUrl) {
       this.trackNavigationEngagement(route);
@@ -1161,36 +1144,11 @@ Page({
       return;
     }
 
-    if (navigateUrl) {
-      this.trackNavigationEngagement(route);
-      wx.navigateTo({ url: navigateUrl });
-      return;
-    }
-
     if (selectedOption) {
-      wx.showToast({ title: `${selectedOption.label}路线暂不可用`, icon: "none" });
-    }
-
-    const target = getRouteNavigationTarget(route);
-    if (!target) {
-      wx.showToast({ title: "当前路线缺少可导航坐标", icon: "none" });
+      wx.showToast({ title: `${selectedOption.label}链接暂不可用`, icon: "none" });
       return;
     }
-
-    wx.openLocation({
-      latitude: target.latitude,
-      longitude: target.longitude,
-      name: target.name,
-      address: target.name,
-      scale: 12,
-      success: () => {
-        this.trackNavigationEngagement(route);
-      },
-      fail: () => {
-        this.copyNavigationLinkForManualOpen(mapKey, true);
-        wx.showToast({ title: "无法打开系统地图", icon: "none", duration: 2200 });
-      },
-    });
+    wx.showToast({ title: "当前路线缺少高德链接", icon: "none" });
   },
 
   copyNavigationLinkForManualOpen(mapKey = "amap", showFeedback = true) {
@@ -1207,7 +1165,7 @@ Page({
           return;
         }
         wx.showToast({
-          title: "导航链接已复制",
+          title: "高德链接已复制",
           icon: "none",
           duration: 1800,
         });

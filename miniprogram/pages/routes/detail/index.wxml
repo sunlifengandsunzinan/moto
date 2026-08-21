@@ -48,15 +48,12 @@
 
         <view class="checkpoint-main">
           <view class="checkpoint-title-row">
-            <text class="checkpoint-index">打卡点{{item.index}} ·</text>
-            <text class="checkpoint-duration" wx:if="{{item.duration_text}}">{{item.duration_text}}</text>
+            <text class="checkpoint-index">打卡点{{item.index}}</text>
           </view>
           <view class="checkpoint-name-row">
             <text class="checkpoint-title">{{item.name}}</text>
           </view>
-          <text class="checkpoint-score">{{item.score_text}}</text>
           <view class="checkpoint-meta-row">
-            <text class="checkpoint-distance">{{item.distance_text}}</text>
             <view class="checkpoint-meta-actions">
               <text class="checkpoint-hit">{{item.hit_count_text}}</text>
               <button class="checkpoint-checkin-button {{item.is_checked ? 'checkpoint-checkin-button--done' : ''}}" data-index="{{item.index}}" bindtap="handleCheckpointCheckin" disabled="{{item.is_checked}}">

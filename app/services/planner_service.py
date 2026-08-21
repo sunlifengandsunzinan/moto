@@ -1936,11 +1936,13 @@ def _route_index_card(
     navigation_mode = _route_navigation_mode(navigation_waypoints)
     status_variant = _route_navigation_status_variant(navigation_mode)
     locked_amap_href = _route_navigation_locked_amap_href(route)
-    amap_export_href = (
-        _normalize_locked_amap_href(locked_amap_href, prefer_native=True)
-        if locked_amap_href
-        else _route_amap_export_href(navigation_waypoints, prefer_native=True)
-    )
+    configured_amap_app_href = _route_navigation_app_amap_href(route)
+    if configured_amap_app_href:
+        amap_export_href = configured_amap_app_href
+    elif locked_amap_href:
+        amap_export_href = _normalize_locked_amap_href(locked_amap_href, prefer_native=True)
+    else:
+        amap_export_href = _route_amap_export_href(navigation_waypoints, prefer_native=True)
     amap_browser_href = (
         _normalize_locked_amap_href(locked_amap_href, prefer_native=False)
         if locked_amap_href
@@ -1976,6 +1978,7 @@ def _route_index_card(
     ):
         routed_polyline_points = []
         routed_polyline_status = f"locked-amap-road-polyline-unavailable:{routed_polyline_status}"
+
     gpx_payload = _route_gpx_payload(route, navigation_waypoints, gpx_lookup=gpx_lookup)
     source_meta = _route_source_meta(route, gpx_payload=gpx_payload)
     tags = [f"{route['days']} 天", route["best_season"], difficulty_label(route["difficulty"])]
@@ -2969,6 +2972,16 @@ def _tencent_uri_referer() -> str:
 def _route_navigation_locked_amap_href(route: Mapping[str, Any]) -> str:
     navigation = route.get("navigation") if isinstance(route.get("navigation"), Mapping) else {}
     return str(navigation.get("amap_locked_href") or "").strip()
+
+
+def _route_navigation_app_amap_href(route: Mapping[str, Any]) -> str:
+    navigation = route.get("navigation") if isinstance(route.get("navigation"), Mapping) else {}
+    return str(
+        navigation.get("amap_app_href")
+        or route.get("amap_app_href")
+        or route.get("amap_href")
+        or ""
+    ).strip()
 
 
 def _normalize_locked_amap_href(href: str, *, prefer_native: bool) -> str:

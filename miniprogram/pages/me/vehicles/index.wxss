@@ -89,6 +89,12 @@
   justify-content: space-between;
 }
 
+.maintenance-header__right {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
 .maintenance-header__title {
   font-size: 22rpx;
   color: #2a2a2a;
@@ -96,6 +102,11 @@
 }
 
 .maintenance-header__count {
+  font-size: 18rpx;
+  color: #8a6b41;
+}
+
+.maintenance-fold-tag {
   font-size: 18rpx;
   color: #8a6b41;
 }
@@ -122,6 +133,12 @@
 .maintenance-item__row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.maintenance-item__right {
+  display: flex;
   align-items: center;
   gap: 8rpx;
 }
@@ -172,6 +189,31 @@
 }
 
 .mini-btn--danger {
+  border-color: #f0c7c1;
+  background: #fff2f1;
+  color: #9f3d35;
+}
+
+.icon-btn {
+  margin: 0;
+  width: 44rpx;
+  min-width: 44rpx;
+  height: 44rpx;
+  line-height: 44rpx;
+  border-radius: 50%;
+  border: 1rpx solid #d2c1a7;
+  background: #fff5e7;
+  color: #6d4514;
+  font-size: 28rpx;
+  padding: 0;
+  text-align: center;
+}
+
+.icon-btn::after {
+  border: 0;
+}
+
+.icon-btn--danger {
   border-color: #f0c7c1;
   background: #fff2f1;
   color: #9f3d35;

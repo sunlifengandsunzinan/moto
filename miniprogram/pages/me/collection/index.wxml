@@ -1,6 +1,6 @@
 <view class="page-shell me-collection-page">
   <view wx:if="{{loading}}" class="card">
-    <text class="subtle">正在加载收集册...</text>
+    <text class="subtle">正在加载我的收集册...</text>
   </view>
 
   <view wx:elif="{{error}}" class="card">
@@ -8,55 +8,6 @@
   </view>
 
   <block wx:else>
-    <view class="collection-section">
-      <view class="collection-section__title">{{clubPublic.title}}</view>
-      <view class="club-public-card">
-        <view class="club-public-card__row">
-          <text class="club-public-card__label">路线风格</text>
-          <view class="club-public-card__tags">
-            <text wx:for="{{clubPublic.route_styles}}" wx:key="label" class="club-public-card__tag">{{item.label}} {{item.count}}条</text>
-          </view>
-        </view>
-        <view class="club-public-card__row">
-          <text class="club-public-card__label">活跃度</text>
-          <text class="club-public-card__value">本周 {{clubPublic.activity_level}} 活跃</text>
-        </view>
-        <view class="club-public-posters" wx:if="{{clubPublic.activity_posters.length}}">
-          <view wx:for="{{clubPublic.activity_posters}}" wx:key="slug" class="club-public-poster">
-            <image wx:if="{{item.poster_url}}" class="club-public-poster__image" src="{{item.poster_url}}" mode="aspectFill"></image>
-            <view wx:else class="club-public-poster__placeholder">活动海报</view>
-            <text class="club-public-poster__title">{{item.title}}</text>
-            <view class="club-public-poster__footer">
-              <text class="club-public-poster__meta">{{item.signup_count}}人已报名</text>
-              <button class="club-public-poster__signup {{item.is_signed_up ? 'club-public-poster__signup--done' : ''}}" data-slug="{{item.slug}}" data-title="{{item.title}}" bindtap="handleSignupClubActivity" disabled="{{item.is_signed_up}}">{{item.is_signed_up ? '已报名' : '活动报名'}}</button>
-            </view>
-          </view>
-        </view>
-      </view>
-    </view>
-
-    <view class="collection-section">
-      <view class="collection-section__title">俱乐部路线榜</view>
-      <view class="club-board-card">
-        <view class="club-board-metrics">
-          <view class="club-board-metrics__item">
-            <text class="club-board-metrics__value">{{clubRouteBoard.weekly_checkpoint_total}}</text>
-            <text class="club-board-metrics__label">本周打卡点总数</text>
-          </view>
-          <view class="club-board-metrics__item">
-            <text class="club-board-metrics__value">{{clubRouteBoard.weekly_completed_routes}}</text>
-            <text class="club-board-metrics__label">完成路线数</text>
-          </view>
-        </view>
-        <view wx:if="{{clubRouteBoard.routes.length}}" class="club-board-list">
-          <view wx:for="{{clubRouteBoard.routes}}" wx:key="slug" class="club-board-list__item">
-            <text class="club-board-list__title">{{index + 1}}. {{item.title}}</text>
-            <text class="club-board-list__meta">{{item.completed_member_count}}/{{item.member_count}}人集齐 · 均值{{item.avg_completion_percent}}%</text>
-          </view>
-        </view>
-      </view>
-    </view>
-
     <view class="collection-summary-card">
       <view class="collection-summary-item">
         <text class="collection-summary-value">{{summary.route_count}}</text>
@@ -99,7 +50,6 @@
             <text class="route-card__desc">{{item.days}}天 · {{item.distance_km}}km · 完成{{item.completion_percent}}%</text>
             <button class="route-card__share" open-type="share" data-slug="{{item.slug}}" bindtap="handleShareRoutePoster">分享海报</button>
           </view>
-          <view class="route-card__compare">俱乐部成员完成率均值 {{item.club_avg_completion_percent}}%（{{item.club_member_count}}人参与）</view>
         </view>
       </view>
       <view wx:else class="card">

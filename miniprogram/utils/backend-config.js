@@ -2,7 +2,7 @@ const DEFAULT_WEB_BASE_URL = "http://127.0.0.1:6001";
 const DEFAULT_DEVICE_WEB_BASE_URL = "https://www.xingtu.ltd";
 const TENCENT_MAP_SUBKEY = "4MABZ-BYQKZ-4CAXR-TZUQC-MRP6E-MHBDI";
 const DEFAULT_API_BASE_URL = `${DEFAULT_WEB_BASE_URL}/api`;
-const BACKEND_CONFIG_STORAGE_VERSION = 4;
+const BACKEND_CONFIG_STORAGE_VERSION = 5;
 
 const STORAGE_KEYS = {
   backendConfig: "backendConfig",
@@ -318,14 +318,13 @@ function clearLegacyStoredBackendConfig() {
 
 function resolveBackendConfig(source = {}) {
   const versionedStoredConfig = getVersionedStoredBackendConfig();
-  const legacyStoredConfig = getLegacyStoredBackendConfig();
 
   return {
     apiBaseUrl: normalizeApiBaseUrl(
-      source.apiBaseUrl || versionedStoredConfig.apiBaseUrl || legacyStoredConfig.apiBaseUrl || getDefaultApiBaseUrl(),
+      source.apiBaseUrl || versionedStoredConfig.apiBaseUrl || getDefaultApiBaseUrl(),
     ),
     webBaseUrl: normalizeWebBaseUrl(
-      source.webBaseUrl || versionedStoredConfig.webBaseUrl || legacyStoredConfig.webBaseUrl || getDefaultWebBaseUrl(),
+      source.webBaseUrl || versionedStoredConfig.webBaseUrl || getDefaultWebBaseUrl(),
     ),
   };
 }
