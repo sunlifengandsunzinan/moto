@@ -65,6 +65,8 @@ const MINI_PROGRAM_PATHS = {
   meFavorites: "/pages/me/favorites/index",
   meUpload: "/pages/me/upload/index",
   meCollection: "/pages/me/collection/index",
+  meWantGo: "/pages/me/want-go/index",
+  meCheckins: "/pages/me/checkins/index",
   meVehicles: "/pages/me/vehicles/index",
   webview: "/pages/webview/index",
   routeDetail(slug) {

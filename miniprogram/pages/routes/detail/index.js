@@ -1229,15 +1229,17 @@ Page({
         });
 
         if (payload.badge_unlocked) {
+          const clubHint = payload?.club_credit_awarded ? "你为俱乐部贡献了1个打卡点。" : "";
           wx.showModal({
             title: "徽章解锁",
-            content: `你为俱乐部贡献了1个打卡点。${String(payload?.badge?.title || "路线征服者")}，现在可以分享海报啦。`,
+            content: `${clubHint}${String(payload?.badge?.title || "路线征服者")}，现在可以分享海报啦。`,
             showCancel: false,
           });
           return;
         }
 
-        wx.showToast({ title: "打卡成功，为俱乐部+1", icon: "success" });
+        const successTitle = payload?.club_credit_awarded ? "打卡成功，为俱乐部+1" : "打卡成功";
+        wx.showToast({ title: successTitle, icon: "success" });
       })
       .catch((error) => {
         wx.showToast({

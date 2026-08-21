@@ -547,6 +547,35 @@ Page({
     this.setData({ showClubFeatureModal: false });
   },
 
+  handleMetricTap(event) {
+    const metricKey = String(event?.currentTarget?.dataset?.key || "").trim();
+    if (!metricKey) {
+      return;
+    }
+
+    if (!this.data.isWechatLoggedIn) {
+      wx.showToast({ title: "请先登录", icon: "none" });
+      this.handleShowWechatProfileEditor();
+      return;
+    }
+
+    if (metricKey === "want-go") {
+      wx.navigateTo({
+        url: MINI_PROGRAM_PATHS.meWantGo,
+      });
+      return;
+    }
+
+    if (metricKey === "checkins") {
+      wx.navigateTo({
+        url: MINI_PROGRAM_PATHS.meCheckins,
+      });
+      return;
+    }
+
+    wx.showToast({ title: "功能建设中", icon: "none" });
+  },
+
   noop() {},
 
   handleQuickAction(event) {

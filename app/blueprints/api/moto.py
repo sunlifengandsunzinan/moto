@@ -16,6 +16,7 @@ from ...services import (
     get_user_vehicles,
     get_user_route_checkpoint_collection,
     get_user_favorite_slugs,
+    get_user_club_activity_signup_slugs,
     get_moto_me_context,
     get_liaoning_route_templates,
     get_user_navigation_preferences,
@@ -230,6 +231,9 @@ def moto_route_checkpoint_checkin(slug: str, checkpoint_index: int):
     if not result.get("ok"):
         return jsonify({"ok": False, "error": "Failed to check in checkpoint"}), 400
 
+    signed_activity_slugs = get_user_club_activity_signup_slugs(user_id)
+    club_credit_awarded = slug in signed_activity_slugs
+
     return jsonify(
         {
             "ok": True,
@@ -238,6 +242,7 @@ def moto_route_checkpoint_checkin(slug: str, checkpoint_index: int):
             "collection": result.get("collection") or {},
             "badge_unlocked": bool(result.get("badge_unlocked")),
             "badge": result.get("badge") or {},
+            "club_credit_awarded": club_credit_awarded,
         }
     )
 

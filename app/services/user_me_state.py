@@ -85,6 +85,15 @@ def get_user_want_go_route_plans(user_id: str | None) -> dict[str, str]:
     return _normalized_want_go_plans(user_state)
 
 
+def get_user_want_go_route_plan_details(user_id: str | None) -> dict[str, dict[str, str]]:
+    normalized_user_id = normalize_user_id(user_id)
+    if not normalized_user_id:
+        return {}
+
+    user_state = _read_user_state(normalized_user_id)
+    return _normalized_want_go_plan_details(user_state)
+
+
 def upsert_user_profile(user_id: str | None, profile: dict[str, Any] | None) -> dict[str, Any]:
     normalized_user_id = normalize_user_id(user_id)
     normalized_profile = _normalize_user_profile(profile)
@@ -1085,11 +1094,16 @@ def _normalize_want_go_plan_bucket(value: Any) -> str:
 
 
 def _normalized_want_go_plans(user_state: dict[str, Any]) -> dict[str, str]:
+    details = _normalized_want_go_plan_details(user_state)
+    return {slug: detail["bucket"] for slug, detail in details.items()}
+
+
+def _normalized_want_go_plan_details(user_state: dict[str, Any]) -> dict[str, dict[str, str]]:
     raw = user_state.get("want_go_plans")
     if not isinstance(raw, dict):
         return {}
 
-    plans: dict[str, str] = {}
+    plans: dict[str, dict[str, str]] = {}
     for slug, value in raw.items():
         normalized_slug = str(slug or "").strip()
         if not normalized_slug:
@@ -1099,7 +1113,11 @@ def _normalized_want_go_plans(user_state: dict[str, Any]) -> dict[str, str]:
         normalized_bucket = _normalize_want_go_plan_bucket(bucket_value)
         if not normalized_bucket:
             continue
-        plans[normalized_slug] = normalized_bucket
+        updated_at = str(value.get("updated_at") or "").strip() if isinstance(value, dict) else ""
+        plans[normalized_slug] = {
+            "bucket": normalized_bucket,
+            "updated_at": updated_at,
+        }
     return plans
 
 

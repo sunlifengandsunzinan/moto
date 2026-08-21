@@ -52,7 +52,7 @@
   </view>
 
   <view class="me-stats-card">
-    <view wx:for="{{metrics}}" wx:key="key" class="me-stats-card__item">
+    <view wx:for="{{metrics}}" wx:key="key" class="me-stats-card__item" data-key="{{item.key}}" bindtap="handleMetricTap">
       <text class="me-stats-card__value">{{item.value}}</text>
       <text class="me-stats-card__label">{{item.label}}</text>
     </view>

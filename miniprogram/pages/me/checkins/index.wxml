@@ -1,0 +1,31 @@
+<view class="page-shell">
+  <view class="card me-records-shell">
+    <view class="section-header">
+      <view>
+        <text class="eyebrow">我的路线</text>
+        <text class="card-title">我打卡过的</text>
+      </view>
+      <text class="inline-badge">{{records.length}} 条</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="me-records-empty">
+      <text class="subtle">加载中...</text>
+    </view>
+
+    <view wx:elif="{{error}}" class="me-records-empty">
+      <text class="subtle">{{error}}</text>
+    </view>
+
+    <view wx:elif="{{records.length}}" class="list-column me-records-list">
+      <view wx:for="{{records}}" wx:key="key" class="me-record-card" data-slug="{{item.slug}}" bindtap="handleOpenRoute">
+        <text class="entry-title">{{item.routeTitle}}</text>
+        <text class="me-record-card__meta">打卡进度：{{item.progressText}}</text>
+        <text class="me-record-card__meta">最近日期：{{item.updatedAtLabel}}</text>
+      </view>
+    </view>
+
+    <view wx:else class="me-records-empty">
+      <text class="subtle">你还没有打卡记录。去路线详情页点打卡后，这里会显示。</text>
+    </view>
+  </view>
+</view>

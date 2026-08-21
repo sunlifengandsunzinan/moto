@@ -38,6 +38,7 @@ from .user_me_state import (
     get_route_want_go_stats_map,
     get_user_club_activity_signup_slugs,
     get_user_me_metrics,
+    get_user_want_go_route_plan_details,
     get_user_route_collections,
 )
 
@@ -944,9 +945,69 @@ def build_moto_tabbar(active_tab: str) -> dict[str, Any]:
 
 def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
     route_templates = get_route_templates()
+    route_lookup = {
+        str(route.get("slug") or "").strip(): route
+        for route in route_templates
+        if str(route.get("slug") or "").strip()
+    }
     user_metrics = get_user_me_metrics(user_id)
     want_go_count = int(user_metrics.get("want_go_count") or 0)
     checkin_count = int(user_metrics.get("checkin_count") or 0)
+    want_go_plan_details = get_user_want_go_route_plan_details(user_id)
+    route_collections = get_user_route_collections(user_id)
+
+    bucket_labels = {
+        "this_month": "这个月",
+        "next_month": "下个月",
+        "later": "再说",
+    }
+
+    want_go_records: list[dict[str, Any]] = []
+    for slug, plan_detail in want_go_plan_details.items():
+        route = route_lookup.get(slug, {})
+        plan_bucket = str(plan_detail.get("bucket") or "").strip()
+        updated_at = str(plan_detail.get("updated_at") or "").strip()
+        want_go_records.append(
+            {
+                "slug": slug,
+                "route_title": str(route.get("title") or slug).strip() or slug,
+                "plan_bucket": plan_bucket,
+                "plan_label": bucket_labels.get(plan_bucket, "未选择"),
+                "updated_at": updated_at,
+                "mini_program_action": _mini_program_route_detail_action(slug),
+            }
+        )
+    want_go_records.sort(
+        key=lambda item: (
+            str(item.get("updated_at") or ""),
+            str(item.get("slug") or ""),
+        ),
+        reverse=True,
+    )
+
+    checkin_records: list[dict[str, Any]] = []
+    for slug, collection in route_collections.items():
+        route = route_lookup.get(slug, {})
+        checked_count = int(collection.get("checked_count") or 0)
+        checkpoint_total = int(collection.get("checkpoint_total") or 0)
+        checkin_records.append(
+            {
+                "slug": slug,
+                "route_title": str(collection.get("route_title") or route.get("title") or slug).strip() or slug,
+                "checked_count": checked_count,
+                "checkpoint_total": checkpoint_total,
+                "progress_text": f"{checked_count}/{checkpoint_total}" if checkpoint_total > 0 else str(checked_count),
+                "updated_at": str(collection.get("updated_at") or "").strip(),
+                "mini_program_action": _mini_program_route_detail_action(slug),
+            }
+        )
+    checkin_records.sort(
+        key=lambda item: (
+            str(item.get("updated_at") or ""),
+            str(item.get("slug") or ""),
+        ),
+        reverse=True,
+    )
 
     return {
         "page": {
@@ -1016,6 +1077,10 @@ def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
             _with_mini_program_action({"label": "定制需求", "href": "/moto/custom", "kind": "secondary"}),
             _with_mini_program_action({"label": "采集导航点", "href": "/moto/routes/collect", "kind": "secondary"}),
         ],
+        "user_records": {
+            "want_go": want_go_records,
+            "checkins": checkin_records,
+        },
     }
 
 
@@ -3111,12 +3176,49 @@ def _route_waypoint_preview_path(waypoint_count: int) -> str:
         return " ".join(commands)
 
 
+def _build_route_detail_checkpoints(route: Mapping[str, Any], route_card: Mapping[str, Any]) -> list[dict[str, Any]]:
+    configured_checkpoints = route.get("checkpoints") if isinstance(route.get("checkpoints"), list) else []
+    normalized_configured: list[dict[str, Any]] = []
+    for index, checkpoint in enumerate(configured_checkpoints):
+        if not isinstance(checkpoint, Mapping):
+            continue
+        name = str(checkpoint.get("name") or "").strip() or f"打卡点{index + 1}"
+        normalized_configured.append(
+            {
+                "name": name,
+                "summary": str(checkpoint.get("summary") or "").strip() or "后台维护",
+                "timing": str(checkpoint.get("timing") or "").strip() or "后台维护",
+                "image": str(checkpoint.get("image") or "route-checkpoint-placeholder.jpg").strip() or "route-checkpoint-placeholder.jpg",
+            }
+        )
+
+    if normalized_configured:
+        return normalized_configured
+
+    navigation_waypoints = route_card.get("navigation_waypoints") if isinstance(route_card.get("navigation_waypoints"), list) else []
+    generated_from_waypoints: list[dict[str, Any]] = []
+    for index, waypoint in enumerate(navigation_waypoints):
+        if not isinstance(waypoint, Mapping):
+            continue
+        name = str(waypoint.get("name") or "").strip() or f"打卡点{index + 1}"
+        generated_from_waypoints.append(
+            {
+                "name": name,
+                "summary": "后台维护",
+                "timing": "后台维护",
+                "image": "route-checkpoint-placeholder.jpg",
+            }
+        )
+
+    return generated_from_waypoints
+
+
 def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
     gpx_lookup = _build_gpx_lookup()
     route_card = _route_index_card(route, gpx_lookup=gpx_lookup, use_cached_preview_polyline=True)
     linked_spots = _build_route_linked_spots(route)
     import_assistant = build_navigation_import_assistant_payload(route_card)
-    checkpoints = route.get("checkpoints", [])
+    checkpoints = _build_route_detail_checkpoints(route, route_card)
     checkpoint_checkin_counts = get_route_checkpoint_checkin_counts(route.get("slug"), len(checkpoints))
     return {
         "page": {"title": route["title"], "eyebrow": "路线详情"},

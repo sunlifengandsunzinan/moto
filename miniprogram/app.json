@@ -3,6 +3,8 @@
     "pages/routes/index",
     "pages/routes/detail/index",
     "pages/me/index",
+    "pages/me/want-go/index",
+    "pages/me/checkins/index",
     "pages/me/collection/index",
     "pages/me/vehicles/index",
     "pages/me/terms/index",

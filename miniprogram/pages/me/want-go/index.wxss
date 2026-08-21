@@ -1,0 +1,28 @@
+.me-records-shell {
+  margin-bottom: 20rpx;
+}
+
+.me-records-list {
+  gap: 16rpx;
+}
+
+.me-record-card {
+  padding: 20rpx 0;
+  border-top: 2rpx solid rgba(91, 83, 77, 0.1);
+}
+
+.me-record-card:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.me-record-card__meta {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #8f7d6d;
+}
+
+.me-records-empty {
+  padding-top: 6rpx;
+}
