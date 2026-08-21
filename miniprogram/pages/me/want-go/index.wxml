@@ -5,7 +5,7 @@
         <text class="eyebrow">我的路线</text>
         <text class="card-title">我想去的</text>
       </view>
-      <text class="inline-badge">{{records.length}} 条</text>
+      <text class="inline-badge">{{activeRecords.length + archivedRecords.length}} 条</text>
     </view>
 
     <view wx:if="{{loading}}" class="me-records-empty">
@@ -16,11 +16,33 @@
       <text class="subtle">{{error}}</text>
     </view>
 
-    <view wx:elif="{{records.length}}" class="list-column me-records-list">
-      <view wx:for="{{records}}" wx:key="key" class="me-record-card" data-slug="{{item.slug}}" bindtap="handleOpenRoute">
-        <text class="entry-title">{{item.routeTitle}}</text>
-        <text class="me-record-card__meta">选项：{{item.planLabel}}</text>
-        <text class="me-record-card__meta">点击日期：{{item.updatedAtLabel}}</text>
+    <view wx:elif="{{activeRecords.length || archivedRecords.length}}" class="me-record-groups">
+      <view wx:if="{{activeRecords.length}}" class="me-record-group">
+        <view class="me-record-group__header">
+          <text class="me-record-group__title">当前想去</text>
+          <text class="me-record-group__count">{{activeRecords.length}} 条</text>
+        </view>
+        <view class="list-column me-records-list">
+          <view wx:for="{{activeRecords}}" wx:key="key" class="me-record-card" data-slug="{{item.slug}}" bindtap="handleOpenRoute">
+            <text class="entry-title">{{item.routeTitle}}</text>
+            <text class="me-record-card__meta">选项：{{item.planLabel}}</text>
+            <text class="me-record-card__meta">点击日期：{{item.updatedAtLabel}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{archivedRecords.length}}" class="me-record-group">
+        <view class="me-record-group__header">
+          <text class="me-record-group__title">过往记录</text>
+          <text class="me-record-group__count">{{archivedRecords.length}} 条</text>
+        </view>
+        <view class="list-column me-records-list">
+          <view wx:for="{{archivedRecords}}" wx:key="key" class="me-record-card" data-slug="{{item.slug}}" bindtap="handleOpenRoute">
+            <text class="entry-title">{{item.routeTitle}}</text>
+            <text class="me-record-card__meta">当时选择：{{item.planLabel}}</text>
+            <text class="me-record-card__meta">记录日期：{{item.updatedAtLabel}}</text>
+          </view>
+        </view>
       </view>
     </view>
 

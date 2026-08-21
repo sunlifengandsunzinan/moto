@@ -265,7 +265,7 @@ def moto_route_want_go(slug: str):
         result = set_user_route_want_go_plan(user_id, slug, plan_bucket)
 
     if not result.get("ok"):
-        return jsonify({"ok": False, "error": "Invalid want-go plan bucket"}), 400
+        return jsonify({"ok": False, "error": str(result.get("error") or "Invalid want-go plan bucket")}), 400
 
     want_go_stats = get_route_want_go_stats(slug)
     engagement = {

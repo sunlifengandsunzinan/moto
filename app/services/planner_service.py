@@ -38,6 +38,7 @@ from .user_me_state import (
     get_route_want_go_stats_map,
     get_user_club_activity_signup_slugs,
     get_user_me_metrics,
+    get_user_want_go_records,
     get_user_want_go_route_plan_details,
     get_user_route_collections,
 )
@@ -951,9 +952,9 @@ def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
         if str(route.get("slug") or "").strip()
     }
     user_metrics = get_user_me_metrics(user_id)
-    want_go_count = int(user_metrics.get("want_go_count") or 0)
     checkin_count = int(user_metrics.get("checkin_count") or 0)
-    want_go_plan_details = get_user_want_go_route_plan_details(user_id)
+    want_go_records_source = get_user_want_go_records(user_id)
+    want_go_count = len(want_go_records_source)
     route_collections = get_user_route_collections(user_id)
 
     bucket_labels = {
@@ -963,10 +964,13 @@ def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
     }
 
     want_go_records: list[dict[str, Any]] = []
-    for slug, plan_detail in want_go_plan_details.items():
+    for plan_detail in want_go_records_source:
+        slug = str(plan_detail.get("slug") or "").strip()
+        if not slug:
+            continue
         route = route_lookup.get(slug, {})
         plan_bucket = str(plan_detail.get("bucket") or "").strip()
-        updated_at = str(plan_detail.get("updated_at") or "").strip()
+        updated_at = str(plan_detail.get("selected_at") or plan_detail.get("updated_at") or "").strip()
         want_go_records.append(
             {
                 "slug": slug,
@@ -974,6 +978,7 @@ def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
                 "plan_bucket": plan_bucket,
                 "plan_label": bucket_labels.get(plan_bucket, "未选择"),
                 "updated_at": updated_at,
+                "status": str(plan_detail.get("status") or "").strip() or "active",
                 "mini_program_action": _mini_program_route_detail_action(slug),
             }
         )

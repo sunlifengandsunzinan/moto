@@ -15,13 +15,6 @@
   font-weight: 700;
 }
 
-.vehicles-toolbar__hint {
-  display: block;
-  margin-top: 4rpx;
-  font-size: 20rpx;
-  color: #7a6a54;
-}
-
 .vehicles-toolbar__button {
   margin: 0;
   height: 56rpx;
@@ -102,12 +95,12 @@
 }
 
 .maintenance-header__count {
-  font-size: 18rpx;
+  font-size: 20rpx;
   color: #8a6b41;
 }
 
 .maintenance-fold-tag {
-  font-size: 18rpx;
+  font-size: 22rpx;
   color: #8a6b41;
 }
 
@@ -127,7 +120,7 @@
 .maintenance-item {
   border-radius: 12rpx;
   background: #f9f4ec;
-  padding: 10rpx;
+  padding: 14rpx;
 }
 
 .maintenance-item__row {
@@ -148,19 +141,19 @@
 }
 
 .maintenance-item__title {
-  font-size: 22rpx;
+  font-size: 26rpx;
   color: #2a2a2a;
   font-weight: 700;
 }
 
 .maintenance-item__meta {
-  font-size: 18rpx;
+  font-size: 22rpx;
   color: #666;
 }
 
 .maintenance-item__note {
   margin-top: 4rpx;
-  font-size: 18rpx;
+  font-size: 22rpx;
   color: #7a6546;
   display: block;
 }
@@ -194,29 +187,25 @@
   color: #9f3d35;
 }
 
-.icon-btn {
+.maintenance-text-action {
   margin: 0;
-  width: 44rpx;
-  min-width: 44rpx;
-  height: 44rpx;
-  line-height: 44rpx;
-  border-radius: 50%;
-  border: 1rpx solid #d2c1a7;
-  background: #fff5e7;
-  color: #6d4514;
-  font-size: 28rpx;
+  min-height: auto;
+  line-height: 1.2;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  color: #8a6b41;
+  font-size: 22rpx;
   padding: 0;
   text-align: center;
 }
 
-.icon-btn::after {
+.maintenance-text-action::after {
   border: 0;
 }
 
-.icon-btn--danger {
-  border-color: #f0c7c1;
-  background: #fff2f1;
-  color: #9f3d35;
+.maintenance-text-action--danger {
+  color: #8a6b41;
 }
 
 .card--subtle {

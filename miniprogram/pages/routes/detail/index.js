@@ -15,7 +15,6 @@ const ROUTE_DETAIL_CACHE_STORAGE_PREFIX = "routeDetailCache:v4:";
 const WANT_GO_PLAN_OPTIONS = [
   { key: "this_month", label: "这个月" },
   { key: "next_month", label: "下个月" },
-  { key: "later", label: "再说" },
 ];
 
 const SHARE_MENUS = ["shareAppMessage", "shareTimeline"];
@@ -1122,10 +1121,14 @@ Page({
               ...payload.engagement,
             },
           };
+          const nextCheckpointTimeline = applyCheckpointCollection(
+            buildCheckpointTimeline(nextRoute, this.data.detailSections.daily_plan, this.data.detailSections.checkpoints),
+            this.data.routeCollection,
+          );
           this.setData({
             route: nextRoute,
             overviewStats: buildOverviewStats(nextRoute),
-            checkpointTimeline: buildCheckpointTimeline(nextRoute, this.data.detailSections.daily_plan, this.data.detailSections.checkpoints),
+            checkpointTimeline: nextCheckpointTimeline,
           });
         }
       })
@@ -1424,6 +1427,16 @@ Page({
       return;
     }
 
+    const currentPlanBucket = String(route?.want_go?.plan_bucket || "").trim();
+    if (currentPlanBucket) {
+      wx.showToast({
+        title: `已选择${normalizeWantGoPlanLabel(currentPlanBucket)}`,
+        icon: "none",
+        duration: 1800,
+      });
+      return;
+    }
+
     const itemList = [...WANT_GO_PLAN_OPTIONS.map((item) => item.label), "取消想去"];
     wx.showActionSheet({
       itemList,
@@ -1470,8 +1483,8 @@ Page({
               duration: 1700,
             });
           })
-          .catch(() => {
-            wx.showToast({ title: "设置失败，请重试", icon: "none", duration: 1800 });
+          .catch((error) => {
+            wx.showToast({ title: String(error?.message || "设置失败，请重试"), icon: "none", duration: 2200 });
           });
       },
     });

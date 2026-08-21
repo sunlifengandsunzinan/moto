@@ -28,6 +28,7 @@ function normalizeWantGoRecords(records) {
       routeTitle: String(item?.route_title || "").trim() || "未命名路线",
       planLabel,
       updatedAtLabel: formatRecordDateLabel(updatedAt),
+      status: String(item?.status || "active").trim() || "active",
     };
   });
 }
@@ -44,7 +45,8 @@ function hasLoggedWechatProfile(profile) {
 
 Page({
   data: {
-    records: [],
+    activeRecords: [],
+    archivedRecords: [],
     loading: true,
     error: "",
   },
@@ -93,15 +95,19 @@ Page({
     request({ path: API_PATHS.me })
       .then((payload) => {
         const records = normalizeWantGoRecords((payload?.user_records || {}).want_go || []);
+        const activeRecords = records.filter((item) => item.status !== "archived");
+        const archivedRecords = records.filter((item) => item.status === "archived");
         this.setData({
-          records,
+          activeRecords,
+          archivedRecords,
           loading: false,
           error: "",
         });
       })
       .catch((error) => {
         this.setData({
-          records: [],
+          activeRecords: [],
+          archivedRecords: [],
           loading: false,
           error: String(error?.message || "加载失败"),
         });

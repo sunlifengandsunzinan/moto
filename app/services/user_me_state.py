@@ -10,6 +10,7 @@ import uuid
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 USER_ME_STATE_PATH = PROJECT_ROOT / "data" / "raw" / "user_me_state.json"
 WANT_GO_PLAN_BUCKETS = {"this_month", "next_month", "later"}
+ACTIVE_WANT_GO_PLAN_BUCKETS = {"this_month", "next_month"}
 
 
 def _current_timestamp() -> str:
@@ -81,7 +82,11 @@ def get_user_want_go_route_plans(user_id: str | None) -> dict[str, str]:
     if not normalized_user_id:
         return {}
 
-    user_state = _read_user_state(normalized_user_id)
+    payload = _read_payload()
+    users = payload.setdefault("users", {})
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
+    if _expire_user_state_want_go_plans(user_state):
+        _write_payload(payload)
     return _normalized_want_go_plans(user_state)
 
 
@@ -90,8 +95,45 @@ def get_user_want_go_route_plan_details(user_id: str | None) -> dict[str, dict[s
     if not normalized_user_id:
         return {}
 
-    user_state = _read_user_state(normalized_user_id)
+    payload = _read_payload()
+    users = payload.setdefault("users", {})
+    user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
+    if _expire_user_state_want_go_plans(user_state):
+        _write_payload(payload)
     return _normalized_want_go_plan_details(user_state)
+
+
+def get_user_want_go_records(user_id: str | None) -> list[dict[str, str]]:
+    normalized_user_id = normalize_user_id(user_id)
+    if not normalized_user_id:
+        return []
+
+    user_state = _read_user_state(normalized_user_id)
+    records = _normalized_want_go_records(user_state)
+    active_details = _normalized_want_go_plan_details(user_state)
+    for slug, detail in active_details.items():
+        selected_at = str(detail.get("updated_at") or "").strip()
+        records.append(
+            {
+                "id": f"active:{slug}:{selected_at}",
+                "slug": slug,
+                "bucket": str(detail.get("bucket") or "").strip(),
+                "selected_at": selected_at,
+                "updated_at": selected_at,
+                "archived_at": "",
+                "status": "active",
+            }
+        )
+
+    records.sort(
+        key=lambda item: (
+            str(item.get("selected_at") or item.get("updated_at") or ""),
+            str(item.get("slug") or ""),
+            str(item.get("id") or ""),
+        ),
+        reverse=True,
+    )
+    return records
 
 
 def upsert_user_profile(user_id: str | None, profile: dict[str, Any] | None) -> dict[str, Any]:
@@ -218,13 +260,30 @@ def set_user_route_want_go_plan(user_id: str | None, slug: str, plan_bucket: str
     payload = _read_payload()
     users = payload.setdefault("users", {})
     user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
-    plans = _normalized_want_go_plans(user_state)
-    previous_bucket = plans.get(normalized_slug)
-    changed = previous_bucket != normalized_bucket
+    changed = _expire_user_state_want_go_plans(user_state)
+    plan_details = _normalized_want_go_plan_details(user_state)
+    previous_detail = plan_details.get(normalized_slug) or {}
+    previous_bucket = str(previous_detail.get("bucket") or "").strip()
+    previous_updated_at = str(previous_detail.get("updated_at") or "").strip()
 
-    plans[normalized_slug] = normalized_bucket
-    _assign_want_go_plans(user_state, plans)
-    user_state["updated_at"] = _current_timestamp()
+    if previous_bucket and not _is_want_go_plan_expired(previous_bucket, previous_updated_at):
+        metrics = get_user_me_metrics(normalized_user_id)
+        return {
+            "ok": False,
+            "changed": False,
+            "plan_bucket": previous_bucket,
+            "want_go_count": int(metrics.get("want_go_count") or 0),
+            "error": _build_want_go_locked_message(previous_bucket, previous_updated_at),
+        }
+
+    now = _current_timestamp()
+    changed = changed or previous_bucket != normalized_bucket
+    plan_details[normalized_slug] = {
+        "bucket": normalized_bucket,
+        "updated_at": now,
+    }
+    _assign_want_go_plan_details(user_state, plan_details)
+    user_state["updated_at"] = now
 
     if changed:
         _write_payload(payload)
@@ -252,11 +311,12 @@ def clear_user_route_want_go_plan(user_id: str | None, slug: str) -> dict[str, A
     payload = _read_payload()
     users = payload.setdefault("users", {})
     user_state = _ensure_user_state(users.setdefault(normalized_user_id, _new_user_state()))
-    plans = _normalized_want_go_plans(user_state)
-    changed = normalized_slug in plans
+    changed = _expire_user_state_want_go_plans(user_state)
+    plan_details = _normalized_want_go_plan_details(user_state)
+    changed = normalized_slug in plan_details or changed
     if changed:
-        plans.pop(normalized_slug, None)
-        _assign_want_go_plans(user_state, plans)
+        plan_details.pop(normalized_slug, None)
+        _assign_want_go_plan_details(user_state, plan_details)
         user_state["updated_at"] = _current_timestamp()
         _write_payload(payload)
 
@@ -301,11 +361,13 @@ def get_route_want_go_stats_map(route_slugs: list[str] | None = None) -> dict[st
     payload = _read_payload()
     users = payload.get("users") if isinstance(payload.get("users"), dict) else {}
     stats: dict[str, dict[str, int]] = {}
+    changed = False
 
     for user_state in users.values():
         if not isinstance(user_state, dict):
             continue
         user_state = _ensure_user_state(user_state)
+        changed = _expire_user_state_want_go_plans(user_state) or changed
         plans = _normalized_want_go_plans(user_state)
         for slug, bucket in plans.items():
             if normalized_slugs and slug not in normalized_slugs:
@@ -338,6 +400,9 @@ def get_route_want_go_stats_map(route_slugs: list[str] | None = None) -> dict[st
                     "total_count": 0,
                 },
             )
+
+    if changed:
+        _write_payload(payload)
 
     return stats
 
@@ -1074,6 +1139,7 @@ def _new_user_state() -> dict[str, Any]:
         "favorite_route_slugs": [],
         "checked_route_slugs": [],
         "want_go_plans": {},
+        "want_go_records": [],
         "route_checkpoint_collections": {},
         "club_activity_signups": {},
         "vehicles": [],
@@ -1121,13 +1187,63 @@ def _normalized_want_go_plan_details(user_state: dict[str, Any]) -> dict[str, di
     return plans
 
 
+def _normalized_want_go_records(user_state: dict[str, Any]) -> list[dict[str, str]]:
+    raw_records = user_state.get("want_go_records")
+    if not isinstance(raw_records, list):
+        return []
+
+    normalized: list[dict[str, str]] = []
+    for raw_record in raw_records:
+        if not isinstance(raw_record, dict):
+            continue
+        slug = str(raw_record.get("slug") or "").strip()
+        bucket = _normalize_want_go_plan_bucket(raw_record.get("bucket"))
+        if not slug or not bucket:
+            continue
+        selected_at = str(raw_record.get("selected_at") or raw_record.get("updated_at") or "").strip()
+        archived_at = str(raw_record.get("archived_at") or "").strip()
+        normalized.append(
+            {
+                "id": str(raw_record.get("id") or uuid.uuid4()).strip(),
+                "slug": slug,
+                "bucket": bucket,
+                "selected_at": selected_at,
+                "updated_at": selected_at,
+                "archived_at": archived_at,
+                "status": str(raw_record.get("status") or "archived").strip() or "archived",
+            }
+        )
+
+    normalized.sort(
+        key=lambda item: (
+            str(item.get("selected_at") or item.get("updated_at") or ""),
+            str(item.get("slug") or ""),
+            str(item.get("id") or ""),
+        ),
+        reverse=True,
+    )
+    return normalized
+
+
 def _assign_want_go_plans(user_state: dict[str, Any], plans: dict[str, str]) -> None:
-    user_state["want_go_plans"] = {
+    details = {
         slug: {
             "bucket": bucket,
             "updated_at": _current_timestamp(),
         }
         for slug, bucket in sorted(plans.items())
+    }
+    _assign_want_go_plan_details(user_state, details)
+
+
+def _assign_want_go_plan_details(user_state: dict[str, Any], details: dict[str, dict[str, str]]) -> None:
+    user_state["want_go_plans"] = {
+        slug: {
+            "bucket": str(detail.get("bucket") or "").strip(),
+            "updated_at": str(detail.get("updated_at") or _current_timestamp()).strip() or _current_timestamp(),
+        }
+        for slug, detail in sorted(details.items())
+        if str(slug or "").strip() and str(detail.get("bucket") or "").strip()
     }
 
 
@@ -1148,10 +1264,12 @@ def _ensure_user_state(user_state: dict[str, Any]) -> dict[str, Any]:
     user_state.setdefault("favorite_route_slugs", [])
     user_state.setdefault("checked_route_slugs", [])
     user_state.setdefault("want_go_plans", {})
+    user_state.setdefault("want_go_records", [])
     user_state.setdefault("route_checkpoint_collections", {})
     user_state.setdefault("club_activity_signups", {})
     user_state.setdefault("vehicles", [])
     user_state["profile"] = _normalize_user_profile(profile) or {}
+    user_state["want_go_records"] = _normalized_want_go_records(user_state)
     user_state["vehicles"] = _normalized_vehicles(user_state)
     user_state["navigation_preferences"] = {
         "preferred_map_app": str(navigation_preferences.get("preferred_map_app") or "").strip(),
@@ -1159,6 +1277,109 @@ def _ensure_user_state(user_state: dict[str, Any]) -> dict[str, Any]:
     user_state["created_at"] = created_at
     user_state["updated_at"] = updated_at
     return user_state
+
+
+def _build_want_go_locked_message(bucket: str, updated_at: str) -> str:
+    label_map = {
+        "this_month": "这个月",
+        "next_month": "下个月",
+    }
+    label = label_map.get(str(bucket or "").strip(), "当前周期")
+    expiry_label = _format_want_go_expiry_label(bucket, updated_at)
+    if expiry_label:
+        return f"你已选择{label}，{expiry_label}后可重新选择"
+    return f"你已选择{label}，当前周期内不可重复选择"
+
+
+def _format_want_go_expiry_label(bucket: str, updated_at: str) -> str:
+    expiry = _want_go_plan_expiry_start(bucket, updated_at)
+    if expiry is None:
+        return ""
+    return expiry.strftime("%Y-%m-01")
+
+
+def _want_go_plan_expiry_start(bucket: str, updated_at: str) -> datetime | None:
+    selected_at = _parse_timestamp(updated_at)
+    if selected_at is None:
+        return None
+
+    month_start = selected_at.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    normalized_bucket = str(bucket or "").strip()
+    if normalized_bucket == "this_month":
+        return _add_months(month_start, 1)
+    if normalized_bucket == "next_month":
+        return _add_months(month_start, 2)
+    return None
+
+
+def _is_want_go_plan_expired(bucket: str, updated_at: str, now: datetime | None = None) -> bool:
+    expiry = _want_go_plan_expiry_start(bucket, updated_at)
+    if expiry is None:
+        return False
+    return (now or datetime.now()) >= expiry
+
+
+def _expire_user_state_want_go_plans(user_state: dict[str, Any]) -> bool:
+    details = _normalized_want_go_plan_details(user_state)
+    if not details:
+        return False
+
+    now = datetime.now()
+    changed = False
+    next_details: dict[str, dict[str, str]] = {}
+    records = _normalized_want_go_records(user_state)
+    for slug, detail in details.items():
+        bucket = str(detail.get("bucket") or "").strip()
+        updated_at = str(detail.get("updated_at") or "").strip()
+        if bucket in ACTIVE_WANT_GO_PLAN_BUCKETS and _is_want_go_plan_expired(bucket, updated_at, now):
+            record_id = f"archived:{slug}:{bucket}:{updated_at}"
+            if not any(str(item.get("id") or "") == record_id for item in records):
+                records.append(
+                    {
+                        "id": record_id,
+                        "slug": slug,
+                        "bucket": bucket,
+                        "selected_at": updated_at,
+                        "updated_at": updated_at,
+                        "archived_at": now.isoformat(timespec="seconds"),
+                        "status": "archived",
+                    }
+                )
+            changed = True
+            continue
+        next_details[slug] = detail
+
+    if not changed:
+        return False
+
+    _assign_want_go_plan_details(user_state, next_details)
+    user_state["want_go_records"] = sorted(
+        records,
+        key=lambda item: (
+            str(item.get("selected_at") or item.get("updated_at") or ""),
+            str(item.get("slug") or ""),
+            str(item.get("id") or ""),
+        ),
+        reverse=True,
+    )
+    user_state["updated_at"] = _current_timestamp()
+    return True
+
+
+def _parse_timestamp(value: str) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _add_months(value: datetime, month_count: int) -> datetime:
+    year = value.year + ((value.month - 1 + month_count) // 12)
+    month = ((value.month - 1 + month_count) % 12) + 1
+    return value.replace(year=year, month=month)
 
 
 def _empty_route_checkpoint_collection(slug: str, checkpoint_total: int) -> dict[str, Any]:

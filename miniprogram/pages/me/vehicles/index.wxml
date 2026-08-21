@@ -11,7 +11,6 @@
     <view class="vehicles-toolbar">
       <view>
         <text class="vehicles-toolbar__title">爱车保养</text>
-        <text class="vehicles-toolbar__hint">重点记录保养，车辆信息尽量少填</text>
       </view>
       <button class="vehicles-toolbar__button" bindtap="handleOpenCreateVehicle">新增爱车</button>
     </view>
@@ -32,7 +31,7 @@
           <text class="maintenance-header__title">保养记录</text>
           <view class="maintenance-header__right">
             <text class="maintenance-header__count">{{vehicle.maintenance_count}} 条</text>
-            <button class="icon-btn" data-vehicle-id="{{vehicle.id}}" catchtap="handleOpenMaintenanceEditor">+</button>
+            <button class="maintenance-text-action" data-vehicle-id="{{vehicle.id}}" catchtap="handleOpenMaintenanceEditor">新增</button>
             <text class="maintenance-fold-tag">{{vehicle.maintenance_expanded ? '收起' : '展开'}}</text>
           </view>
         </view>
@@ -42,7 +41,7 @@
               <text class="maintenance-item__title">保养{{recordIndex + 1}} · {{record.item || '未命名项目'}}</text>
               <view class="maintenance-item__right">
                 <text class="maintenance-item__meta">{{record.date || '未填日期'}}</text>
-                <button class="icon-btn icon-btn--danger" data-vehicle-id="{{vehicle.id}}" data-record-id="{{record.id}}" catchtap="handleDeleteMaintenanceRecord">-</button>
+                <button class="maintenance-text-action maintenance-text-action--danger" data-vehicle-id="{{vehicle.id}}" data-record-id="{{record.id}}" catchtap="handleDeleteMaintenanceRecord">删除</button>
               </view>
             </view>
             <view class="maintenance-item__row maintenance-item__row--sub">
@@ -56,7 +55,7 @@
             <text wx:if="{{record.note}}" class="maintenance-item__note">备注：{{record.note}}</text>
           </view>
           <view wx:if="{{!vehicle.maintenance_records.length}}" class="card card--subtle">
-            <text class="subtle">还没有保养信息，点右侧 + 新增记录。</text>
+            <text class="subtle">还没有保养信息，点右侧新增记录。</text>
           </view>
         </view>
 
