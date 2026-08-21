@@ -85,7 +85,13 @@
 .maintenance-header__right {
   display: flex;
   align-items: center;
-  gap: 8rpx;
+  gap: 14rpx;
+}
+
+.maintenance-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
 }
 
 .maintenance-header__title {
@@ -127,13 +133,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8rpx;
+  gap: 12rpx;
 }
 
 .maintenance-item__right {
   display: flex;
   align-items: center;
-  gap: 8rpx;
+  justify-content: flex-end;
+  gap: 14rpx;
+  margin-left: auto;
+  flex: none;
 }
 
 .maintenance-item__row--sub {
@@ -144,6 +153,11 @@
   font-size: 26rpx;
   color: #2a2a2a;
   font-weight: 700;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .maintenance-item__meta {
@@ -156,6 +170,11 @@
   font-size: 22rpx;
   color: #7a6546;
   display: block;
+}
+
+.maintenance-item__date {
+  white-space: nowrap;
+  color: #5f5f5f;
 }
 
 .maintenance-item__actions {
@@ -189,14 +208,14 @@
 
 .maintenance-text-action {
   margin: 0;
-  min-height: auto;
-  line-height: 1.2;
+  min-height: 52rpx;
+  line-height: 52rpx;
   border-radius: 0;
   border: 0;
   background: transparent;
   color: #8a6b41;
   font-size: 22rpx;
-  padding: 0;
+  padding: 0 8rpx;
   text-align: center;
 }
 
@@ -206,6 +225,10 @@
 
 .maintenance-text-action--danger {
   color: #8a6b41;
+}
+
+.maintenance-text-action--delete {
+  padding: 0 12rpx;
 }
 
 .card--subtle {

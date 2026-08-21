@@ -417,6 +417,7 @@ function normalizeConfiguredCheckpoints(checkpoints) {
         score_text: summary || "可获得打卡积分0点",
         distance_text: distanceText,
         duration_text: timing,
+        hit_count: hitCount,
         hit_count_text: hitCountText,
         is_last: index === sourceItems.length - 1,
       };
@@ -442,6 +443,7 @@ function buildCheckpointTimeline(route, dailyPlan, configuredCheckpoints) {
       score_text: "可获得打卡积分0点",
       distance_text: index === 0 ? "起点" : `${segmentDistance}km`,
       duration_text: index === 0 ? "" : `00小时${String(10 + index * 2).padStart(2, "0")}分钟`,
+      hit_count: 0,
       hit_count_text: "0人打过卡",
       is_last: index === waypoints.length - 1,
     }));
@@ -458,6 +460,7 @@ function buildCheckpointTimeline(route, dailyPlan, configuredCheckpoints) {
     score_text: "可获得打卡积分0点",
     distance_text: String(day?.distance || "--"),
     duration_text: String(day?.ride_time || ""),
+    hit_count: 0,
     hit_count_text: "0人打过卡",
     is_last: index === fallbackDailyPlan.length - 1,
   }));
@@ -1219,7 +1222,18 @@ Page({
           },
           this.data.checkpointTimeline,
         );
-        const nextTimeline = applyCheckpointCollection(this.data.checkpointTimeline, nextCollection);
+        const nextTimeline = applyCheckpointCollection(this.data.checkpointTimeline, nextCollection)
+          .map((item) => {
+            if (Number(item?.index || 0) !== checkpointIndex) {
+              return item;
+            }
+            const nextHitCount = Math.max(0, Number(item?.hit_count || 0)) + 1;
+            return {
+              ...item,
+              hit_count: nextHitCount,
+              hit_count_text: `${nextHitCount}人打过卡`,
+            };
+          });
         const nextRoute = {
           ...this.data.route,
           collection: nextCollection,

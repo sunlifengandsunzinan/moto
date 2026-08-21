@@ -31,8 +31,10 @@
           <text class="maintenance-header__title">保养记录</text>
           <view class="maintenance-header__right">
             <text class="maintenance-header__count">{{vehicle.maintenance_count}} 条</text>
-            <button class="maintenance-text-action" data-vehicle-id="{{vehicle.id}}" catchtap="handleOpenMaintenanceEditor">新增</button>
-            <text class="maintenance-fold-tag">{{vehicle.maintenance_expanded ? '收起' : '展开'}}</text>
+            <view class="maintenance-header__actions">
+              <button class="maintenance-text-action" data-vehicle-id="{{vehicle.id}}" catchtap="handleOpenMaintenanceEditor">新增</button>
+              <text class="maintenance-fold-tag">{{vehicle.maintenance_expanded ? '收起' : '展开'}}</text>
+            </view>
           </view>
         </view>
         <view wx:if="{{vehicle.maintenance_expanded}}" class="maintenance-list">
@@ -40,8 +42,8 @@
             <view class="maintenance-item__row">
               <text class="maintenance-item__title">保养{{recordIndex + 1}} · {{record.item || '未命名项目'}}</text>
               <view class="maintenance-item__right">
-                <text class="maintenance-item__meta">{{record.date || '未填日期'}}</text>
-                <button class="maintenance-text-action maintenance-text-action--danger" data-vehicle-id="{{vehicle.id}}" data-record-id="{{record.id}}" catchtap="handleDeleteMaintenanceRecord">删除</button>
+                <text class="maintenance-item__meta maintenance-item__date">保养日期：{{record.date || '未填日期'}}</text>
+                <button class="maintenance-text-action maintenance-text-action--danger maintenance-text-action--delete" data-vehicle-id="{{vehicle.id}}" data-record-id="{{record.id}}" catchtap="handleDeleteMaintenanceRecord">删除</button>
               </view>
             </view>
             <view class="maintenance-item__row maintenance-item__row--sub">
