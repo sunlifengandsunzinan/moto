@@ -2491,6 +2491,30 @@ def _route_cached_preview_polyline_points(route: Mapping[str, Any]) -> list[dict
     return points
 
 
+def _route_gpx_preview_polyline_points(route: Mapping[str, Any]) -> list[dict[str, float]]:
+    filename = str(route.get("gpx_file") or "").strip()
+    if not filename:
+        return []
+
+    raw_points = gpx_service.get_gpx_track_polyline(filename, max_points=2200)
+    if not isinstance(raw_points, list):
+        return []
+
+    points: list[dict[str, float]] = []
+    for item in raw_points:
+        if not isinstance(item, Mapping):
+            continue
+        try:
+            lat = float(item.get("lat"))
+            lng = float(item.get("lng"))
+        except (TypeError, ValueError):
+            continue
+        if not _is_valid_coordinate(lat, lng):
+            continue
+        points.append({"lat": lat, "lng": lng})
+    return points
+
+
 def _route_tencent_preview_polyline(waypoints: list[Mapping[str, Any]]) -> dict[str, Any]:
     coordinate_points = [
         {
@@ -2979,7 +3003,6 @@ def _route_navigation_app_amap_href(route: Mapping[str, Any]) -> str:
     return str(
         navigation.get("amap_app_href")
         or route.get("amap_app_href")
-        or route.get("amap_href")
         or ""
     ).strip()
 
