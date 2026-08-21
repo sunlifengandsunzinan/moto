@@ -40,11 +40,13 @@
         <view wx:if="{{vehicle.maintenance_expanded}}" class="maintenance-list">
           <view wx:for="{{vehicle.maintenance_records}}" wx:key="id" wx:for-item="record" wx:for-index="recordIndex" class="maintenance-item">
             <view class="maintenance-item__row">
-              <text class="maintenance-item__title">保养{{recordIndex + 1}} · {{record.item || '未命名项目'}}</text>
+              <text class="maintenance-item__title">保养项目：{{record.item || '未命名项目'}}</text>
               <view class="maintenance-item__right">
-                <text class="maintenance-item__meta maintenance-item__date">保养日期：{{record.date || '未填日期'}}</text>
                 <button class="maintenance-text-action maintenance-text-action--danger maintenance-text-action--delete" data-vehicle-id="{{vehicle.id}}" data-record-id="{{record.id}}" catchtap="handleDeleteMaintenanceRecord">删除</button>
               </view>
+            </view>
+            <view class="maintenance-item__row maintenance-item__row--sub maintenance-item__row--date">
+              <text class="maintenance-item__meta">保养日期：{{record.date || '未填日期'}}</text>
             </view>
             <view class="maintenance-item__row maintenance-item__row--sub">
               <text class="maintenance-item__meta">地点：{{record.location || '-'}} </text>

@@ -161,9 +161,8 @@
   font-weight: 700;
   flex: 1;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .maintenance-item__meta {
@@ -177,6 +176,13 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.maintenance-item__row--date .maintenance-item__meta {
+  flex: 1 1 100%;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .maintenance-item__note {
