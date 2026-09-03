@@ -64,7 +64,7 @@ ROUTE_FORM_GROUPS = [
             ("amap_app_href", "高德 App 链接", "text", "可填写高德短链或 App 唤起链接，详情页“直接导航”会优先打开它"),
             ("manual_navigation_points", "手工导航点", "textarea", "每行一个点：名称 | 经度 | 纬度，例如 沈阳 | 123.4315 | 41.8057"),
             ("navigation_waypoints", "导航途径点 JSON", "textarea", "必须至少 2 个点，包含 name 和经纬度"),
-            ("manual_checkpoints", "手工打卡点（仅详情展示）", "textarea", "每行一个点：名称 | 摘要 | 时长 | 距离 | 打卡数。例如 小灯线 | 山路转折点 | 10分钟 | 18km | 23次。只影响详情页打卡点，不改地图路线和导航点。"),
+            ("manual_checkpoints", "手工打卡点（仅详情展示）", "textarea", "每行一个点：名称 | 摘要 | 时长 | 距离 | 打卡数 | 经度 | 纬度。示例：小灯线 | 山路转折点 | 10分钟 | 18km | 23次 | 123.456 | 41.123。最后两项为可选真实坐标，用于地图上精确显示打卡点。"),
             ("days_plan", "每日行程 JSON", "textarea", "详情页日程"),
             ("pois", "POI 分类 JSON", "textarea", "fuel / repair / lodging / viewpoint / emergency"),
             ("checkpoints", "打卡点时间线 JSON", "textarea", "高级用法，可为空；若填写“手工打卡点”，则优先使用手工打卡点"),
@@ -817,15 +817,25 @@ def _parse_manual_checkpoints(raw_value: Any) -> list[dict[str, Any]]:
         if not parts or not parts[0]:
             raise ValueError(f"手工打卡点格式不正确：{line}")
 
-        checkpoints.append(
-            {
-                "name": parts[0],
-                "summary": parts[1] if len(parts) > 1 and parts[1] else "后台维护",
-                "timing": parts[2] if len(parts) > 2 and parts[2] else "后台维护",
-                "distance_text": parts[3] if len(parts) > 3 else "后台维护",
-                "hit_count_text": parts[4] if len(parts) > 4 else "--",
-            }
-        )
+        recorded: dict[str, Any] = {
+            "name": parts[0],
+            "summary": parts[1] if len(parts) > 1 and parts[1] else "后台维护",
+            "timing": parts[2] if len(parts) > 2 and parts[2] else "后台维护",
+            "distance_text": parts[3] if len(parts) > 3 else "后台维护",
+            "hit_count_text": parts[4] if len(parts) > 4 else "--",
+        }
+
+        if len(parts) >= 7:
+            try:
+                lng = float(parts[5])
+                lat = float(parts[6])
+                if -180 <= lng <= 180 and -90 <= lat <= 90:
+                    recorded["lng"] = lng
+                    recorded["lat"] = lat
+            except (TypeError, ValueError):
+                pass
+
+        checkpoints.append(recorded)
     return checkpoints
 
 
@@ -844,7 +854,14 @@ def _stringify_manual_checkpoints(points: Any) -> str:
         timing = str(item.get("timing") or item.get("duration_text") or "").strip()
         distance_text = str(item.get("distance_text") or item.get("distance") or "").strip()
         hit_count_text = str(item.get("hit_count_text") or item.get("hit_count") or "").strip()
-        lines.append(" | ".join([name, summary, timing, distance_text, hit_count_text]).rstrip())
+        parts = [name, summary, timing, distance_text, hit_count_text]
+
+        lng = item.get("lng")
+        lat = item.get("lat")
+        if lng not in {None, ""} and lat not in {None, ""}:
+            parts.extend([str(lng), str(lat)])
+
+        lines.append(" | ".join(part for part in parts if part not in {None, ""}).rstrip())
     return "\n".join(lines)
 
 

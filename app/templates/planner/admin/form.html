@@ -95,6 +95,13 @@
                     </div>
                     <span id="amap_parse_waypoints_status" class="planner-field__example"></span>
                   {% endif %}
+                  {% if field.name == 'manual_checkpoints' %}
+                    <span class="planner-field__example">如果打卡点名称和导航点名称一致，可从下方按钮自动回填经纬度，避免地图继续按路线插值显示。</span>
+                    <div class="planner-actions" style="margin-top: 8px;">
+                      <button id="checkpoint_fill_coordinates_btn" class="button-secondary" type="button">一键回填打卡点坐标</button>
+                    </div>
+                    <span id="checkpoint_fill_coordinates_status" class="planner-field__example"></span>
+                  {% endif %}
                   <span class="planner-field__example">{{ field.help }}</span>
                 </label>
               {% endfor %}
@@ -326,19 +333,33 @@
       const jsonWaypointsInput = document.getElementById("navigation_waypoints");
       const parseButton = document.getElementById("amap_parse_waypoints_btn");
       const statusEl = document.getElementById("amap_parse_waypoints_status");
-
-      if (!hrefInput || !manualPointsInput || !jsonWaypointsInput || !parseButton || !statusEl) {
-        return;
-      }
+      const manualCheckpointsInput = document.getElementById("manual_checkpoints");
+      const checkpointFillButton = document.getElementById("checkpoint_fill_coordinates_btn");
+      const checkpointStatusEl = document.getElementById("checkpoint_fill_coordinates_status");
 
       function setStatus(message, isError) {
+        if (!statusEl) {
+          return;
+        }
         statusEl.textContent = message;
         statusEl.style.color = isError ? "#b42318" : "#2e6f40";
+      }
+
+      function setCheckpointStatus(message, isError) {
+        if (!checkpointStatusEl) {
+          return;
+        }
+        checkpointStatusEl.textContent = message;
+        checkpointStatusEl.style.color = isError ? "#b42318" : "#2e6f40";
       }
 
       function parseFloatStrict(value) {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : null;
+      }
+
+      function normalizeNameKey(value) {
+        return String(value || "").trim().toLowerCase();
       }
 
       function parseLngLatPair(value) {
@@ -470,16 +491,147 @@
           .join("\n");
       }
 
-      parseButton.addEventListener("click", function () {
-        try {
-          const points = parseAmapUrl(hrefInput.value);
-          manualPointsInput.value = formatManualLines(points);
-          jsonWaypointsInput.value = JSON.stringify(points, null, 2);
-          setStatus(`解析成功：已回填 ${points.length} 个导航点。保存后会按这些点生成腾讯贴路预览。`, false);
-        } catch (error) {
-          setStatus(String(error && error.message ? error.message : error), true);
+      function parseManualNavigationPointsText(value) {
+        return String(value || "")
+          .split(/\r?\n/)
+          .map((rawLine) => String(rawLine || "").trim())
+          .filter(Boolean)
+          .map((line) => {
+            const parts = line.split("|").map((item) => item.trim());
+            if (parts.length < 3) {
+              return null;
+            }
+            const lng = parseFloatStrict(parts[1]);
+            const lat = parseFloatStrict(parts[2]);
+            if (lng === null || lat === null) {
+              return null;
+            }
+            return {
+              name: parts[0],
+              lng,
+              lat,
+            };
+          })
+          .filter(Boolean);
+      }
+
+      function parseNavigationWaypointsJson(value) {
+        const text = String(value || "").trim();
+        if (!text) {
+          return [];
         }
-      });
+
+        try {
+          const parsed = JSON.parse(text);
+          if (!Array.isArray(parsed)) {
+            return [];
+          }
+          return parsed
+            .map((item) => {
+              const coordinates = item && typeof item.coordinates === "object" ? item.coordinates : {};
+              const name = String(item && item.name || "").trim();
+              const lng = parseFloatStrict(item && (item.lng ?? item.lon ?? item.longitude ?? coordinates.lng ?? coordinates.lon ?? coordinates.longitude));
+              const lat = parseFloatStrict(item && (item.lat ?? item.latitude ?? coordinates.lat ?? coordinates.latitude));
+              if (!name || lng === null || lat === null) {
+                return null;
+              }
+              return { name, lng, lat };
+            })
+            .filter(Boolean);
+        } catch (_error) {
+          return [];
+        }
+      }
+
+      function buildNavigationPointLookup() {
+        const lookup = new Map();
+        const points = [];
+        if (manualPointsInput) {
+          points.push(...parseManualNavigationPointsText(manualPointsInput.value));
+        }
+        if (jsonWaypointsInput) {
+          points.push(...parseNavigationWaypointsJson(jsonWaypointsInput.value));
+        }
+
+        points.forEach((point) => {
+          const key = normalizeNameKey(point.name);
+          if (!key || lookup.has(key)) {
+            return;
+          }
+          lookup.set(key, point);
+        });
+        return lookup;
+      }
+
+      function fillCheckpointCoordinates() {
+        if (!manualCheckpointsInput) {
+          return;
+        }
+
+        const lookup = buildNavigationPointLookup();
+        if (!lookup.size) {
+          setCheckpointStatus("没有可用导航点，先填写“手工导航点”或先解析高德点位。", true);
+          return;
+        }
+
+        let matchedCount = 0;
+        let updatedCount = 0;
+        const nextValue = String(manualCheckpointsInput.value || "")
+          .split(/\r?\n/)
+          .map((rawLine) => {
+            const line = String(rawLine || "");
+            const trimmed = line.trim();
+            if (!trimmed) {
+              return line;
+            }
+            const parts = line.split("|").map((item) => item.trim());
+            const point = lookup.get(normalizeNameKey(parts[0] || ""));
+            if (!point) {
+              return line;
+            }
+            matchedCount += 1;
+            while (parts.length < 5) {
+              parts.push("");
+            }
+            const prevLng = parseFloatStrict(parts[5]);
+            const prevLat = parseFloatStrict(parts[6]);
+            parts[5] = String(point.lng);
+            parts[6] = String(point.lat);
+            if (prevLng !== point.lng || prevLat !== point.lat) {
+              updatedCount += 1;
+            }
+            return parts.join(" | ");
+          })
+          .join("\n");
+
+        manualCheckpointsInput.value = nextValue;
+        if (!matchedCount) {
+          setCheckpointStatus("未找到同名导航点。请让打卡点名称与导航点名称保持一致后再回填。", true);
+          return;
+        }
+        if (!updatedCount) {
+          setCheckpointStatus(`已匹配 ${matchedCount} 个打卡点，当前坐标已是最新。`, false);
+          return;
+        }
+        setCheckpointStatus(`已回填 ${updatedCount} 个打卡点坐标，请直接保存路线。`, false);
+      }
+
+      if (hrefInput && manualPointsInput && jsonWaypointsInput && parseButton && statusEl) {
+        parseButton.addEventListener("click", function () {
+          try {
+            const points = parseAmapUrl(hrefInput.value);
+            manualPointsInput.value = formatManualLines(points);
+            jsonWaypointsInput.value = JSON.stringify(points, null, 2);
+            setStatus(`解析成功：已回填 ${points.length} 个导航点。保存后会按这些点生成腾讯贴路预览。`, false);
+          } catch (error) {
+            setStatus(String(error && error.message ? error.message : error), true);
+          }
+        });
+      }
+
+      if (manualCheckpointsInput && checkpointFillButton && checkpointStatusEl) {
+        checkpointFillButton.addEventListener("click", fillCheckpointCoordinates);
+      }
     })();
   </script>
 {% endblock %}

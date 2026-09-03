@@ -215,6 +215,35 @@ def test_moto_routes_and_spots_api_return_miniapp_payloads(client):
     assert "filters" in spots_payload
 
 
+def test_manual_checkpoints_preserve_real_coordinates():
+    from app.services import admin_service, planner_service
+
+    parsed = admin_service._parse_manual_checkpoints(
+        "大桥 | 山路弯道 | 10分钟 | 18km | 23次 | 123.456 | 41.123"
+    )
+
+    assert parsed[0]["lat"] == 41.123
+    assert parsed[0]["lng"] == 123.456
+
+    route = {
+        "slug": "test-route",
+        "title": "测试路线",
+        "checkpoints": [{
+            "name": "大桥",
+            "summary": "山路弯道",
+            "timing": "10分钟",
+            "distance_text": "18km",
+            "hit_count_text": "23次",
+            "lat": 41.123,
+            "lng": 123.456,
+        }],
+    }
+
+    normalized = planner_service._build_route_detail_checkpoints(route, {})
+    assert normalized[0]["lat"] == 41.123
+    assert normalized[0]["lng"] == 123.456
+
+
 def test_primary_routes_support_coordinate_navigation_for_real_routes(client):
     payload = client.get("/api/moto/routes").get_json()
     routes_by_slug = {route["slug"]: route for route in payload["routes"]}

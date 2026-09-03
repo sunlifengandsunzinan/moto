@@ -3221,17 +3221,23 @@ def _build_route_detail_checkpoints(route: Mapping[str, Any], route_card: Mappin
         timing = str(checkpoint.get("timing") or checkpoint.get("duration_text") or "").strip() or "后台维护"
         distance_text = str(checkpoint.get("distance_text") or checkpoint.get("distance") or "").strip()
         hit_count_text = str(checkpoint.get("hit_count_text") or "").strip()
-        normalized_configured.append(
-            {
-                "name": name,
-                "summary": summary,
-                "timing": timing,
-                "duration_text": timing,
-                "distance_text": distance_text,
-                "hit_count_text": hit_count_text,
-                "image": str(checkpoint.get("image") or "route-checkpoint-placeholder.jpg").strip() or "route-checkpoint-placeholder.jpg",
-            }
-        )
+        coordinates = checkpoint.get("coordinates") if isinstance(checkpoint.get("coordinates"), Mapping) else {}
+        lat = _route_coordinate_value(checkpoint.get("lat"), checkpoint.get("latitude"), coordinates.get("lat"), coordinates.get("latitude"))
+        lng = _route_coordinate_value(checkpoint.get("lng"), checkpoint.get("lon"), checkpoint.get("longitude"), coordinates.get("lng"), coordinates.get("lon"), coordinates.get("longitude"))
+        item = {
+            "name": name,
+            "summary": summary,
+            "timing": timing,
+            "duration_text": timing,
+            "distance_text": distance_text,
+            "hit_count_text": hit_count_text,
+            "image": str(checkpoint.get("image") or "route-checkpoint-placeholder.jpg").strip() or "route-checkpoint-placeholder.jpg",
+        }
+        if lat is not None:
+            item["lat"] = lat
+        if lng is not None:
+            item["lng"] = lng
+        normalized_configured.append(item)
 
     if normalized_configured:
         return normalized_configured
@@ -3311,6 +3317,8 @@ def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
                     "duration_text": str(checkpoint.get("duration_text") or checkpoint.get("timing") or "").strip(),
                     "distance_text": str(checkpoint.get("distance_text") or "").strip(),
                     "image_url": f"/static/{str(checkpoint.get('image') or 'route-checkpoint-placeholder.jpg').strip()}",
+                    "lat": checkpoint.get("lat"),
+                    "lng": checkpoint.get("lng"),
                     "hit_count": int(checkpoint_checkin_counts.get(index + 1) or 0),
                     "hit_count_text": (
                         str(checkpoint.get("hit_count_text") or "").strip()

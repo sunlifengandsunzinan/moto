@@ -264,10 +264,16 @@ function buildCheckpointMapMarkers(checkpointItems, routePolylinePoints, fallbac
   const safeCheckpoints = checkpoints.slice(0, 20);
   return safeCheckpoints
     .map((checkpoint, index) => {
+      const explicitLng = Number(checkpoint?.longitude);
+      const explicitLat = Number(checkpoint?.latitude);
+      const explicitPoint = Number.isFinite(explicitLng) && Number.isFinite(explicitLat)
+        ? { longitude: explicitLng, latitude: explicitLat }
+        : null;
+
       const ratio = safeCheckpoints.length <= 1 ? 0 : (index / (safeCheckpoints.length - 1));
       const anchorIndex = Math.round(ratio * Math.max(markerAnchors.length - 1, 0));
       const anchor = markerAnchors[Math.min(anchorIndex, markerAnchors.length - 1)] || markerAnchors[0];
-      const snappedAnchor = findNearestPolylinePoint(anchor, polylinePoints);
+      const snappedAnchor = explicitPoint || findNearestPolylinePoint(anchor, polylinePoints);
       const name = String(checkpoint?.name || `打卡点${index + 1}`).trim() || `打卡点${index + 1}`;
       const checkpointIndex = Number(checkpoint?.index || (index + 1));
 
@@ -423,6 +429,8 @@ function normalizeConfiguredCheckpoints(checkpoints) {
           : (Number.isFinite(hitCountFromRaw) ? hitCountFromRaw : 0),
       );
       const hitCountText = hitCountTextRaw || `${hitCount}人打过卡`;
+      const lat = Number(item?.lat ?? item?.latitude);
+      const lng = Number(item?.lng ?? item?.lon ?? item?.longitude);
 
       return {
         index: index + 1,
@@ -432,6 +440,8 @@ function normalizeConfiguredCheckpoints(checkpoints) {
         duration_text: timing,
         hit_count: hitCount,
         hit_count_text: hitCountText,
+        latitude: Number.isFinite(lat) ? lat : undefined,
+        longitude: Number.isFinite(lng) ? lng : undefined,
         is_last: index === sourceItems.length - 1,
       };
     })

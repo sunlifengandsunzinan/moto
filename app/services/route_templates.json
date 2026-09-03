@@ -110,7 +110,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.041931,
+        "lat": 41.37353
       },
       {
         "name": "小清线",
@@ -118,7 +120,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.150004,
+        "lat": 41.317063
       },
       {
         "name": "基督教堂",
@@ -126,7 +130,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.142017,
+        "lat": 41.301621
       },
       {
         "name": "东北抗联史实陈列馆",
@@ -134,7 +140,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.135141,
+        "lat": 41.288347
       },
       {
         "name": "天龙古洞风景区",
@@ -142,7 +150,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.12413600000002,
+        "lat": 41.274542
       },
       {
         "name": "香天线",
@@ -150,7 +160,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.106335,
+        "lat": 41.269442
       },
       {
         "name": "小墙缝",
@@ -158,7 +170,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.169911,
+        "lat": 41.147994
       }
     ],
     "gpx_file": "douyin---65.gpx"
@@ -317,7 +331,9 @@
         "timing": "D1",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.394254,
+        "lat": 40.118655
       },
       {
         "name": "红石镇",
@@ -325,7 +341,9 @@
         "timing": "D1",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 125.017182,
+        "lat": 40.665243
       },
       {
         "name": "大西岔镇",
@@ -333,7 +351,9 @@
         "timing": "D2",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 125.19451200000003,
+        "lat": 40.709592
       },
       {
         "name": "西江沟",
@@ -341,7 +361,9 @@
         "timing": "D2",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 125.371621,
+        "lat": 40.68826
       },
       {
         "name": "振江镇绿江村景点",
@@ -349,7 +371,9 @@
         "timing": "D2",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 125.612833,
+        "lat": 40.793924
       },
       {
         "name": "集安市大吉他主题广场",
@@ -357,7 +381,9 @@
         "timing": "D3",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 126.196649,
+        "lat": 41.122012
       }
     ],
     "cover_image_url": "/static/uploads/routes/douyin--66-cover-b0a60fe9.jpg",
@@ -7147,7 +7173,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 123.464675,
+        "lat": 41.677576
       },
       {
         "name": "沈通线",
@@ -7155,7 +7183,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.673212,
+        "lat": 41.584451
       },
       {
         "name": "鸦鹘关",
@@ -7163,7 +7193,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.567912,
+        "lat": 41.535907
       },
       {
         "name": "赫图阿拉城",
@@ -7171,7 +7203,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.874263,
+        "lat": 41.705298
       },
       {
         "name": "木奇村",
@@ -7179,7 +7213,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.6337,
+        "lat": 41.773667
       },
       {
         "name": "铁苇线",
@@ -7187,7 +7223,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.463977,
+        "lat": 41.934649
       },
       {
         "name": "沈阳",
@@ -7195,7 +7233,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 123.464675,
+        "lat": 41.677576
       }
     ],
     "gpx_file": "douyin---67.gpx"
@@ -12276,7 +12316,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 123.464675,
+        "lat": 41.677576
       },
       {
         "name": "新驿马山庄",
@@ -12284,7 +12326,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.180247,
+        "lat": 41.938076
       },
       {
         "name": "南杂木镇",
@@ -12292,7 +12336,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.416024,
+        "lat": 41.969922
       },
       {
         "name": "苏子河银龙湾",
@@ -12300,7 +12346,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.48782599999998,
+        "lat": 41.81708
       },
       {
         "name": "白家店度假村",
@@ -12308,7 +12356,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 124.105369,
+        "lat": 41.832064
       },
       {
         "name": "沈阳",
@@ -12316,7 +12366,9 @@
         "timing": "后台维护",
         "distance_text": "",
         "hit_count_text": "",
-        "image": "route-checkpoint-placeholder.jpg"
+        "image": "route-checkpoint-placeholder.jpg",
+        "lng": 123.464675,
+        "lat": 41.677576
       }
     ],
     "cover_image_url": "/static/uploads/routes/douyin--68-cover-061ea9b6.jpg",
