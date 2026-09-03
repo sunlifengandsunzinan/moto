@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "python3 .github/hooks/scripts/ensure_mate60_network.py",
+        "cwd": "/Users/Lifeng.Sun/workspace/Personal",
+        "timeout": 20
+      }
+    ]
+  }
+}
