@@ -309,3 +309,11 @@ pytest
 
 The project uses its own `.venv`. In this environment, Flask was bootstrapped offline
 from packages already present on the machine because direct package downloads are blocked.
+
+## Product Docs
+
+For MVP-facing product material and external communication drafts, see:
+
+- `promo_poster.html`: external promotion poster draft for this project MVP
+- `PRODUCT_BUSINESS_OVERVIEW.md`: product-manager-oriented business logic overview
+- `PRD_ONE_PAGE_SUMMARY.md`: compressed one-page PRD summary for quick alignment

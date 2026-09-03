@@ -32,6 +32,11 @@ const WANT_GO_PLAN_OPTIONS = [
 
 const SHARE_MENUS = ["shareAppMessage", "shareTimeline"];
 const ROUTE_DETAIL_SEED_STORAGE_PREFIX = "routeDetailSeed:";
+const DEFAULT_SHARE_IMAGE_PATH = "/static/xingtu-miniprogram-share.png";
+
+function getDefaultShareImageUrl() {
+  return buildWebUrl(DEFAULT_SHARE_IMAGE_PATH);
+}
 
 function cacheRouteDetailSeed(route) {
   const slug = String(route?.slug || "").trim();
@@ -365,7 +370,6 @@ Page({
 
   onShow() {
     this.enableNativeSharing();
-    this.fetchData({});
   },
 
   enableNativeSharing() {
@@ -388,6 +392,7 @@ Page({
       return {
         title: sharePayload.title,
         path: sharePayload.path,
+        imageUrl: getDefaultShareImageUrl(),
       };
     }
 
@@ -395,6 +400,7 @@ Page({
     return {
       title: sharePayload.title,
       path: sharePayload.path,
+      imageUrl: getDefaultShareImageUrl(),
     };
   },
 
@@ -403,6 +409,7 @@ Page({
     return {
       title: sharePayload.title,
       query: sharePayload.query,
+      imageUrl: getDefaultShareImageUrl(),
     };
   },
 

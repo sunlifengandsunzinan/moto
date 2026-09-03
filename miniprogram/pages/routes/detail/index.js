@@ -18,6 +18,11 @@ const WANT_GO_PLAN_OPTIONS = [
 ];
 
 const SHARE_MENUS = ["shareAppMessage", "shareTimeline"];
+const DEFAULT_SHARE_IMAGE_PATH = "/static/xingtu-miniprogram-share.png";
+
+function getDefaultShareImageUrl() {
+  return buildWebUrl(DEFAULT_SHARE_IMAGE_PATH);
+}
 
 function normalizeWantGoPlanLabel(planBucket) {
   const normalized = String(planBucket || "").trim();
@@ -408,8 +413,16 @@ function normalizeConfiguredCheckpoints(checkpoints) {
       const timing = String(item?.timing || item?.duration_text || "").trim();
       const summary = String(item?.summary || item?.score_text || "").trim();
       const distanceText = String(item?.distance_text || item?.distance || "后台维护").trim() || "后台维护";
-      const hitCount = Math.max(0, Number(item?.hit_count || 0));
-      const hitCountText = `${hitCount}人打过卡`;
+      const hitCountTextRaw = String(item?.hit_count_text || "").trim();
+      const hitCountFromRaw = Number.parseInt(hitCountTextRaw.replace(/[^0-9]/g, ""), 10);
+      const hitCountCandidate = Number(item?.hit_count);
+      const hitCount = Math.max(
+        0,
+        Number.isFinite(hitCountCandidate)
+          ? Math.round(hitCountCandidate)
+          : (Number.isFinite(hitCountFromRaw) ? hitCountFromRaw : 0),
+      );
+      const hitCountText = hitCountTextRaw || `${hitCount}人打过卡`;
 
       return {
         index: index + 1,
@@ -936,9 +949,10 @@ Page({
     const shareTitle = this.data.preparingBadgeShare && routeCollection.is_completed
       ? String(badge.share_text || `我已完成 ${routeTitle} 全部打卡点，解锁路线徽章！`).trim()
       : sharePayload.title;
+    const routeScreenshotUrl = String(this.data.route?.amap_export?.screenshot_url || "").trim();
     const imageUrl = this.data.preparingBadgeShare
-      ? String(this.data.route?.amap_export?.screenshot_url || "").trim()
-      : "";
+      ? (routeScreenshotUrl || getDefaultShareImageUrl())
+      : getDefaultShareImageUrl();
     if (this.data.preparingBadgeShare) {
       this.setData({ preparingBadgeShare: false });
     }
@@ -962,9 +976,13 @@ Page({
     if (this.data.preparingBadgeShare) {
       this.setData({ preparingBadgeShare: false });
     }
+    const routeScreenshotUrl = String(this.data.route?.amap_export?.screenshot_url || "").trim();
     return {
       title: shareTitle,
       query: sharePayload.query,
+      imageUrl: this.data.preparingBadgeShare
+        ? (routeScreenshotUrl || getDefaultShareImageUrl())
+        : getDefaultShareImageUrl(),
     };
   },
 

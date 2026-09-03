@@ -7,6 +7,8 @@ const {
   getMiniProgramQuery,
 } = require("../../utils/backend-config");
 
+const AUTO_SYNC_COOLDOWN_MS = 20 * 1000;
+
 function findOptionIndex(options, value) {
   const index = options.findIndex((item) => item.value === value);
   return index >= 0 ? index : 0;
@@ -69,10 +71,17 @@ Page({
   },
 
   onLoad() {
+    this._skipNextOnShowSync = true;
     this.fetchData();
   },
 
   onShow() {
+    if (this._skipNextOnShowSync) {
+      this._skipNextOnShowSync = false;
+      return;
+    }
+
+    this.syncOnShow();
   },
 
   onPullDownRefresh() {
@@ -87,8 +96,11 @@ Page({
     };
   },
 
-  fetchData(query = {}, stopRefresh = false) {
-    this.setData({ loading: true, error: "" });
+  fetchData(query = {}, stopRefresh = false, options = {}) {
+    const silent = Boolean(options && options.silent);
+    if (!silent) {
+      this.setData({ loading: true, error: "" });
+    }
 
     request({ path: API_PATHS.spots, data: query })
       .then((payload) => {
@@ -115,6 +127,7 @@ Page({
           routeTypeIndex: findOptionIndex(routeTypeField.options || [], routeTypeField.value || ""),
           supportIndex: findOptionIndex(supportField.options || [], supportField.value || ""),
         });
+        this._lastSyncedAt = Date.now();
       })
       .catch((error) => {
         this.setData({ loading: false, error: error.message || "加载失败" });
@@ -124,6 +137,20 @@ Page({
           wx.stopPullDownRefresh();
         }
       });
+  },
+
+  syncOnShow() {
+    if (this.data.loading) {
+      return;
+    }
+
+    const lastSyncedAt = Number(this._lastSyncedAt || 0);
+    const now = Date.now();
+    if (lastSyncedAt > 0 && now - lastSyncedAt < AUTO_SYNC_COOLDOWN_MS) {
+      return;
+    }
+
+    this.fetchData(this.buildQuery(), false, { silent: true });
   },
 
   handleRegionChange(event) {

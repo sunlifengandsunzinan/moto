@@ -293,6 +293,11 @@
             return;
           }
 
+          const hasSelectedImage = imageInputs.some((input) => Boolean(input.files && input.files[0]));
+          if (!hasSelectedImage) {
+            return;
+          }
+
           const submitter = event.submitter || null;
           event.preventDefault();
           prepareImageUploads()

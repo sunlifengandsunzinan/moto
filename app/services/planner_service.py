@@ -38,6 +38,7 @@ from .user_me_state import (
     get_route_want_go_stats_map,
     get_user_club_activity_signup_slugs,
     get_user_me_metrics,
+    get_user_route_checkpoint_collection,
     get_user_want_go_records,
     get_user_want_go_route_plan_details,
     get_user_route_collections,
@@ -946,6 +947,7 @@ def build_moto_tabbar(active_tab: str) -> dict[str, Any]:
 
 def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
     route_templates = get_route_templates()
+    gpx_lookup = _build_gpx_lookup()
     route_lookup = {
         str(route.get("slug") or "").strip(): route
         for route in route_templates
@@ -993,16 +995,22 @@ def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
     checkin_records: list[dict[str, Any]] = []
     for slug, collection in route_collections.items():
         route = route_lookup.get(slug, {})
-        checked_count = int(collection.get("checked_count") or 0)
-        checkpoint_total = int(collection.get("checkpoint_total") or 0)
+        checkpoint_total_hint = _route_detail_checkpoint_total_hint(route, gpx_lookup=gpx_lookup)
+        normalized_collection = (
+            get_user_route_checkpoint_collection(user_id, slug, checkpoint_total=checkpoint_total_hint)
+            if checkpoint_total_hint > 0
+            else collection
+        )
+        checked_count = int(normalized_collection.get("checked_count") or 0)
+        checkpoint_total = int(normalized_collection.get("checkpoint_total") or 0)
         checkin_records.append(
             {
                 "slug": slug,
-                "route_title": str(collection.get("route_title") or route.get("title") or slug).strip() or slug,
+                "route_title": str(normalized_collection.get("route_title") or route.get("title") or slug).strip() or slug,
                 "checked_count": checked_count,
                 "checkpoint_total": checkpoint_total,
                 "progress_text": f"{checked_count}/{checkpoint_total}" if checkpoint_total > 0 else str(checked_count),
-                "updated_at": str(collection.get("updated_at") or "").strip(),
+                "updated_at": str(normalized_collection.get("updated_at") or "").strip(),
                 "mini_program_action": _mini_program_route_detail_action(slug),
             }
         )
@@ -1091,6 +1099,7 @@ def get_moto_me_context(user_id: str | None = None) -> dict[str, Any]:
 
 def get_moto_collection_context(user_id: str | None = None) -> dict[str, Any]:
     route_templates = get_route_templates()
+    gpx_lookup = _build_gpx_lookup()
     route_lookup = {
         str(route.get("slug") or "").strip(): route
         for route in route_templates
@@ -1107,9 +1116,15 @@ def get_moto_collection_context(user_id: str | None = None) -> dict[str, Any]:
 
     for slug, collection in user_collections.items():
         route = route_lookup.get(slug, {})
-        route_title = str(collection.get("route_title") or route.get("title") or slug).strip() or slug
-        badge = collection.get("badge") if isinstance(collection.get("badge"), dict) else {}
-        is_completed = bool(collection.get("is_completed"))
+        checkpoint_total_hint = _route_detail_checkpoint_total_hint(route, gpx_lookup=gpx_lookup)
+        normalized_collection = (
+            get_user_route_checkpoint_collection(user_id, slug, checkpoint_total=checkpoint_total_hint)
+            if checkpoint_total_hint > 0
+            else collection
+        )
+        route_title = str(normalized_collection.get("route_title") or route.get("title") or slug).strip() or slug
+        badge = normalized_collection.get("badge") if isinstance(normalized_collection.get("badge"), dict) else {}
+        is_completed = bool(normalized_collection.get("is_completed"))
         if is_completed:
             completed_count += 1
 
@@ -1119,11 +1134,11 @@ def get_moto_collection_context(user_id: str | None = None) -> dict[str, Any]:
             "title": route_title,
             "distance_km": route.get("distance_km") or 0,
             "days": route.get("days") or 0,
-            "checked_count": int(collection.get("checked_count") or 0),
-            "checkpoint_total": int(collection.get("checkpoint_total") or 0),
-            "completion_percent": int(collection.get("completion_percent") or 0),
+            "checked_count": int(normalized_collection.get("checked_count") or 0),
+            "checkpoint_total": int(normalized_collection.get("checkpoint_total") or 0),
+            "completion_percent": int(normalized_collection.get("completion_percent") or 0),
             "is_completed": is_completed,
-            "updated_at": str(collection.get("updated_at") or "").strip(),
+            "updated_at": str(normalized_collection.get("updated_at") or "").strip(),
             "poster_href": poster_href,
             "share_text": str((badge or {}).get("share_text") or f"我正在挑战 {route_title} 打卡路线").strip(),
             "mini_program_action": _mini_program_route_detail_action(slug),
@@ -1224,6 +1239,20 @@ def get_moto_collection_context(user_id: str | None = None) -> dict[str, Any]:
         "badges": badges,
         "routes": routes,
     }
+
+
+def _route_detail_checkpoint_total_hint(
+    route: Mapping[str, Any],
+    *,
+    gpx_lookup: Mapping[str, Any] | None = None,
+) -> int:
+    if not isinstance(route, Mapping):
+        return 0
+
+    # Use the same checkpoint generation chain as route detail so totals stay consistent.
+    route_card = _route_index_card(route, gpx_lookup=gpx_lookup, use_cached_preview_polyline=True)
+    checkpoints = _build_route_detail_checkpoints(route, route_card)
+    return len(checkpoints)
 
 
 def get_planner_form_context(route_slug: str | None = None, origin: str | None = None) -> dict[str, Any]:
@@ -3188,11 +3217,18 @@ def _build_route_detail_checkpoints(route: Mapping[str, Any], route_card: Mappin
         if not isinstance(checkpoint, Mapping):
             continue
         name = str(checkpoint.get("name") or "").strip() or f"打卡点{index + 1}"
+        summary = str(checkpoint.get("summary") or "").strip() or "后台维护"
+        timing = str(checkpoint.get("timing") or checkpoint.get("duration_text") or "").strip() or "后台维护"
+        distance_text = str(checkpoint.get("distance_text") or checkpoint.get("distance") or "").strip()
+        hit_count_text = str(checkpoint.get("hit_count_text") or "").strip()
         normalized_configured.append(
             {
                 "name": name,
-                "summary": str(checkpoint.get("summary") or "").strip() or "后台维护",
-                "timing": str(checkpoint.get("timing") or "").strip() or "后台维护",
+                "summary": summary,
+                "timing": timing,
+                "duration_text": timing,
+                "distance_text": distance_text,
+                "hit_count_text": hit_count_text,
                 "image": str(checkpoint.get("image") or "route-checkpoint-placeholder.jpg").strip() or "route-checkpoint-placeholder.jpg",
             }
         )
@@ -3211,6 +3247,9 @@ def _build_route_detail_checkpoints(route: Mapping[str, Any], route_card: Mappin
                 "name": name,
                 "summary": "后台维护",
                 "timing": "后台维护",
+                "duration_text": "后台维护",
+                "distance_text": "",
+                "hit_count_text": "",
                 "image": "route-checkpoint-placeholder.jpg",
             }
         )
@@ -3269,8 +3308,14 @@ def build_route_detail_context(route: dict[str, Any]) -> dict[str, Any]:
                     "name": checkpoint["name"],
                     "summary": checkpoint["summary"],
                     "timing": checkpoint["timing"],
+                    "duration_text": str(checkpoint.get("duration_text") or checkpoint.get("timing") or "").strip(),
+                    "distance_text": str(checkpoint.get("distance_text") or "").strip(),
                     "image_url": f"/static/{str(checkpoint.get('image') or 'route-checkpoint-placeholder.jpg').strip()}",
                     "hit_count": int(checkpoint_checkin_counts.get(index + 1) or 0),
+                    "hit_count_text": (
+                        str(checkpoint.get("hit_count_text") or "").strip()
+                        or f"{int(checkpoint_checkin_counts.get(index + 1) or 0)}人打过卡"
+                    ),
                 }
                 for index, checkpoint in enumerate(checkpoints)
             ],

@@ -1,6 +1,12 @@
 const { API_PATHS, MINI_PROGRAM_PATHS } = require("../../../utils/backend-config");
 const { request, buildWebUrl } = require("../../../utils/request");
 
+const DEFAULT_SHARE_IMAGE_PATH = "/static/xingtu-miniprogram-share.png";
+
+function getDefaultShareImageUrl() {
+  return buildWebUrl(DEFAULT_SHARE_IMAGE_PATH);
+}
+
 function normalizeCollectionPayload(payload) {
   const safePayload = payload || {};
   const routes = Array.isArray(safePayload.routes) ? safePayload.routes : [];
@@ -27,6 +33,7 @@ function normalizeCollectionPayload(payload) {
       days: Number(route.days || 0),
       distance_km: Number(route.distance_km || 0),
       poster_url: route.poster_href ? buildWebUrl(route.poster_href) : "",
+      share_image_url: getDefaultShareImageUrl(),
       share_text: String(route.share_text || "我正在挑战摩旅路线打卡").trim(),
     })),
     badges: badges.map((badge) => ({
@@ -35,6 +42,7 @@ function normalizeCollectionPayload(payload) {
       subtitle: String(badge.subtitle || "路线打卡已集齐"),
       awarded_at: String(badge.awarded_at || ""),
       poster_url: badge.poster_href ? buildWebUrl(badge.poster_href) : "",
+      share_image_url: badge.poster_href ? buildWebUrl(badge.poster_href) : "",
       share_text: String(badge.share_text || "我解锁了新的路线徽章").trim(),
     })),
   };
@@ -72,7 +80,7 @@ Page({
     const shareTitle = selected?.share_text || "我在行途中解锁了新的摩旅路线徽章";
     const slug = String(selected?.slug || "").trim();
     const path = slug ? MINI_PROGRAM_PATHS.routeDetail(slug) : MINI_PROGRAM_PATHS.meCollection;
-    const imageUrl = String(selected?.poster_url || "").trim();
+    const imageUrl = String(selected?.share_image_url || selected?.poster_url || getDefaultShareImageUrl()).trim();
     this.setData({ selectedShareItem: null });
     return {
       title: shareTitle,

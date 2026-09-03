@@ -1,0 +1,68 @@
+<svg width="1200" height="1800" viewBox="0 0 1200 1800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="60" x2="1120" y2="1700" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EFE4D2"/>
+      <stop offset="0.48" stop-color="#F8F3EA"/>
+      <stop offset="1" stop-color="#E7D7C0"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="120" y1="180" x2="1080" y2="1640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF9" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#FFF8EF" stop-opacity="0.8"/>
+    </linearGradient>
+    <linearGradient id="soft" x1="180" y1="1180" x2="1000" y2="1640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5E6CF" stop-opacity="0.88"/>
+      <stop offset="1" stop-color="#FFF8EE" stop-opacity="0.92"/>
+    </linearGradient>
+    <filter id="shadow" x="88" y="148" width="1024" height="1494" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="28" stdDeviation="24" flood-color="#4C3816" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1800" fill="url(#bg)"/>
+  <circle cx="140" cy="180" r="220" fill="#B98948" fill-opacity="0.15"/>
+  <circle cx="1060" cy="220" r="140" fill="#B98948" fill-opacity="0.08"/>
+  <circle cx="1020" cy="1520" r="220" fill="#B98948" fill-opacity="0.08"/>
+
+  <g filter="url(#shadow)">
+    <rect x="120" y="170" width="960" height="1430" rx="36" fill="url(#panel)"/>
+    <rect x="120.5" y="170.5" width="959" height="1429" rx="35.5" stroke="#8D6634" stroke-opacity="0.14"/>
+  </g>
+
+  <rect x="180" y="228" width="420" height="60" rx="30" fill="#FFFFFF" fill-opacity="0.78" stroke="#8D6634" stroke-opacity="0.12"/>
+  <text x="218" y="268" fill="#9D6A2A" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="28" font-weight="700">辽宁摩旅路线助手 · MVP</text>
+
+  <text x="180" y="410" fill="#1E1B17" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="96" font-weight="700">辽宁摩旅路线</text>
+  <text x="180" y="522" fill="#1E1B17" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="96" font-weight="700">导航 打卡 养车</text>
+
+  <text x="180" y="622" fill="#6E6458" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="34">给辽宁摩友日常转发用的一张图：</text>
+  <text x="180" y="676" fill="#6E6458" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="34">看路线、查补给、接高德、记想去、做打卡。</text>
+
+  <g>
+    <rect x="180" y="748" width="400" height="170" rx="28" fill="#FFFFFF" fill-opacity="0.82" stroke="#8D6634" stroke-opacity="0.14"/>
+    <text x="220" y="806" fill="#9D6A2A" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="24">01</text>
+    <text x="220" y="872" fill="#1E1B17" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="42" font-weight="700">路线浏览</text>
+    <text x="220" y="930" fill="#6E6458" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="28">经典路线、亮点、行程</text>
+    <text x="220" y="972" fill="#6E6458" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="28">一眼看完。</text>
+
+    <rect x="620" y="748" width="400" height="170" rx="28" fill="#FFFFFF" fill-opacity="0.82" stroke="#8D6634" stroke-opacity="0.14"/>
+    <text x="660" y="806" fill="#9D6A2A" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="24">02</text>
+    <text x="660" y="872" fill="#1E1B17" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="42" font-weight="700">导航衔接</text>
+    <text x="660" y="930" fill="#6E6458" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="28">高德逐点导航，</text>
+    <text x="660" y="972" fill="#6E6458" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="28">路上更省心。</text>
+  </g>
+
+  <g>
+    <rect x="180" y="970" width="840" height="360" rx="30" fill="#FFFCF7" fill-opacity="0.92" stroke="#8D6634" stroke-opacity="0.14"/>
+    <text x="230" y="1042" fill="#1E1B17" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="42" font-weight="700">扫码打开</text>
+    <text x="230" y="1096" fill="#6E6458" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="30">群主转发时可直接替换这里的二维码</text>
+    <rect x="365" y="1134" width="470" height="470" rx="26" fill="#FFFFFF" stroke="#9D6A2A" stroke-width="3" stroke-dasharray="16 12"/>
+    <text x="515" y="1338" fill="#9D6A2A" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="54" font-weight="700">小程序</text>
+    <text x="542" y="1408" fill="#9D6A2A" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="54" font-weight="700">二维码</text>
+  </g>
+
+  <g>
+    <rect x="180" y="1490" width="840" height="110" rx="28" fill="url(#soft)" stroke="#8D6634" stroke-opacity="0.14"/>
+    <text x="220" y="1558" fill="#1E1B17" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="42" font-weight="700">推荐转发文案</text>
+    <text x="220" y="1634" fill="#6E6458" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif" font-size="34">辽宁摩旅路线、导航、打卡都在这里，扫码直接看。</text>
+  </g>
+</svg>

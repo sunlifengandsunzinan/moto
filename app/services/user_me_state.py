@@ -504,7 +504,8 @@ def get_user_route_checkpoint_collection(
     if not collection:
         return _empty_route_checkpoint_collection(normalized_slug, normalized_total)
 
-    total = max(int(collection.get("checkpoint_total") or 0), normalized_total)
+    stored_total = _normalize_checkpoint_total(collection.get("checkpoint_total"))
+    total = normalized_total if normalized_total > 0 else stored_total
     checked_indexes = sorted({
         int(index)
         for index in collection.get("checked_indexes", [])
@@ -568,7 +569,8 @@ def mark_user_route_checkpoint_checkin(
 
     if normalized_route_title:
         collection["route_title"] = normalized_route_title
-    collection["checkpoint_total"] = max(int(collection.get("checkpoint_total") or 0), normalized_total)
+    previous_total = _normalize_checkpoint_total(collection.get("checkpoint_total"))
+    collection["checkpoint_total"] = normalized_total
 
     checked_indexes = {
         int(index)
@@ -577,7 +579,7 @@ def mark_user_route_checkpoint_checkin(
     }
     before_checked_count = len(checked_indexes)
     checked_indexes.add(normalized_index)
-    changed = len(checked_indexes) != before_checked_count
+    changed = len(checked_indexes) != before_checked_count or previous_total != normalized_total
     total = int(collection.get("checkpoint_total") or 0)
     checked_indexes = {index for index in checked_indexes if index <= total}
     checked_count = len(checked_indexes)

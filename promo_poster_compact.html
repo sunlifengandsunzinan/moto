@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>辽宁摩旅路线助手 - 海报图</title>
+  <style>
+    :root {
+      --bg-1: #efe4d2;
+      --bg-2: #f8f3ea;
+      --ink: #1e1b17;
+      --muted: #6e6458;
+      --accent: #9d6a2a;
+      --card: rgba(255, 251, 245, 0.82);
+      --line: rgba(141, 102, 52, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 12%, rgba(185, 136, 71, 0.26), transparent 22%),
+        radial-gradient(circle at 84% 18%, rgba(185, 136, 71, 0.14), transparent 18%),
+        linear-gradient(150deg, var(--bg-1), var(--bg-2) 46%, #e9dcc7 100%);
+      padding: 24px;
+    }
+
+    .poster {
+      width: 1360px;
+      min-height: 860px;
+      border-radius: 32px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.58), rgba(255,255,255,0.36));
+      box-shadow: 0 28px 80px rgba(76, 56, 22, 0.12);
+      overflow: hidden;
+    }
+
+    .top {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 22px;
+      padding: 46px 52px 26px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.68);
+      color: var(--accent);
+      font-size: 16px;
+      letter-spacing: 0.08em;
+    }
+
+    h1 {
+      margin: 18px 0 16px;
+      font-size: 74px;
+      line-height: 1.04;
+      letter-spacing: -0.04em;
+    }
+
+    .lead {
+      margin: 0;
+      max-width: 720px;
+      font-size: 24px;
+      line-height: 1.65;
+      color: var(--muted);
+    }
+
+    .highlight {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+      padding-top: 10px;
+    }
+
+    .highlight-card {
+      padding: 20px 22px;
+      border-radius: 22px;
+      background: var(--card);
+      border: 1px solid var(--line);
+    }
+
+    .highlight-card strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 24px;
+    }
+
+    .highlight-card span {
+      display: block;
+      font-size: 18px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .middle {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) 430px;
+      gap: 18px;
+      padding: 24px 52px;
+    }
+
+    .feature {
+      min-height: 150px;
+      padding: 22px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid var(--line);
+    }
+
+    .feature small {
+      display: inline-block;
+      margin-bottom: 12px;
+      color: var(--accent);
+      font-size: 14px;
+      letter-spacing: 0.08em;
+    }
+
+    .feature strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .feature p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.55;
+    }
+
+    .qr-panel {
+      min-height: 330px;
+      padding: 20px;
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.8);
+      display: grid;
+      align-content: start;
+      gap: 16px;
+    }
+
+    .qr-box {
+      width: 210px;
+      height: 210px;
+      margin: 6px auto 0;
+      border-radius: 18px;
+      border: 2px dashed var(--accent);
+      background: rgba(255,255,255,0.86);
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      font-size: 28px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.35;
+    }
+
+    .qr-tip {
+      margin: 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .bottom {
+      display: block;
+      padding: 4px 52px 42px;
+    }
+
+    .cta {
+      padding: 24px 26px;
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, rgba(157,106,42,0.12), rgba(255,255,255,0.66));
+    }
+
+    .cta strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 26px;
+    }
+
+    .cta p {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="poster">
+    <section class="top">
+      <div>
+        <div class="badge">辽宁摩旅路线助手 · MVP</div>
+        <h1>辽宁摩旅路线<br />导航 打卡 养车</h1>
+        <p class="lead">
+          适合辽宁摩友日常转发的轻量工具：
+          看路线、查补给、接高德、记想去、做打卡。
+        </p>
+      </div>
+      <div class="highlight">
+        <div class="highlight-card">
+          <strong>群主可直接转发</strong>
+          <span>路线和执行信息一张图说清。</span>
+        </div>
+        <div class="highlight-card">
+          <strong>骑手打开就能用</strong>
+          <span>不用解释太多，扫码就能看。</span>
+        </div>
+        <div class="highlight-card">
+          <strong>后续还能持续扩内容</strong>
+          <span>路线、点位、补给、打卡会越积越全。</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="middle">
+      <article class="feature">
+        <small>01</small>
+        <strong>路线浏览</strong>
+        <p>经典路线、亮点、行程一眼看完。</p>
+      </article>
+      <article class="feature">
+        <small>02</small>
+        <strong>导航衔接</strong>
+        <p>高德逐点导航，路上更省心。</p>
+      </article>
+      <aside class="qr-panel">
+        <strong>扫码打开</strong>
+        <div class="qr-box">小程序<br />二维码</div>
+        <p class="qr-tip">群主转发时可直接替换这里的二维码</p>
+      </aside>
+    </section>
+
+    <section class="bottom">
+      <div class="cta">
+        <strong>推荐转发文案</strong>
+        <p>辽宁摩旅路线、导航、打卡都在这里，扫码直接看。</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
